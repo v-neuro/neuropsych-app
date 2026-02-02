@@ -389,41 +389,63 @@ function buildExportRow(sessionData, sessionUUID, opts = {}) {
 
   // VLMT
   const vlmt = s.vlmt || {};
-  row.vlmt_version = vlmt.list || "";
   const results = Array.isArray(vlmt.results) ? vlmt.results : [];
-  const hitsAt = (idx) => {
-    const r = results[idx] || {};
-    const sel = r.sel || {};
-    return Object.values(sel).filter(Boolean).length;
-  };
-  const sumDG1to5 = [0, 1, 2, 3, 4].reduce((acc, i) => acc + hitsAt(i), 0);
-  row.vlmt_sum_dg1_5 = sumDG1to5;
-  row.vlmt_dg5_hits = hitsAt(4);
-  row.vlmt_dg6_hits = hitsAt(5);
-  row.vlmt_dg7_hits = hitsAt(6);
-  row.vlmt_loss_dg5_to_dg7 = hitsAt(4) - hitsAt(6);
-  const rekogItems = vlmt.rekog?.items || [];
-  const rekogSel = vlmt.rekog?.sel || {};
-  let vlmtHits = 0;
-  let vlmtFP = 0;
-  rekogItems.forEach((it, idx) => {
-    const pick = !!rekogSel[idx];
-    if (pick && it.t) vlmtHits += 1;
-    if (pick && !it.t) vlmtFP += 1;
-  });
-  row.vlmt_rekog_correct_minus_fp = vlmtHits - vlmtFP;
+  const hasVlmt = !!vlmt.list || results.some((r) => r && Object.keys(r.sel || {}).length > 0);
+  if (hasVlmt) {
+    row.vlmt_version = vlmt.list || "";
+    const hitsAt = (idx) => {
+      const r = results[idx] || {};
+      const sel = r.sel || {};
+      return Object.values(sel).filter(Boolean).length;
+    };
+    const sumDG1to5 = [0, 1, 2, 3, 4].reduce((acc, i) => acc + hitsAt(i), 0);
+    row.vlmt_sum_dg1_5 = sumDG1to5;
+    row.vlmt_dg5_hits = hitsAt(4);
+    row.vlmt_dg6_hits = hitsAt(5);
+    row.vlmt_dg7_hits = hitsAt(6);
+    row.vlmt_loss_dg5_to_dg7 = hitsAt(4) - hitsAt(6);
+    const rekogItems = vlmt.rekog?.items || [];
+    const rekogSel = vlmt.rekog?.sel || {};
+    let vlmtHits = 0;
+    let vlmtFP = 0;
+    rekogItems.forEach((it, idx) => {
+      const pick = !!rekogSel[idx];
+      if (pick && it.t) vlmtHits += 1;
+      if (pick && !it.t) vlmtFP += 1;
+    });
+    row.vlmt_rekog_correct_minus_fp = vlmtHits - vlmtFP;
+  } else {
+    row.vlmt_version = "";
+    row.vlmt_sum_dg1_5 = null;
+    row.vlmt_dg5_hits = null;
+    row.vlmt_dg6_hits = null;
+    row.vlmt_dg7_hits = null;
+    row.vlmt_loss_dg5_to_dg7 = null;
+    row.vlmt_rekog_correct_minus_fp = null;
+  }
 
   // DCS-R
   const dcsr = s.dcsr || {};
-  row.dcsr_version = dcsr.ver || "";
   const dcsrCounts = Array.isArray(dcsr.counts) ? dcsr.counts : [];
-  const dcsrHitsAt = (i) => (dcsrCounts[i]?.richtig ?? 0);
-  row.dcsr_sum_dg1_5 = dcsrCounts.reduce((a, c) => a + (c?.richtig ?? 0), 0);
-  row.dcsr_dg1_hits = dcsrHitsAt(0);
-  const dcsrRecog = dcsr.rekog?.responses || {};
-  const dcsrRecogVals = Object.values(dcsrRecog);
-  row.dcsr_rekog_correct = dcsrRecogVals.filter((v) => v === "korrekt").length || 0;
-  row.dcsr_rekog_wrong = dcsrRecogVals.filter((v) => v === "falsch" || v === "gedreht").length || 0;
+  const hasDcsr = !!dcsr.ver || dcsrCounts.some((c) =>
+    ["richtig", "falsch", "gedreht", "perseveration"].some((f) => (c?.[f] || 0) > 0)
+  );
+  if (hasDcsr) {
+    row.dcsr_version = dcsr.ver || "";
+    const dcsrHitsAt = (i) => (dcsrCounts[i]?.richtig ?? 0);
+    row.dcsr_sum_dg1_5 = dcsrCounts.reduce((a, c) => a + (c?.richtig ?? 0), 0);
+    row.dcsr_dg1_hits = dcsrHitsAt(0);
+    const dcsrRecog = dcsr.rekog?.responses || {};
+    const dcsrRecogVals = Object.values(dcsrRecog);
+    row.dcsr_rekog_correct = dcsrRecogVals.filter((v) => v === "korrekt").length || 0;
+    row.dcsr_rekog_wrong = dcsrRecogVals.filter((v) => v === "falsch" || v === "gedreht").length || 0;
+  } else {
+    row.dcsr_version = "";
+    row.dcsr_sum_dg1_5 = null;
+    row.dcsr_dg1_hits = null;
+    row.dcsr_rekog_correct = null;
+    row.dcsr_rekog_wrong = null;
+  }
   if (includeDrawings) {
     const drawings = Array.isArray(dcsr.drawings) ? dcsr.drawings : [];
     drawings.forEach((img, idx) => {
@@ -450,8 +472,15 @@ function buildExportRow(sessionData, sessionUUID, opts = {}) {
   row.stroop_interferenz_s = msToSec(s.stroop?.interferenz);
   const fails = s.stroop_notes?.interferenz_fails || {};
   const failVals = Object.values(fails);
-  row.stroop_interferenz_errors = failVals.filter((v) => v === 1).length;
-  row.stroop_interferenz_corrected = failVals.filter((v) => v === 2).length;
+  const anyStroopTime = ["woerter", "farbstriche", "interferenz"].some((k) => typeof s.stroop?.[k] === "number");
+  const anyFails = failVals.length > 0;
+  if (anyStroopTime || anyFails) {
+    row.stroop_interferenz_errors = failVals.filter((v) => v === 1).length;
+    row.stroop_interferenz_corrected = failVals.filter((v) => v === 2).length;
+  } else {
+    row.stroop_interferenz_errors = null;
+    row.stroop_interferenz_corrected = null;
+  }
 
   // Grooved Pegboard
   const gp = s.gp || {};
@@ -463,30 +492,52 @@ function buildExportRow(sessionData, sessionUUID, opts = {}) {
 
   // CERAD MMST
   const mmstItems = s.cerad_mmst?.items || {};
-  row.cerad_mmst_total = computeMmstTotal(mmstItems);
+  const hasMmst = Object.keys(mmstItems || {}).length > 0;
+  row.cerad_mmst_total = hasMmst ? computeMmstTotal(mmstItems) : null;
 
   // CERAD Verbalgedächtnis
   const ceradWl = s.cerad_wl || {};
-  const ceradGetHits = (key) => {
-    const dg = ceradWl[key] || {};
+  const ceradHasWl = ["dg1", "dg2", "dg3", "dg4"].some((k) => {
+    const dg = ceradWl[k] || {};
     const marks = dg.marks || {};
-    return CERAD_WORDLIST.reduce((acc, w) => acc + (marks[w] ? 1 : 0), 0);
-  };
-  const ceradIntr = (key) => (ceradWl[key]?.intrusions ?? 0);
-  row.cerad_wl_dg1_hits = ceradGetHits("dg1");
-  row.cerad_wl_dg1_intrusions = ceradIntr("dg1");
-  row.cerad_wl_dg2_hits = ceradGetHits("dg2");
-  row.cerad_wl_dg2_intrusions = ceradIntr("dg2");
-  row.cerad_wl_dg3_hits = ceradGetHits("dg3");
-  row.cerad_wl_dg3_intrusions = ceradIntr("dg3");
-  row.cerad_wl_dg4_hits = ceradGetHits("dg4");
-  row.cerad_wl_dg4_intrusions = ceradIntr("dg4");
-  row.cerad_wl_recog_correct_yes = ceradWl.recog?.correct_yes ?? 0;
-  row.cerad_wl_recog_correct_no = ceradWl.recog?.correct_no ?? 0;
+    const hasMarks = Object.values(marks).some(Boolean);
+    const hasIntr = (dg.intrusions || 0) > 0;
+    return hasMarks || hasIntr;
+  }) || (ceradWl.recog && Object.keys(ceradWl.recog.responses || {}).length > 0);
+  if (ceradHasWl) {
+    const ceradGetHits = (key) => {
+      const dg = ceradWl[key] || {};
+      const marks = dg.marks || {};
+      return CERAD_WORDLIST.reduce((acc, w) => acc + (marks[w] ? 1 : 0), 0);
+    };
+    const ceradIntr = (key) => (ceradWl[key]?.intrusions ?? 0);
+    row.cerad_wl_dg1_hits = ceradGetHits("dg1");
+    row.cerad_wl_dg1_intrusions = ceradIntr("dg1");
+    row.cerad_wl_dg2_hits = ceradGetHits("dg2");
+    row.cerad_wl_dg2_intrusions = ceradIntr("dg2");
+    row.cerad_wl_dg3_hits = ceradGetHits("dg3");
+    row.cerad_wl_dg3_intrusions = ceradIntr("dg3");
+    row.cerad_wl_dg4_hits = ceradGetHits("dg4");
+    row.cerad_wl_dg4_intrusions = ceradIntr("dg4");
+    row.cerad_wl_recog_correct_yes = ceradWl.recog?.correct_yes ?? 0;
+    row.cerad_wl_recog_correct_no = ceradWl.recog?.correct_no ?? 0;
+  } else {
+    row.cerad_wl_dg1_hits = null;
+    row.cerad_wl_dg1_intrusions = null;
+    row.cerad_wl_dg2_hits = null;
+    row.cerad_wl_dg2_intrusions = null;
+    row.cerad_wl_dg3_hits = null;
+    row.cerad_wl_dg3_intrusions = null;
+    row.cerad_wl_dg4_hits = null;
+    row.cerad_wl_dg4_intrusions = null;
+    row.cerad_wl_recog_correct_yes = null;
+    row.cerad_wl_recog_correct_no = null;
+  }
 
   // CERAD Benennen
   const ben = s.cerad_benennen?.items || [];
-  row.cerad_bnt_correct = ben.filter((it) => it?.ok).length;
+  const hasBen = ben.length > 0;
+  row.cerad_bnt_correct = hasBen ? ben.filter((it) => it?.ok).length : null;
 
   // CERAD Wortflüssigkeit
   const ceradWf = s.cerad_wf || {};
@@ -542,6 +593,67 @@ function buildExportRow(sessionData, sessionUUID, opts = {}) {
   row.rwt_sem_complex_notes = rwt.sem_complex?.notes || "";
   row.rwt_note = rwt.note || "";
 
+  // Zahlenspanne & Blockspanne – export only derived lengths and correctness sums
+  const spanDefs = [
+    { key: "zahl_fwd", rowKey: "zahl_fwd" },
+    { key: "zahl_rev", rowKey: "zahl_rev" },
+    { key: "block_fwd", rowKey: "block_fwd" },
+    { key: "block_rev", rowKey: "block_rev" },
+  ];
+  const spanLongest = (vals, rows) => {
+    if (!Array.isArray(vals) || !Array.isArray(rows)) return 0;
+    let max = 0;
+    rows.forEach((pair, idx) => {
+      const ok = vals[idx] && (vals[idx].v1 === 1 || vals[idx].v2 === 1);
+      if (ok) {
+        const L = (pair?.[0] || "").split("-").filter(Boolean).length;
+        if (L > max) max = L;
+      }
+    });
+    return max;
+  };
+  const spanCorrectSum = (vals) => {
+    if (!Array.isArray(vals)) return 0;
+    return vals.reduce((acc, v) => acc + (v?.v1 === 1 ? 1 : 0) + (v?.v2 === 1 ? 1 : 0), 0);
+  };
+  spanDefs.forEach(({ key, rowKey }) => {
+    const data = s[key] || {};
+    const rows = data.rows || [];
+    const vals = data.vals || [];
+    const hasSpan = Array.isArray(vals) && vals.some((v) => v && (v.v1 !== null || v.v2 !== null));
+    row[`${rowKey}_longest`] = hasSpan ? spanLongest(vals, rows) : null;
+    row[`${rowKey}_correct_sum`] = hasSpan ? spanCorrectSum(vals) : null;
+  });
+
+  // Abbruch-Flags (boolean)
+  const abortedMap = {
+    vlmt_aborted: s.vlmt_aborted,
+    dcsr_aborted: s.dcsr_aborted,
+    zahl_fwd_aborted: s.zahl_fwd_aborted,
+    zahl_rev_aborted: s.zahl_rev_aborted,
+    block_fwd_aborted: s.block_fwd_aborted,
+    block_rev_aborted: s.block_rev_aborted,
+    tmt_aborted: s.tmt_aborted,
+    tmt_a_aborted: s.tmt_a_aborted,
+    tmt_b_aborted: s.tmt_b_aborted,
+    stroop_aborted: s.stroop_aborted,
+    rwt_aborted: s.rwt_aborted,
+    epi_aborted: s.epi_aborted,
+    gp_aborted: s.gp_aborted,
+    uhr_aborted: s.uhr_aborted,
+    cerad_wl_aborted: s.cerad_wl_aborted,
+    cerad_mmst_aborted: s.cerad_mmst_aborted,
+    cerad_benennen_aborted: s.cerad_benennen_aborted,
+    cerad_wf_aborted: s.cerad_wf_aborted,
+    cerad_tmt_aborted: s.cerad_tmt_aborted,
+    cerad_fig_aborted: s.cerad_fig_aborted,
+    cerad_tmt_a_aborted: s.cerad_tmt_a_aborted,
+    cerad_tmt_b_aborted: s.cerad_tmt_b_aborted,
+  };
+  Object.entries(abortedMap).forEach(([k, v]) => {
+    row[k] = v ? 1 : 0;
+  });
+
   // Epi Wortfl Notiz nicht vorhanden
 
   return row;
@@ -586,7 +698,7 @@ function AttemptsRow({ title, seq1, seq2, val, onChange }) {
       data-testid={testid}
       onPointerDown={(e) => { e.preventDefault(); }}
       onPointerUp={(e) => { e.preventDefault(); onSelect && onSelect("pointerup"); }}
-      onClick={(e) => { e.preventDefault(); onSelect && onSelect("click"); }}
+      onClick={(e) => { onSelect && onSelect("click"); }}
       className={cls(
         "px-4 py-2 rounded-xl border text-base select-none inline-flex items-center gap-2",
         selected ? (ok ? "bg-emerald-50 border-emerald-200" : "bg-rose-50 border-rose-200") : "bg-white border-zinc-300"
@@ -621,9 +733,14 @@ function AttemptsRow({ title, seq1, seq2, val, onChange }) {
   );
 }
 
-function ZahlenSpanneScreen({ label, sequences, testKey, extraActionLabel, onStateChange, onAbort, onExtraAction, onBackToSpanMenu }) {
-  const pairs = sequences && sequences.length ? sequences : [];
-  const [vals, setVals] = useState(() => pairs.map(() => ({ v1: null, v2: null })));
+function ZahlenSpanneScreen({ label, sequences, persisted, extraActionLabel, onStateChange, onAbort, onExtraAction, onBackToSpanMenu }) {
+  const pairs = useMemo(() => (sequences && sequences.length ? sequences : []), [sequences]);
+  const [vals, setVals] = useState(() => {
+    if (persisted?.vals && Array.isArray(persisted.vals) && persisted.vals.length === pairs.length) {
+      return persisted.vals;
+    }
+    return pairs.map(() => ({ v1: null, v2: null }));
+  });
 
   useEffect(() => {
     onStateChange && onStateChange({ label, rows: pairs, vals });
@@ -631,13 +748,16 @@ function ZahlenSpanneScreen({ label, sequences, testKey, extraActionLabel, onSta
 
   useEffect(() => {
     setVals((prev) => {
+      if (persisted?.vals && Array.isArray(persisted.vals) && persisted.vals.length === pairs.length) {
+        return persisted.vals;
+      }
       if (!Array.isArray(prev) || prev.length !== pairs.length) {
         const next = pairs.map((_, i) => prev?.[i] ?? { v1: null, v2: null });
         return next;
       }
       return prev;
     });
-  }, [pairs]);
+  }, [pairs, persisted?.vals]);
 
   const longest = useMemo(() => {
     let max = 0;
@@ -693,9 +813,14 @@ function ZahlenSpanneScreen({ label, sequences, testKey, extraActionLabel, onSta
   );
 }
 
-function BlockSpanneScreen({ label, sequences, testKey, onStateChange, onAbort, onBackToSpanMenu }) {
-  const pairs = sequences && sequences.length ? sequences : [];
-  const [vals, setVals] = useState(() => pairs.map(() => ({ v1: null, v2: null })));
+function BlockSpanneScreen({ label, sequences, persisted, onStateChange, onAbort, onBackToSpanMenu }) {
+  const pairs = useMemo(() => (sequences && sequences.length ? sequences : []), [sequences]);
+  const [vals, setVals] = useState(() => {
+    if (persisted?.vals && Array.isArray(persisted.vals) && persisted.vals.length === pairs.length) {
+      return persisted.vals;
+    }
+    return pairs.map(() => ({ v1: null, v2: null }));
+  });
 
   useEffect(() => {
     onStateChange && onStateChange({ label, rows: pairs, vals });
@@ -703,13 +828,16 @@ function BlockSpanneScreen({ label, sequences, testKey, onStateChange, onAbort, 
 
   useEffect(() => {
     setVals((prev) => {
+      if (persisted?.vals && Array.isArray(persisted.vals) && persisted.vals.length === pairs.length) {
+        return persisted.vals;
+      }
       if (!Array.isArray(prev) || prev.length !== pairs.length) {
         const next = pairs.map((_, i) => prev?.[i] ?? { v1: null, v2: null });
         return next;
       }
       return prev;
     });
-  }, [pairs]);
+  }, [pairs, persisted?.vals]);
 
   const longest = useMemo(() => {
     let max = 0;
@@ -857,11 +985,14 @@ function RWTTestPanel({ meta, modeKey, sessionData, onPersist, onClose }) {
   );
 }
 
-function RWTWire({ sessionData, onPersist }) {
+function RWTWire({ sessionData, onPersist, onAbort }) {
   const [mode, setMode] = useState(null); // null | modes
   return (
     <section className="py-6">
       <Header title="Wortflüssigkeit (RWT)" />
+      <div className="mb-3">
+        <AbortButton onAbort={onAbort} />
+      </div>
       {mode === null ? (
         <RWTModeMenu onSelect={(m) => setMode(m)} />
       ) : (
@@ -1108,6 +1239,11 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
     setScore(typeof data.score === "number" ? data.score : 3);
     setNote(data.note || "");
   }, [data.score, data.note]);
+
+  const updateScore = (next) => {
+    setScore(next);
+    onPersist && onPersist({ score: next, note });
+  };
   return (
     <section className="py-6">
       <Header title="Uhrentest" subtitle="0–5 Punkte" />
@@ -1120,7 +1256,7 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
           min={0}
           max={5}
           value={score}
-          onChange={(e) => setScore(parseInt(e.target.value))}
+          onChange={(e) => updateScore(parseInt(e.target.value, 10))}
           className="w-full"
         />
         <div className="mt-2 text-xl">Punkte: {score}</div>
@@ -1392,7 +1528,6 @@ export default function App() {
         console.error("Persistenz laden fehlgeschlagen", e);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // persist on changes (debounced)
   useEffect(() => {
@@ -1437,33 +1572,31 @@ export default function App() {
     }
   };
 
-  if (!authOK) {
-    return (
-      <div className={cls("min-h-screen flex flex-col items-center justify-center px-4", darkMode ? "bg-zinc-900 text-zinc-100" : "bg-zinc-50 text-zinc-900")}>
-        <div className="w-full max-w-md p-5 rounded-2xl border border-zinc-200 bg-white shadow-sm dark:bg-zinc-800 dark:border-zinc-700">
-          <div className="flex justify-between items-center mb-3">
-            <div className="text-lg font-semibold">Zugang</div>
-            <button
-              onClick={() => setDarkMode((v) => !v)}
-              className="px-3 py-1.5 rounded-xl border text-sm"
-            >
-              {darkMode ? "Light" : "Dark"}
-            </button>
-          </div>
-          <p className="text-sm text-zinc-600 dark:text-zinc-300 mb-3">Bitte Passwort eingeben, um die Tests zu öffnen.</p>
-          <PasswordPrompt onSubmit={handleAuth} error={authError} />
+  const authScreen = (
+    <div className={cls("min-h-screen flex flex-col items-center justify-center px-4", darkMode ? "bg-zinc-900 text-zinc-100" : "bg-zinc-50 text-zinc-900")}>
+      <div className="w-full max-w-md p-5 rounded-2xl border border-zinc-200 bg-white shadow-sm dark:bg-zinc-800 dark:border-zinc-700">
+        <div className="flex justify-between items-center mb-3">
+          <div className="text-lg font-semibold">Zugang</div>
+          <button
+            onClick={() => setDarkMode((v) => !v)}
+            className="px-3 py-1.5 rounded-xl border text-sm"
+          >
+            {darkMode ? "Light" : "Dark"}
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowImpressum(true)}
-          className="mt-4 text-sm underline underline-offset-4"
-        >
-          Impressum
-        </button>
-        <ImpressumModal open={showImpressum} onClose={() => setShowImpressum(false)} />
+        <p className="text-sm text-zinc-600 dark:text-zinc-300 mb-3">Bitte Passwort eingeben, um die Tests zu öffnen.</p>
+        <PasswordPrompt onSubmit={handleAuth} error={authError} />
       </div>
-    );
-  }
+      <button
+        type="button"
+        onClick={() => setShowImpressum(true)}
+        className="mt-4 text-sm underline underline-offset-4"
+      >
+        Impressum
+      </button>
+      <ImpressumModal open={showImpressum} onClose={() => setShowImpressum(false)} />
+    </div>
+  );
 
   const triggerCsvExport = () => {
     const row = buildExportRow(sessionData, sessionUUID, { includeDrawings: false });
@@ -1579,6 +1712,15 @@ export default function App() {
     // Grooved Pegboard
     if (s.gp_aborted) set("gp","abgebrochen"); else if (s.gp && (typeof s.gp.dom_ms === 'number' || typeof s.gp.non_ms === 'number')) set("gp","erfasst");
 
+    // RWT
+    const rwtData = s.rwt || {};
+    const hasRwt = Object.keys(rwtData).some((k) => {
+      const m = rwtData[k] || {};
+      return m.sum !== undefined || m.version || m.notes;
+    });
+    if (s.rwt_aborted) set("rwt", "abgebrochen");
+    else if (hasRwt) set("rwt", "erfasst");
+
     // Uhrentest
     if (s.uhr_aborted) set("uhr","abgebrochen"); else if (s.uhr && (s.uhr.score !== undefined || s.uhr.note)) set("uhr","erfasst");
 
@@ -1592,8 +1734,34 @@ export default function App() {
     if (s.cerad_tmt_aborted) set("cerad_tmt","abgebrochen"); else if (anyTmt) set("cerad_tmt","erfasst");
     if (s.cerad_fig_aborted) set("cerad_fig","abgebrochen"); else if (s.cerad_fig) set("cerad_fig","erfasst");
 
+    // CERAD aggregated for main tile
+    const ceradAborted = [
+      s.cerad_wl_aborted,
+      s.cerad_mmst_aborted,
+      s.cerad_benennen_aborted,
+      s.cerad_wf_aborted,
+      s.cerad_tmt_aborted,
+      s.cerad_fig_aborted,
+      s.cerad_tmt_a_aborted,
+      s.cerad_tmt_b_aborted,
+    ].some(Boolean);
+    const ceradAny =
+      !!s.cerad_wl ||
+      !!s.cerad_mmst ||
+      !!s.cerad_benennen ||
+      !!s.cerad_wf ||
+      anyTmt ||
+      !!s.cerad_tmt ||
+      !!s.cerad_fig ||
+      !!s.cerad_tmt_a ||
+      !!s.cerad_tmt_b;
+    if (ceradAborted) set("cerad_menu", "abgebrochen");
+    else if (ceradAny) set("cerad_menu", "erfasst");
+
     return m;
   }, [sessionData, globalTimers]);
+
+  if (!authOK) return authScreen;
 
   return (
     <ErrorBoundary onReset={() => setScreen({ name: "menu" })}>
@@ -1720,7 +1888,7 @@ export default function App() {
           <ZahlenSpanneScreen
             label="Zahlenspanne vorwärts"
             sequences={ZS_FWD}
-            testKey="zahl_fwd"
+            persisted={sessionData?.zahl_fwd}
             onStateChange={(data)=> setSessionData((s)=>({ ...s, zahl_fwd: data }))}
             onAbort={(payload)=> setSessionData((s)=>({ ...s, zahl_fwd_aborted: payload }))}
             onBackToSpanMenu={() => setScreen({ name: "spannen_menu" })}
@@ -1730,7 +1898,7 @@ export default function App() {
           <ZahlenSpanneScreen
             label="Zahlenspanne rückwärts"
             sequences={ZS_REV}
-            testKey="zahl_rev"
+            persisted={sessionData?.zahl_rev}
             extraActionLabel="→ an Epi-Track übernehmen"
             onStateChange={(data)=> setSessionData((s)=>({ ...s, zahl_rev: data }))}
             onAbort={(payload)=> setSessionData((s)=>({ ...s, zahl_rev_aborted: payload }))}
@@ -1743,7 +1911,7 @@ export default function App() {
           <BlockSpanneScreen
             label="Blockspanne vorwärts"
             sequences={BS_FWD}
-            testKey="block_fwd"
+            persisted={sessionData?.block_fwd}
             onStateChange={(data)=> setSessionData((s)=>({ ...s, block_fwd: data }))}
             onAbort={(payload)=> setSessionData((s)=>({ ...s, block_fwd_aborted: payload }))}
             onBackToSpanMenu={() => setScreen({ name: "spannen_menu" })}
@@ -1753,7 +1921,7 @@ export default function App() {
           <BlockSpanneScreen
             label="Blockspanne rückwärts"
             sequences={BS_REV}
-            testKey="block_rev"
+            persisted={sessionData?.block_rev}
             onStateChange={(data)=> setSessionData((s)=>({ ...s, block_rev: data }))}
             onAbort={(payload)=> setSessionData((s)=>({ ...s, block_rev_aborted: payload }))}
             onBackToSpanMenu={() => setScreen({ name: "spannen_menu" })}
@@ -1777,6 +1945,12 @@ export default function App() {
                   ...(s.rwt || {}),
                   [mode]: { ...((s.rwt || {})[mode] || {}), ...payload },
                 },
+              }))
+            }
+            onAbort={(payload) =>
+              setSessionData((s) => ({
+                ...s,
+                rwt_aborted: payload,
               }))
             }
           />
@@ -2007,7 +2181,6 @@ export default function App() {
           />
         )}
 
-        {false && showDebug && <DebugOverlay />}
         <DevSelfTests />
       </main>
       <div className="max-w-5xl mx-auto px-4 pb-6 -mt-4">
