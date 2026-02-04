@@ -1,18 +1,25 @@
 import React, { useEffect, useState } from "react";
 import { useInterval } from "../lib/utils";
 
+function fmtMs(ms) {
+  const m = Math.floor(ms / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  const cs = Math.floor((ms % 1000) / 10);
+  return `${m}:${s.toString().padStart(2, "0")}.${cs.toString().padStart(2, "0")}`;
+}
+
 export function Stopwatch({ persisted, onPersist }) {
   const [state, setState] = useState("idle"); // "idle" | "running" | "stopped"
   const [start, setStart] = useState(null);
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
-    if (typeof persisted === "number" && persisted >= 0) {
+    if (typeof persisted === "number" && persisted >= 0 && persisted !== elapsed) {
       setElapsed(persisted);
       setState("stopped");
       setStart(null);
     }
-  }, [persisted]);
+  }, [persisted, elapsed]);
 
   useInterval(() => {
     if (state === "running" && start !== null) setElapsed(Date.now() - start);
@@ -80,11 +87,4 @@ export function Countdown60() {
       </div>
     </div>
   );
-}
-
-export function fmtMs(ms) {
-  const m = Math.floor(ms / 60000);
-  const s = Math.floor((ms % 60000) / 1000);
-  const cs = Math.floor((ms % 1000) / 10);
-  return `${m}:${s.toString().padStart(2, "0")}.${cs.toString().padStart(2, "0")}`;
 }

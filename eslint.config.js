@@ -24,13 +24,9 @@ export default defineConfig([
       ...js.configs.recommended.rules,
       ...reactHooks.configs['recommended-latest'].rules,
       ...reactRefresh.configs.vite.rules,
-      // Relax rules to fit current codebase; tighten later as needed.
-      'no-unused-vars': 'off',
-      'react-hooks/exhaustive-deps': 'off',
-      'react-hooks/static-components': 'off',
-      'react-hooks/set-state-in-effect': 'off',
-      'react-hooks/purity': 'off',
-      'react-refresh/only-export-components': 'off',
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      'react-hooks/purity': 'warn',
+      'react-hooks/set-state-in-effect': 'warn',
     },
   },
 ]);

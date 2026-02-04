@@ -40,3 +40,8 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Improve tap responsiveness on touch devices */
+button {
+  touch-action: manipulation;
+}

@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { cls, useInterval } from "./lib/utils";
-import { idbGet, idbSet, idbDel, RWT_CSV_KEYS, getRwtCsvRows } from "./lib/persist";
+import { idbGet, idbSet, idbDel } from "./lib/persist";
 import { Card, Header, SectionTitle } from "./components/ui";
 import { DrawPad } from "./components/draw-pad";
-import { Stopwatch, Countdown60, fmtMs } from "./components/timers";
+import { Stopwatch, Countdown60 } from "./components/timers";
 import { AbortButton } from "./components/abort-button";
 import { ErrorBoundary } from "./components/error-boundary";
+import { CounterCard } from "./components/counter-card";
 
 // ---------- Preloaded test materials (read-only in UI) ----------
 const VLMT_LISTS = {
@@ -436,9 +437,16 @@ function buildExportRow(sessionData, sessionUUID, opts = {}) {
     row.dcsr_sum_dg1_5 = dcsrCounts.reduce((a, c) => a + (c?.richtig ?? 0), 0);
     row.dcsr_dg1_hits = dcsrHitsAt(0);
     const dcsrRecog = dcsr.rekog?.responses || {};
-    const dcsrRecogVals = Object.values(dcsrRecog);
-    row.dcsr_rekog_correct = dcsrRecogVals.filter((v) => v === "korrekt").length || 0;
-    row.dcsr_rekog_wrong = dcsrRecogVals.filter((v) => v === "falsch" || v === "gedreht").length || 0;
+    if (Array.isArray(dcsrRecog)) {
+      const dcsrRecogVals = Object.values(dcsrRecog);
+      row.dcsr_rekog_correct = dcsrRecogVals.filter((v) => v === "korrekt").length || 0;
+      row.dcsr_rekog_wrong = dcsrRecogVals.filter((v) => v === "falsch" || v === "gedreht").length || 0;
+    } else {
+      const corr = Number(dcsrRecog.korrekt || 0);
+      const wrong = Number(dcsrRecog.falsch || 0) + Number(dcsrRecog.gedreht || 0);
+      row.dcsr_rekog_correct = corr || null;
+      row.dcsr_rekog_wrong = wrong || null;
+    }
   } else {
     row.dcsr_version = "";
     row.dcsr_sum_dg1_5 = null;
@@ -686,36 +694,35 @@ function StopwatchScreen({ label, persisted, note, onPersist, onPersistNote, onA
   );
 }
 
+const OptBtn = ({ selected, ok, onSelect, children, testid }) => (
+  <button
+    type="button"
+    data-testid={testid}
+    onPointerUp={() => { onSelect && onSelect("pointerup"); }}
+    onClick={() => { onSelect && onSelect("click"); }}
+    className={cls(
+      "px-4 py-2 rounded-xl border text-base select-none inline-flex items-center gap-2",
+      selected ? (ok ? "bg-emerald-50 border-emerald-200" : "bg-rose-50 border-rose-200") : "bg-white border-zinc-300"
+    )}
+  >
+    <span>{children}</span>
+  </button>
+);
+
 function AttemptsRow({ title, seq1, seq2, val, onChange }) {
   const v = val && typeof val === "object" ? val : { v1: null, v2: null };
-  const setPick = (k, value, src) => {
+  const setPick = (k, value) => {
     onChange({ ...v, [k]: value });
   };
 
-  const OptBtn = ({ selected, ok, onSelect, children, testid }) => (
-    <button
-      type="button"
-      data-testid={testid}
-      onPointerDown={(e) => { e.preventDefault(); }}
-      onPointerUp={(e) => { e.preventDefault(); onSelect && onSelect("pointerup"); }}
-      onClick={(e) => { onSelect && onSelect("click"); }}
-      className={cls(
-        "px-4 py-2 rounded-xl border text-base select-none inline-flex items-center gap-2",
-        selected ? (ok ? "bg-emerald-50 border-emerald-200" : "bg-rose-50 border-rose-200") : "bg-white border-zinc-300"
-      )}
-    >
-      <span>{children}</span>
-    </button>
-  );
-
-  const Segment = ({ which, label }) => {
+  const renderSegment = (which, label) => {
     const cur = v[which];
     return (
       <div className="flex items-center gap-3 min-w-0">
         <div className="font-medium tabular-nums text-zinc-800 truncate">{label}</div>
         <div className="flex items-center gap-3 shrink-0" aria-label={`Bewertung ${label}`}>
-          <OptBtn testid={`${title}-${which}-ok`} ok selected={cur === 1} onSelect={(src) => setPick(which, 1, src)}>Richtig</OptBtn>
-          <OptBtn testid={`${title}-${which}-no`} selected={cur === 0} onSelect={(src) => setPick(which, 0, src)}>Falsch</OptBtn>
+          <OptBtn testid={`${title}-${which}-ok`} ok selected={cur === 1} onSelect={() => setPick(which, 1)}>Richtig</OptBtn>
+          <OptBtn testid={`${title}-${which}-no`} selected={cur === 0} onSelect={() => setPick(which, 0)}>Falsch</OptBtn>
         </div>
       </div>
     );
@@ -725,9 +732,9 @@ function AttemptsRow({ title, seq1, seq2, val, onChange }) {
     <div className="relative z-0 rounded-2xl border border-zinc-200 bg-white px-4 py-3">
       <div className="sr-only">{title}</div>
       <div className="flex items-center justify-between gap-6">
-        <Segment which="v1" label={seq1} />
+        {renderSegment("v1", seq1)}
         <div className="w-px self-stretch bg-zinc-300/70" />
-        <Segment which="v2" label={seq2} />
+        {renderSegment("v2", seq2)}
       </div>
     </div>
   );
@@ -747,13 +754,13 @@ function ZahlenSpanneScreen({ label, sequences, persisted, extraActionLabel, onS
   }, [onStateChange, label, pairs, vals]);
 
   useEffect(() => {
+    if (persisted?.vals && Array.isArray(persisted.vals) && persisted.vals.length === pairs.length) {
+      setVals(persisted.vals);
+      return;
+    }
     setVals((prev) => {
-      if (persisted?.vals && Array.isArray(persisted.vals) && persisted.vals.length === pairs.length) {
-        return persisted.vals;
-      }
       if (!Array.isArray(prev) || prev.length !== pairs.length) {
-        const next = pairs.map((_, i) => prev?.[i] ?? { v1: null, v2: null });
-        return next;
+        return pairs.map((_, i) => prev?.[i] ?? { v1: null, v2: null });
       }
       return prev;
     });
@@ -780,6 +787,7 @@ function ZahlenSpanneScreen({ label, sequences, persisted, extraActionLabel, onS
           <button
             type="button"
             onClick={onBackToSpanMenu}
+            onTouchEnd={(e) => { e.preventDefault(); onBackToSpanMenu && onBackToSpanMenu(); }}
             className="px-3 py-1.5 rounded-xl border text-sm"
           >
             Zur Auswahl
@@ -827,13 +835,13 @@ function BlockSpanneScreen({ label, sequences, persisted, onStateChange, onAbort
   }, [onStateChange, label, pairs, vals]);
 
   useEffect(() => {
+    if (persisted?.vals && Array.isArray(persisted.vals) && persisted.vals.length === pairs.length) {
+      setVals(persisted.vals);
+      return;
+    }
     setVals((prev) => {
-      if (persisted?.vals && Array.isArray(persisted.vals) && persisted.vals.length === pairs.length) {
-        return persisted.vals;
-      }
       if (!Array.isArray(prev) || prev.length !== pairs.length) {
-        const next = pairs.map((_, i) => prev?.[i] ?? { v1: null, v2: null });
-        return next;
+        return pairs.map((_, i) => prev?.[i] ?? { v1: null, v2: null });
       }
       return prev;
     });
@@ -937,32 +945,13 @@ function RWTTestPanel({ meta, modeKey, sessionData, onPersist, onClose }) {
           </button>
         ))}
       </div>
-      <div className="max-w-xl mx-auto">
-        <Countdown60 />
-      </div>
-      <label className="block mt-4 text-sm">Freihand-Mitschrift</label>
-      <textarea
-        className="mt-1 w-full rounded-xl border p-2 h-28"
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        onBlur={() => persist({ notes })}
-      />
-      <div className="mt-3 flex items-end gap-3">
-        <div className="flex-1">
+      <div className="mt-4 grid md:grid-cols-2 gap-4 items-start">
+        <div className="space-y-3 md:col-span-1">
+          <Countdown60 />
+        </div>
+        <div className="space-y-2 md:col-span-1">
           <label className="block text-sm">Summe Wörter</label>
-          <input
-            className="mt-1 w-32 rounded-xl border p-2"
-            placeholder="0"
-            inputMode="numeric"
-            value={sum}
-            onChange={(e) => {
-              const v = e.target.value;
-              const n = v === "" ? "" : Math.max(0, parseInt(v, 10) || 0);
-              setSum(n);
-            }}
-            onBlur={() => persist({ sum: sum === "" ? null : Number(sum) })}
-          />
-          <div className="mt-2">
+          <div className="flex items-stretch gap-3">
             <button
               type="button"
               onClick={() => {
@@ -971,15 +960,36 @@ function RWTTestPanel({ meta, modeKey, sessionData, onPersist, onClose }) {
                 setSum(val);
                 persist({ sum: val });
               }}
-              className="px-3 py-1.5 rounded-xl border text-sm"
+              className="px-8 py-4 rounded-xl border text-lg bg-zinc-50 h-16"
             >
               +1 Wort
             </button>
+            <input
+              className="w-32 rounded-xl border px-3 text-lg h-16"
+              placeholder="0"
+              inputMode="numeric"
+              value={sum}
+              onChange={(e) => {
+                const v = e.target.value;
+                const n = v === "" ? "" : Math.max(0, parseInt(v, 10) || 0);
+                setSum(n);
+              }}
+              onBlur={() => persist({ sum: sum === "" ? null : Number(sum) })}
+            />
           </div>
         </div>
-        <div className="flex gap-2 ml-auto">
-          <button onClick={onClose} className="px-3 py-2 rounded-xl border">Fertig</button>
-        </div>
+      </div>
+      <div className="mt-4">
+        <label className="block text-sm">Freihand-Mitschrift</label>
+        <textarea
+          className="mt-1 w-full rounded-xl border p-2 h-52"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          onBlur={() => persist({ notes })}
+        />
+      </div>
+      <div className="mt-4 flex justify-end">
+        <button onClick={onClose} className="px-4 py-2.5 rounded-xl border bg-zinc-900 text-white text-sm">Fertig</button>
       </div>
     </Card>
   );
@@ -1079,7 +1089,6 @@ function StroopWire({ sessionData, onPersistTime, onPersistNote, onAbort }) {
                       if (!w) return <div key={`empty-${colIdx}-${idx}`} />;
                       const key = `c${colIdx + 1}_${idx}`;
                       const cur = fails[key] ?? 0;
-                      const nextState = (cur + 1) % 3;
                       const label =
                         cur === 1 ? "F" : cur === 2 ? "F korr." : "F";
                       const clsBtn =
@@ -1189,7 +1198,7 @@ function GroovedPegboardWire({ sessionData, onPersistPanel, onAbort }) {
   );
 }
 
-function SpannenMenu({ statusMap, onOpen, onBack }) {
+function SpannenMenu({ statusMap, onOpen }) {
   const items = [
     { key: "zahl_fwd", label: "Zahlenspanne vorwärts" },
     { key: "zahl_rev", label: "Zahlenspanne rückwärts" },
@@ -1455,12 +1464,13 @@ function CERADWFWire({ sessionData, onPersist, onPersistNote, onAbort, onDone, o
 
 // ---------- App Shell ----------
 export default function App() {
+  const authDisabled = import.meta.env?.VITE_DISABLE_AUTH === "true";
   const [authOK, setAuthOK] = useState(() => {
     if (typeof window === "undefined") return false;
+    if (authDisabled) return true;
     return localStorage.getItem("auth_ok") === "true" || sessionStorage.getItem("auth_temp_ok") === "true";
   });
   const [authError, setAuthError] = useState("");
-  const [showDebug, setShowDebug] = useState(false);
   const [showImpressum, setShowImpressum] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem("darkMode");
@@ -1773,8 +1783,6 @@ export default function App() {
           onClearTimer={clearGlobalTimer}
           onOpenTimer={(t) => { setScreen(t.nav || { name: "menu" }); clearGlobalTimer(t.id); }}
           onNewSession={newSession}
-          onToggleDebug={() => setShowDebug((v) => !v)}
-          showDebug={showDebug}
           darkMode={darkMode}
           onToggleDark={() => setDarkMode((v) => !v)}
           sessionData={sessionData}
@@ -1931,7 +1939,6 @@ export default function App() {
           <SpannenMenu
             statusMap={statusMap}
             onOpen={(n) => setScreen({ name: n })}
-            onBack={() => setScreen({ name: "menu" })}
           />
         )}
 
@@ -2217,8 +2224,6 @@ function TopBar({
   onClearTimer,
   onOpenTimer,
   onNewSession,
-  onToggleDebug,
-  showDebug,
   darkMode,
   onToggleDark,
   sessionData,
@@ -2232,6 +2237,7 @@ function TopBar({
       <div className="max-w-5xl mx-auto px-4 py-2 flex items-center gap-3 text-zinc-900 dark:text-zinc-100">
         <button
           onClick={onBackToMenu}
+          onTouchEnd={(e) => { e.preventDefault(); onBackToMenu && onBackToMenu(); }}
           className="px-3 py-1.5 rounded-xl bg-zinc-900 text-white text-sm"
         >
           Übersicht
@@ -2241,6 +2247,7 @@ function TopBar({
           {sessionData?.cerad_wl?.recall_pending && (
             <button
               onClick={onOpenCeradRecall}
+              onTouchEnd={(e) => { e.preventDefault(); onOpenCeradRecall && onOpenCeradRecall(); }}
               className="px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 text-sm"
             >
               CERAD-Verbalgedächtnis – Abruf starten
@@ -2249,6 +2256,7 @@ function TopBar({
           {sessionData?.cerad_fig?.recall_pending && (
             <button
               onClick={onOpenCeradFigRecall}
+              onTouchEnd={(e) => { e.preventDefault(); onOpenCeradFigRecall && onOpenCeradFigRecall(); }}
               className="px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 text-sm"
             >
               CERAD Figuralgedächtnis – Abruf starten
@@ -2417,7 +2425,9 @@ function GlobalTimers({ timers, onClear, onOpen }) {
 }
 
 function ReminderPill({ timer, onClear, onOpen }) {
-  const [now, setNow] = useState(Date.now());
+  const initialNowRef = useRef(null);
+  if (initialNowRef.current === null) initialNowRef.current = Date.now();
+  const [now, setNow] = useState(initialNowRef.current);
   useInterval(() => setNow(Date.now()), 250);
   const remaining = Math.max(0, (timer.startTs + (timer.durationMs ?? 0)) - now);
   const mm = Math.floor(remaining / 60000);
@@ -2966,7 +2976,7 @@ function DCSRWire({ addGlobalReminder, route, sessionData, onStateChange, onAbor
   const [drawings, setDrawings] = useState(() =>
     Array.from({ length: 5 }, (_, i) => saved.drawings?.[i] || "")
   );
-  const [rekogResp, setRekogResp] = useState(() => saved.rekog?.responses || {});
+  const [rekogResp, setRekogResp] = useState(() => saved.rekog?.responses || { korrekt: 0, falsch: 0, gedreht: 0 });
   const totalFirst3 = counts.slice(0, 3).reduce((a, c) => a + c.richtig, 0);
   const ceilingHit = counts.some((c) => c.richtig === 9);
   const figSrc = ver === "V2" ? "/material/DCS-2.png" : "/material/DCS-1.png";
@@ -3108,41 +3118,42 @@ function DCSRWire({ addGlobalReminder, route, sessionData, onStateChange, onAbor
       {step === "rekog" && (
         <Card>
           <SectionTitle>Rekognitionsdurchgang</SectionTitle>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
-            {Array.from({ length: 18 }, (_, i) => (
-              <div key={i} className="p-3 rounded-xl border bg-white">
-                <div className="text-sm font-medium mb-2">Figur {i + 1}</div>
-                <div className="flex gap-2 text-sm">
-                  <label className="flex items-center gap-1">
-                    <input
-                      name={`f${i}`}
-                      type="radio"
-                      checked={rekogResp[i] === "korrekt"}
-                      onChange={() => setRekogResp((r) => ({ ...r, [i]: "korrekt" }))}
-                    />{" "}
-                    korrekt
-                  </label>
-                  <label className="flex items-center gap-1">
-                    <input
-                      name={`f${i}`}
-                      type="radio"
-                      checked={rekogResp[i] === "falsch"}
-                      onChange={() => setRekogResp((r) => ({ ...r, [i]: "falsch" }))}
-                    />{" "}
-                    falsch
-                  </label>
-                  <label className="flex items-center gap-1">
-                    <input
-                      name={`f${i}`}
-                      type="radio"
-                      checked={rekogResp[i] === "gedreht"}
-                      onChange={() => setRekogResp((r) => ({ ...r, [i]: "gedreht" }))}
-                    />{" "}
-                    gedreht
-                  </label>
-                </div>
-              </div>
-            ))}
+          <div className="p-3 rounded-2xl border bg-white mt-2 space-y-3">
+            <div className="flex flex-wrap gap-3">
+              {[
+                { key: "korrekt", label: "korrekt", color: "bg-emerald-50 border-emerald-200" },
+                { key: "falsch", label: "falsch", color: "bg-rose-50 border-rose-200" },
+                { key: "gedreht", label: "gedreht", color: "bg-amber-50 border-amber-200" },
+              ].map((btn) => (
+                <button
+                  key={btn.key}
+                  type="button"
+                  onClick={() =>
+                    setRekogResp((r) => ({
+                      ...r,
+                      [btn.key]: Number(r?.[btn.key] || 0) + 1,
+                    }))
+                  }
+                  className={`px-6 py-3 rounded-xl border text-base ${btn.color}`}
+                >
+                  +1 {btn.label}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+              <CounterCard label="korrekt" value={rekogResp.korrekt ?? 0} onDec={() => setRekogResp((r) => ({ ...r, korrekt: Math.max(0, Number(r?.korrekt || 0) - 1) }))} />
+              <CounterCard label="falsch" value={rekogResp.falsch ?? 0} onDec={() => setRekogResp((r) => ({ ...r, falsch: Math.max(0, Number(r?.falsch || 0) - 1) }))} />
+              <CounterCard label="gedreht" value={rekogResp.gedreht ?? 0} onDec={() => setRekogResp((r) => ({ ...r, gedreht: Math.max(0, Number(r?.gedreht || 0) - 1) }))} />
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="px-3 py-2 rounded-xl border text-sm"
+                onClick={() => setRekogResp({ korrekt: 0, falsch: 0, gedreht: 0 })}
+              >
+                Zurücksetzen
+              </button>
+            </div>
           </div>
           <div className="mt-4">
             <button
@@ -3659,15 +3670,6 @@ function BenennenWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu })
     </section>
   );
 }
-
-export const CERAD_BENENNEN_CSV_KEYS = [
-  { key: "cerad_benennen_total", path: ["cerad_benennen", "total"], type: "number" },
-  ...CERAD_BENENNEN_LABELS.map((label, idx) => ({
-    key: `cerad_benennen_item_${idx+1}`,
-    path: ["cerad_benennen", "items", idx, "correct"],
-    type: "boolean"
-  }))
-];
 
 const CERAD_WORDLIST = [
   "Butter",
