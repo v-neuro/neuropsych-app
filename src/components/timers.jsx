@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useInterval } from "../lib/utils";
 
 function fmtMs(ms) {
@@ -12,14 +12,19 @@ export function Stopwatch({ persisted, onPersist }) {
   const [state, setState] = useState("idle"); // "idle" | "running" | "stopped"
   const [start, setStart] = useState(null);
   const [elapsed, setElapsed] = useState(0);
+  const lastPersistedRef = useRef(persisted);
 
   useEffect(() => {
+    if (persisted === lastPersistedRef.current) return;
+    lastPersistedRef.current = persisted;
+    // Only hydrate from persisted when not running, to avoid interrupting a fresh start
+    if (state === "running") return;
     if (typeof persisted === "number" && persisted >= 0 && persisted !== elapsed) {
       setElapsed(persisted);
-      setState("stopped");
+      setState(persisted > 0 ? "stopped" : "idle");
       setStart(null);
     }
-  }, [persisted, elapsed]);
+  }, [persisted, elapsed, state]);
 
   useInterval(() => {
     if (state === "running" && start !== null) setElapsed(Date.now() - start);
@@ -31,8 +36,11 @@ export function Stopwatch({ persisted, onPersist }) {
     setState("running");
   };
   const onStop = () => {
+    const now = Date.now();
+    const final = start !== null ? now - start : elapsed;
+    setElapsed(final);
     setState("stopped");
-    if (onPersist) onPersist(elapsed);
+    if (onPersist) onPersist(final);
   };
   const onReset = () => {
     setState("idle");

@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cls, useInterval } from "./lib/utils";
-import { idbGet, idbSet, idbDel } from "./lib/persist";
+import { idbGet, idbSet, idbDel, idbSetDrawing, idbGetDrawing, idbDeleteDrawing, idbDeleteDrawingNamespace, idbPruneDrawingsExcept, idbPruneOldSessions } from "./lib/persist";
 import { Card, Header, SectionTitle } from "./components/ui";
 import { DrawPad } from "./components/draw-pad";
 import { Stopwatch, Countdown60 } from "./components/timers";
@@ -261,7 +261,7 @@ function EpiTrackWire({ sessionData, onImportInv, onPersistTime, onAbort, onSend
 
   return (
     <section className="py-6">
-      <Header title="Epi-Track" subtitle="6 Subtests – beliebige Reihenfolge" />
+      <Header title="Epi-Track" />
       <div className="mb-3">
         <AbortButton onAbort={onAbort} />
       </div>
@@ -374,11 +374,29 @@ const normalizeScreen = (value) => {
   return { name: "menu" };
 };
 
+async function loadDcsrDrawings(sessionUUID, sessionData) {
+  const dcsr = sessionData?.dcsr || {};
+  const keys = Array.isArray(dcsr.drawingKeys)
+    ? dcsr.drawingKeys
+    : Array.isArray(dcsr.drawings)
+      ? dcsr.drawings
+      : [];
+  if (!keys.length) return [];
+  const data = await Promise.all(keys.map((k) => (k ? idbGetDrawing(k) : null)));
+  // Convert blobs to object URLs for img src
+  return data.map((val) => {
+    if (!val) return null;
+    if (val instanceof Blob) return URL.createObjectURL(val);
+    return val;
+  });
+}
+
 // Build flat export row (CSV) with curated keys; skips große Blobs wie DCS-Zeichnungen
-function buildExportRow(sessionData, sessionUUID, opts = {}) {
+async function buildExportRow(sessionData, sessionUUID, opts = {}) {
   const s = sessionData || {};
   const row = { session_uuid: sessionUUID };
   const includeDrawings = !!opts.includeDrawings;
+  const drawingsData = includeDrawings ? (opts.drawingsData || []) : [];
 
   const msToSec = (ms) => (typeof ms === "number" ? Math.round(ms / 1000) : null);
 
@@ -455,7 +473,7 @@ function buildExportRow(sessionData, sessionUUID, opts = {}) {
     row.dcsr_rekog_wrong = null;
   }
   if (includeDrawings) {
-    const drawings = Array.isArray(dcsr.drawings) ? dcsr.drawings : [];
+    const drawings = Array.isArray(drawingsData) ? drawingsData : [];
     drawings.forEach((img, idx) => {
       row[`dcsr_drawing_dg${idx + 1}`] = img || "";
     });
@@ -780,7 +798,7 @@ function ZahlenSpanneScreen({ label, sequences, persisted, extraActionLabel, onS
 
   return (
     <section className="py-6">
-      <Header title={label} subtitle="Pro Reihe: Versuch 1 und 2 separat bewerten" />
+      <Header title={label} />
       <div className="mb-3 flex gap-2">
         <AbortButton onAbort={onAbort} />
         {onBackToSpanMenu && (
@@ -861,7 +879,7 @@ function BlockSpanneScreen({ label, sequences, persisted, onStateChange, onAbort
 
   return (
     <section className="py-6">
-      <Header title={label} subtitle="Pro Reihe: Versuch 1 und 2 separat bewerten" />
+      <Header title={label} />
       <div className="mb-3 flex gap-2">
         <AbortButton onAbort={onAbort} />
         {onBackToSpanMenu && (
@@ -1052,7 +1070,7 @@ function StroopWire({ sessionData, onPersistTime, onPersistNote, onAbort }) {
 
   return (
     <section className="py-6">
-      <Header title="Stroop" subtitle="3 Tafeln; je eine Stoppuhr" />
+      <Header title="Stroop" />
       <div className="mb-3">
         <AbortButton onAbort={(payload) => onAbort && onAbort("global", payload)} />
       </div>
@@ -1207,7 +1225,7 @@ function SpannenMenu({ statusMap, onOpen }) {
   ];
   return (
     <section className="py-6">
-      <Header title="Zahlen- und Blockspanne" subtitle="Vorwärts & rückwärts – Auswahl" />
+      <Header title="Zahlen- und Blockspanne" />
       <div className="mb-3">
       </div>
       <Card className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1242,16 +1260,66 @@ function SpannenMenu({ statusMap, onOpen }) {
 
 function UhrentestWire({ sessionData, onPersist, onAbort }) {
   const data = sessionData?.uhr || {};
-  const [score, setScore] = useState(typeof data.score === "number" ? data.score : 3);
+  const derivePartsFromScore = (val) => {
+    const s = typeof val === "number" ? Math.max(0, Math.min(5, val)) : 0;
+    const parts = { kreis: false, nummern: [false, false], zeiger: [false, false] };
+    let remaining = s;
+    if (remaining >= 1) { parts.kreis = true; remaining -= 1; }
+    if (remaining >= 1) { parts.nummern[0] = true; remaining -= 1; }
+    if (remaining >= 1) { parts.nummern[1] = true; remaining -= 1; }
+    if (remaining >= 1) { parts.zeiger[0] = true; remaining -= 1; }
+    if (remaining >= 1) { parts.zeiger[1] = true; remaining -= 1; }
+    return parts;
+  };
+
+  const normalizeParts = (p) => {
+    if (!p) return derivePartsFromScore(data.score);
+    const out = {
+      kreis: !!p.kreis,
+      nummern: Array.isArray(p.nummern)
+        ? [!!p.nummern[0], !!p.nummern[1]]
+        : [!!p.nummern, !!p.nummern], // legacy bool → two points
+      zeiger: Array.isArray(p.zeiger)
+        ? [!!p.zeiger[0], !!p.zeiger[1]]
+        : [!!p.zeiger, !!p.zeiger],
+    };
+    return out;
+  };
+
+  const calcScore = (p) =>
+    (p.kreis ? 1 : 0) +
+    (p.nummern?.filter(Boolean).length || 0) +
+    (p.zeiger?.filter(Boolean).length || 0);
+
+  const [parts, setParts] = useState(() => normalizeParts(data.parts) || derivePartsFromScore(data.score));
+  const [score, setScore] = useState(() => {
+    if (typeof data.score === "number") return data.score;
+    const p = normalizeParts(data.parts) || derivePartsFromScore(data.score);
+    return calcScore(p);
+  });
   const [note, setNote] = useState(data.note || "");
   useEffect(() => {
-    setScore(typeof data.score === "number" ? data.score : 3);
+    const nextParts = normalizeParts(data.parts) || derivePartsFromScore(data.score);
+    setParts(nextParts);
+    const nextScore = typeof data.score === "number" ? data.score : calcScore(nextParts);
+    setScore(nextScore);
     setNote(data.note || "");
-  }, [data.score, data.note]);
+  }, [data.score, data.note, data.parts]);
 
-  const updateScore = (next) => {
-    setScore(next);
-    onPersist && onPersist({ score: next, note });
+  const toggleSingle = (group, idx) => {
+    setParts((prev) => {
+      const next = {
+        kreis: prev.kreis,
+        nummern: [...prev.nummern],
+        zeiger: [...prev.zeiger],
+      };
+      if (group === "kreis") next.kreis = !prev.kreis;
+      else next[group][idx] = !prev[group][idx];
+      const nextScore = calcScore(next);
+      setScore(nextScore);
+      onPersist && onPersist({ score: nextScore, parts: next, note });
+      return next;
+    });
   };
   return (
     <section className="py-6">
@@ -1260,15 +1328,59 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
         <AbortButton onAbort={onAbort} />
       </div>
       <div className="p-3 rounded-2xl border bg-white max-w-md space-y-3">
-        <input
-          type="range"
-          min={0}
-          max={5}
-          value={score}
-          onChange={(e) => updateScore(parseInt(e.target.value, 10))}
-          className="w-full"
-        />
-        <div className="mt-2 text-xl">Punkte: {score}</div>
+        <div className="text-sm text-zinc-700">Punkte: <span className="font-semibold">{score}</span> / 5</div>
+        <div className="grid gap-2">
+          <button
+            type="button"
+            onClick={() => toggleSingle("kreis", 0)}
+            className={cls(
+              "w-full text-left px-3 py-2 rounded-xl border text-sm",
+              parts.kreis ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
+            )}
+          >
+            Kreis Punkt 1
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleSingle("nummern", 0)}
+            className={cls(
+              "w-full text-left px-3 py-2 rounded-xl border text-sm",
+              parts.nummern?.[0] ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
+            )}
+          >
+            Ziffern Punkt 1
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleSingle("nummern", 1)}
+            className={cls(
+              "w-full text-left px-3 py-2 rounded-xl border text-sm",
+              parts.nummern?.[1] ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
+            )}
+          >
+            Ziffern Punkt 2
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleSingle("zeiger", 0)}
+            className={cls(
+              "w-full text-left px-3 py-2 rounded-xl border text-sm",
+              parts.zeiger?.[0] ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
+            )}
+          >
+            Zeiger Punkt 1
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleSingle("zeiger", 1)}
+            className={cls(
+              "w-full text-left px-3 py-2 rounded-xl border text-sm",
+              parts.zeiger?.[1] ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
+            )}
+          >
+            Zeiger Punkt 2
+          </button>
+        </div>
         <label className="block mt-2 text-sm">Kommentar</label>
         <input
           className="mt-1 w-full rounded-xl border p-2"
@@ -1292,7 +1404,7 @@ function CERADMenu({ onOpen }) {
   ];
   return (
     <section className="py-6">
-      <Header title="CERAD – Auswahl" subtitle="Placeholder – wähle Subtest" />
+      <Header title="CERAD – Auswahl"/>
       <Card className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {items.map((i) => (
           <button
@@ -1328,7 +1440,7 @@ function CERADWFWire({ sessionData, onPersist, onPersistNote, onAbort, onDone, o
 
   return (
     <section className="py-6">
-      <Header title="CERAD – Wortflüssigkeit" subtitle="Semantisch (Tiere) & Phonematisch (S)" />
+      <Header title="CERAD – Wortflüssigkeit" />
       {onBackToMenu && (
         <div className="mb-2">
           <button
@@ -1350,18 +1462,7 @@ function CERADWFWire({ sessionData, onPersist, onPersistNote, onAbort, onDone, o
           <Countdown60 />
           <div>
             <label className="block text-sm text-zinc-700">Summe Wörter</label>
-            <input
-              className="mt-1 w-32 rounded-xl border p-2"
-              inputMode="numeric"
-              value={semCount}
-              onChange={(e) => {
-                const v = e.target.value;
-                const n = v === "" ? "" : Math.max(0, parseInt(v, 10) || 0);
-                setSemCount(n);
-              }}
-              onBlur={() => persist({ semantic_count: semCount === "" ? null : Number(semCount) })}
-            />
-            <div className="mt-2">
+            <div className="flex items-stretch gap-3 mt-1">
               <button
                 type="button"
                 onClick={() => {
@@ -1370,10 +1471,22 @@ function CERADWFWire({ sessionData, onPersist, onPersistNote, onAbort, onDone, o
                   setSemCount(val);
                   persist({ semantic_count: val });
                 }}
-                className="px-3 py-1.5 rounded-xl border text-sm"
+                className="px-8 py-4 rounded-xl border text-lg bg-zinc-50 h-16"
               >
                 +1 Wort
               </button>
+              <input
+                className="w-32 rounded-xl border px-3 text-lg h-16"
+                placeholder="0"
+                inputMode="numeric"
+                value={semCount}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const n = v === "" ? "" : Math.max(0, parseInt(v, 10) || 0);
+                  setSemCount(n);
+                }}
+                onBlur={() => persist({ semantic_count: semCount === "" ? null : Number(semCount) })}
+              />
             </div>
           </div>
           <div>
@@ -1392,18 +1505,7 @@ function CERADWFWire({ sessionData, onPersist, onPersistNote, onAbort, onDone, o
           <Countdown60 />
           <div>
             <label className="block text-sm text-zinc-700">Summe Wörter</label>
-            <input
-              className="mt-1 w-32 rounded-xl border p-2"
-              inputMode="numeric"
-              value={phonCount}
-              onChange={(e) => {
-                const v = e.target.value;
-                const n = v === "" ? "" : Math.max(0, parseInt(v, 10) || 0);
-                setPhonCount(n);
-              }}
-              onBlur={() => persist({ phonemic_count: phonCount === "" ? null : Number(phonCount) })}
-            />
-            <div className="mt-2">
+            <div className="flex items-stretch gap-3 mt-1">
               <button
                 type="button"
                 onClick={() => {
@@ -1412,10 +1514,22 @@ function CERADWFWire({ sessionData, onPersist, onPersistNote, onAbort, onDone, o
                   setPhonCount(val);
                   persist({ phonemic_count: val });
                 }}
-                className="px-3 py-1.5 rounded-xl border text-sm"
+                className="px-8 py-4 rounded-xl border text-lg bg-zinc-50 h-16"
               >
                 +1 Wort
               </button>
+              <input
+                className="w-32 rounded-xl border px-3 text-lg h-16"
+                placeholder="0"
+                inputMode="numeric"
+                value={phonCount}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const n = v === "" ? "" : Math.max(0, parseInt(v, 10) || 0);
+                  setPhonCount(n);
+                }}
+                onBlur={() => persist({ phonemic_count: phonCount === "" ? null : Number(phonCount) })}
+              />
             </div>
           </div>
           <div>
@@ -1430,21 +1544,6 @@ function CERADWFWire({ sessionData, onPersist, onPersistNote, onAbort, onDone, o
         </Card>
       </div>
 
-      {onPersistNote && (
-        <div className="mt-4">
-          <Card className="space-y-2">
-            <label className="text-sm text-zinc-700">Gesamt-Notiz</label>
-            <input
-              className="w-full rounded-xl border px-3 py-2"
-              value={totalNote}
-              onChange={(e) => {
-                setTotalNote(e.target.value);
-                onPersistNote && onPersistNote(e.target.value);
-              }}
-            />
-          </Card>
-        </div>
-      )}
 
       <div className="mt-4">
         <button
@@ -1511,6 +1610,7 @@ export default function App() {
     const ok = window.confirm("Neue Testung starten? Alle aktuellen Eingaben werden gelöscht.");
     if (!ok) return;
     try {
+      await idbDeleteDrawingNamespace(`${sessionUUID}:dcsr:`);
       await idbDel(sessionUUID);
     } catch (e) {
       console.error("IDB delete failed", e);
@@ -1524,8 +1624,26 @@ export default function App() {
   };
 
   const [sessionData, setSessionData] = useState({});
+  const latestStateRef = useRef({ screen, globalTimers, sessionData, sessionUUID });
+
+  useEffect(() => {
+    latestStateRef.current = { screen, globalTimers, sessionData, sessionUUID };
+  }, [screen, globalTimers, sessionData, sessionUUID]);
+
+  const persistNow = useCallback(() => {
+    const { screen: s, globalTimers: g, sessionData: sd, sessionUUID: id } = latestStateRef.current;
+    idbSet(id, { screen: s, globalTimers: g, sessionData: sd, lastUpdated: Date.now() }).catch((e) => {
+      console.error("Persistenz speichern fehlgeschlagen", e);
+    });
+  }, []);
   // hydrate on mount
   useEffect(() => {
+    // purge sessions older than 7 days and their drawings
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    idbPruneOldSessions(sevenDaysMs, (key) => {
+      if (typeof key === "string") idbDeleteDrawingNamespace(`${key}:dcsr:`).catch(() => {});
+    }).catch((e) => console.error("Alte Sessions bereinigen fehlgeschlagen", e));
+
     (async () => {
       try {
         const saved = await idbGet(sessionUUID);
@@ -1539,13 +1657,27 @@ export default function App() {
       }
     })();
   }, []);
+
+  // Prune stale drawing blobs (keep only current session namespace)
+  useEffect(() => {
+    idbPruneDrawingsExcept([`${sessionUUID}:`]).catch((e) => console.error("Prune drawings failed", e));
+  }, [sessionUUID]);
   // persist on changes (debounced)
   useEffect(() => {
-    const h = setTimeout(() => {
-      idbSet(sessionUUID, { screen, globalTimers, sessionData });
-    }, 300);
+    const h = setTimeout(persistNow, 300);
     return () => clearTimeout(h);
-  }, [sessionUUID, screen, globalTimers, sessionData]);
+  }, [persistNow, sessionUUID, screen, globalTimers, sessionData]);
+
+  // flush immediately when the tab is hidden or closed to reduce data loss risk
+  useEffect(() => {
+    const flush = () => persistNow();
+    window.addEventListener("visibilitychange", flush);
+    window.addEventListener("beforeunload", flush);
+    return () => {
+      window.removeEventListener("visibilitychange", flush);
+      window.removeEventListener("beforeunload", flush);
+    };
+  }, [persistNow]);
 
   useEffect(() => {
     localStorage.setItem("darkMode", darkMode ? "true" : "false");
@@ -1608,8 +1740,8 @@ export default function App() {
     </div>
   );
 
-  const triggerCsvExport = () => {
-    const row = buildExportRow(sessionData, sessionUUID, { includeDrawings: false });
+  const triggerCsvExport = async () => {
+    const row = await buildExportRow(sessionData, sessionUUID, { includeDrawings: false });
     const keys = Object.keys(row);
     const csv = [
       keys.join(";"),
@@ -1631,8 +1763,9 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  const triggerPdfExport = () => {
-    const row = buildExportRow(sessionData, sessionUUID, { includeDrawings: true });
+  const triggerPdfExport = async () => {
+    const drawingsData = await loadDcsrDrawings(sessionUUID, sessionData);
+    const row = await buildExportRow(sessionData, sessionUUID, { includeDrawings: true, drawingsData });
     const drawings = Object.entries(row).filter(([k]) => k.startsWith("dcsr_drawing_") && row[k]);
     // Simple HTML print view
     const pat = (sessionData?.demographics?.patient_initials || "Pat").replace(/[^A-Za-z0-9_-]/g, "");
@@ -1794,15 +1927,14 @@ export default function App() {
           setScreen({ name: "cerad_wl", go: "dg4" });
         }}
        onOpenCeradFigRecall={() => {
-         setSessionData((s) => ({
-           ...s,
-           cerad_fig: { ...(s.cerad_fig || {}), recall_pending: false }
-         }));
-         setScreen({ name: "cerad_fig", go: "recall" });
-       }}
-        onExportPdf={triggerPdfExport}
-         onExportCsv={triggerCsvExport}
-       />
+        setSessionData((s) => ({
+          ...s,
+          cerad_fig: { ...(s.cerad_fig || {}), recall_pending: false }
+        }));
+        setScreen({ name: "cerad_fig", go: "recall" });
+      }}
+        onExportCsv={triggerCsvExport}
+      />
         <main className="max-w-5xl mx-auto px-4 pb-24 pt-3">
         {screen.name === "menu" && (
           <TileMenu
@@ -1840,6 +1972,7 @@ export default function App() {
             addGlobalReminder={addGlobalReminder}
             route={screen}
             sessionData={sessionData}
+            sessionUUID={sessionUUID}
             onStateChange={(data)=> setSessionData((s)=>({ ...s, dcsr: data }))}
             onAbort={(payload)=> setSessionData((s)=>({ ...s, dcsr_aborted: payload }))}
             onDone={() => setScreen({ name: "menu" })}
@@ -2229,7 +2362,6 @@ function TopBar({
   sessionData,
   onOpenCeradRecall,
   onOpenCeradFigRecall,
-  onExportPdf,
   onExportCsv,
 }) {
   return (
@@ -2267,12 +2399,6 @@ function TopBar({
             onClick={onExportCsv}
           >
             CSV Export
-          </button>
-          <button
-            className="px-3 py-1.5 rounded-xl bg-zinc-900 text-white text-sm"
-            onClick={onExportPdf}
-          >
-            PDF Export
           </button>
           <button
             type="button"
@@ -2645,7 +2771,7 @@ function VLMTWire({ addGlobalReminder, route, onDone, onStateChange, onAbort }) 
 
   return (
     <section className="py-6">
-      <Header title="VLMT" subtitle="Liste A–D, DG1–DG7 + Rekognition" />
+      <Header title="VLMT" />
       <div className="mb-3"><AbortButton onAbort={onAbort} /></div>
 
       {step === "choose" && (
@@ -2826,7 +2952,7 @@ function VLMTWire({ addGlobalReminder, route, onDone, onStateChange, onAbort }) 
           />
           <div className="flex gap-2 mt-4">
             <button
-              onClick={() => { commitCurrent(5); addGlobalReminder("VLMT Langabruf (DG7)", 30, { name: "vlmt", go: "dg7", list }); setStep("waiting"); }}
+              onClick={() => { commitCurrent(5); addGlobalReminder("VLMT DG7", 30, { name: "vlmt", go: "dg7", list }); setStep("waiting"); }}
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
             >
               30-Min. Reminder starten
@@ -2959,7 +3085,7 @@ function VLMTWire({ addGlobalReminder, route, onDone, onStateChange, onAbort }) 
 }
 
 // ---------- DCS-R Wireframe ----------
-function DCSRWire({ addGlobalReminder, route, sessionData, onStateChange, onAbort, onDone }) {
+function DCSRWire({ addGlobalReminder, route, sessionData, sessionUUID, onStateChange, onAbort, onDone }) {
   const saved = sessionData?.dcsr || {};
   const [step, setStep] = useState(saved.step || "choose"); // "dg" | "waiting" | "rekog"
   const [ver, setVer] = useState(saved.ver || null); // "V1"|"V2"
@@ -2973,9 +3099,17 @@ function DCSRWire({ addGlobalReminder, route, sessionData, onStateChange, onAbor
       ...(saved.counts?.[i] || {}),
     }))
   );
-  const [drawings, setDrawings] = useState(() =>
-    Array.from({ length: 5 }, (_, i) => saved.drawings?.[i] || "")
-  );
+  const drawingNamespace = useMemo(() => `${sessionUUID}:dcsr:`, [sessionUUID]);
+  const initialKeys = useMemo(() => {
+    if (Array.isArray(saved.drawingKeys) && saved.drawingKeys.length) return saved.drawingKeys;
+    if (Array.isArray(saved.drawings) && saved.drawings.length) {
+      return saved.drawings.map((_, idx) => `${drawingNamespace}dg${idx + 1}`);
+    }
+    return Array.from({ length: 5 }, () => null);
+  }, [saved.drawingKeys, saved.drawings, drawingNamespace]);
+  const drawingKeysRef = useRef(initialKeys);
+  const [drawingKeysVersion, bumpDrawingKeysVersion] = useState(0); // used to trigger effect when keys mutate
+  const [drawings, setDrawings] = useState(() => Array.from({ length: 5 }, () => null));
   const [rekogResp, setRekogResp] = useState(() => saved.rekog?.responses || { korrekt: 0, falsch: 0, gedreht: 0 });
   const totalFirst3 = counts.slice(0, 3).reduce((a, c) => a + c.richtig, 0);
   const ceilingHit = counts.some((c) => c.richtig === 9);
@@ -2995,20 +3129,82 @@ function DCSRWire({ addGlobalReminder, route, sessionData, onStateChange, onAbor
     }
   }, [route]);
 
+  // Migrate legacy embedded drawings into the drawings store
+  useEffect(() => {
+    if (!Array.isArray(saved.drawings) || saved.drawings.length === 0) return;
+    const keys = drawingKeysRef.current.slice();
+    (async () => {
+      await Promise.all(saved.drawings.map(async (data, idx) => {
+        if (!data) return;
+        const key = keys[idx] || `${drawingNamespace}dg${idx + 1}`;
+        keys[idx] = key;
+        await idbSetDrawing(key, data);
+      }));
+      drawingKeysRef.current = keys;
+      setDrawings((arr) => {
+        const next = arr.slice();
+        saved.drawings.forEach((d, i) => { if (d) next[i] = d; });
+        return next;
+      });
+      bumpDrawingKeysVersion((v) => v + 1);
+      onStateChange && onStateChange({
+        step,
+        ver,
+        dg,
+        counts,
+        drawingKeys: keys,
+        rekog: { responses: rekogResp },
+      });
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount
+
+  // Load drawings for current session from IDB
+  useEffect(() => {
+    const keys = drawingKeysRef.current;
+    (async () => {
+      const loaded = await Promise.all(keys.map((k) => (k ? idbGetDrawing(k) : null)));
+      setDrawings((arr) => {
+        const next = arr.slice();
+        loaded.forEach((d, i) => { if (d) next[i] = d; });
+        return next;
+      });
+      // prune drawings from old sessions to avoid quota bloat
+      idbPruneDrawingsExcept([`${sessionUUID}:`]).catch((e) => console.error("Prune drawings failed", e));
+    })();
+  }, [sessionUUID, drawingKeysVersion]);
+
   useEffect(() => {
     onStateChange && onStateChange({
       step,
       ver,
       dg,
       counts,
-      drawings,
+      drawingKeys: drawingKeysRef.current,
       rekog: { responses: rekogResp },
     });
-  }, [onStateChange, step, ver, dg, counts, drawings, rekogResp]);
+  }, [onStateChange, step, ver, dg, counts, rekogResp, drawingKeysVersion]);
+
+  const handleDrawingChange = useCallback(async (data) => {
+    const key = drawingKeysRef.current[dg - 1] || `${drawingNamespace}dg${dg}`;
+    drawingKeysRef.current[dg - 1] = key;
+    setDrawings((arr) => {
+      const next = arr.slice();
+      next[dg - 1] = data;
+      return next;
+    });
+    try {
+      if (data) await idbSetDrawing(key, data);
+      else await idbDeleteDrawing(key);
+      bumpDrawingKeysVersion((v) => v + 1);
+    } catch (e) {
+      console.error("Zeichnung speichern fehlgeschlagen", e);
+    }
+  }, [dg, drawingNamespace]);
 
   return (
     <section className="py-6">
-      <Header title="DCS-R" subtitle="Version 1/2; 5 DG + Rekognition" />
+      <Header title="DCS-R" />
       <div className="mb-3"><AbortButton onAbort={onAbort} /></div>
       {step === "choose" && (
         <Card>
@@ -3051,13 +3247,7 @@ function DCSRWire({ addGlobalReminder, route, sessionData, onStateChange, onAbor
                   width={820}
                   height={360}
                   initialData={drawings[dg - 1]}
-                  onChange={(data) =>
-                    setDrawings((arr) => {
-                      const next = arr.slice();
-                      next[dg - 1] = data;
-                      return next;
-                    })
-                  }
+                  onChange={handleDrawingChange}
                 />
               </div>
             </div>
@@ -3091,7 +3281,7 @@ function DCSRWire({ addGlobalReminder, route, sessionData, onStateChange, onAbor
             {(dg === 5 || ceilingHit) && (
               <button
                 onClick={() => {
-                  addGlobalReminder("DCS-R Rekognition", 30, { name: "dcsr", go: "rekog" });
+                  addGlobalReminder("DCS Rekognition", 30, { name: "dcsr", go: "rekog" });
                   setStep("waiting");
                 }}
                 className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
@@ -3299,7 +3489,7 @@ function MMSTWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu }) {
 
   return (
     <section className="py-6">
-      <Header title="CERAD – MMST" subtitle="30-Punkte-Skala (kompakte Erfassung)" />
+      <Header title="CERAD – MMST" />
       {onBackToMenu && (
         <div className="mb-2">
           <button
@@ -3571,7 +3761,6 @@ function BenennenWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu })
     <section className="py-6">
       <Header
         title="CERAD – Boston Naming Test"
-        subtitle="15 Bilder, je 0/1 Punkt (richtig/falsch)"
       />
 
       {onBackToMenu && (
@@ -3761,13 +3950,32 @@ function CERADFiguralWire({ sessionData, route, onPersist, onAbort, onDone, onBa
 
   const scoresDraw = base.draw_scores || {};
   const scoresRecall = base.recall_scores || {};
+  const critDrawPersisted = base.draw_criteria || {};
+  const critRecallPersisted = base.recall_criteria || {};
   const [noteDraw, setNoteDraw] = useState(base.draw_note || "");
   const [noteRecall, setNoteRecall] = useState(base.recall_note || "");
+
+  const buildCriteriaState = (scores, critPersisted) =>
+    CERAD_FIGS.reduce((acc, fig) => {
+      if (Array.isArray(critPersisted?.[fig.key])) {
+        // normalize to booleans, capped to max criteria length
+        acc[fig.key] = fig.criteria.map((_, idx) => !!critPersisted[fig.key][idx]);
+      } else {
+        const filled = Math.max(0, Math.min(fig.max, Number(scores?.[fig.key]) || 0));
+        acc[fig.key] = fig.criteria.map((_, idx) => idx < filled);
+      }
+      return acc;
+    }, {});
+
+  const [critDraw, setCritDraw] = useState(() => buildCriteriaState(scoresDraw, critDrawPersisted));
+  const [critRecall, setCritRecall] = useState(() => buildCriteriaState(scoresRecall, critRecallPersisted));
 
   useEffect(() => {
     setNoteDraw(base.draw_note || "");
     setNoteRecall(base.recall_note || "");
-  }, [base.draw_note, base.recall_note]);
+    setCritDraw(buildCriteriaState(base.draw_scores || {}, base.draw_criteria || {}));
+    setCritRecall(buildCriteriaState(base.recall_scores || {}, base.recall_criteria || {}));
+  }, [base.draw_note, base.recall_note, base.draw_scores, base.recall_scores, base.draw_criteria, base.recall_criteria]);
 
   const updateScore = (phase, figKey, val) => {
     const key = phase === "draw" ? "draw_scores" : "recall_scores";
@@ -3785,31 +3993,51 @@ function CERADFiguralWire({ sessionData, route, onPersist, onAbort, onDone, onBa
 
   const renderFigCard = (phase, fig) => {
     const current = (phase === "draw" ? scoresDraw : scoresRecall)[fig.key];
+    const critState = phase === "draw" ? critDraw : critRecall;
+    const setCrit = phase === "draw" ? setCritDraw : setCritRecall;
+    const toggles = critState[fig.key] || fig.criteria.map(() => false);
+
+    const toggleCriterion = (idx) => {
+      const next = toggles.slice();
+      next[idx] = !next[idx];
+      const nextScore = Math.min(fig.max, next.filter(Boolean).length);
+      setCrit((prev) => ({ ...prev, [fig.key]: next }));
+      const keyScore = phase === "draw" ? "draw_scores" : "recall_scores";
+      const keyCrit = phase === "draw" ? "draw_criteria" : "recall_criteria";
+      const prevScores = phase === "draw" ? scoresDraw : scoresRecall;
+      const prevCrit = phase === "draw" ? critDraw : critRecall;
+      onPersist &&
+        onPersist({
+          [keyScore]: { ...prevScores, [fig.key]: nextScore },
+          [keyCrit]: { ...prevCrit, [fig.key]: next },
+        });
+    };
+
     return (
       <Card key={`${phase}_${fig.key}`} className="space-y-2">
         <div className="flex items-center justify-between gap-2">
           <div className="font-medium">{fig.label}</div>
-          <div className="text-sm text-zinc-600">Score 0–{fig.max}</div>
+          <div className="text-sm text-zinc-600">
+            Punkte: <span className="font-semibold">{(current ?? 0)}/{fig.max}</span>
+          </div>
         </div>
-        <ul className="text-sm text-zinc-600 list-disc list-inside space-y-1">
-          {fig.criteria.map((c, idx) => (
-            <li key={idx}>{c}</li>
-          ))}
-        </ul>
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-zinc-700">Punkte:</label>
-          <input
-            type="number"
-            min={0}
-            max={fig.max}
-            className="w-24 rounded-xl border p-2"
-            value={current ?? ""}
-            onChange={(e) => {
-              const v = e.target.value;
-              const n = v === "" ? "" : Math.max(0, Math.min(fig.max, parseInt(v, 10) || 0));
-              updateScore(phase, fig.key, n === "" ? null : n);
-            }}
-          />
+        <div className="grid gap-2">
+          {fig.criteria.map((c, idx) => {
+            const active = toggles[idx];
+            return (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => toggleCriterion(idx)}
+                className={cls(
+                  "w-full text-left px-3 py-2 rounded-xl border text-sm",
+                  active ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
+                )}
+              >
+                {c}
+              </button>
+            );
+          })}
         </div>
       </Card>
     );
@@ -3819,7 +4047,6 @@ function CERADFiguralWire({ sessionData, route, onPersist, onAbort, onDone, onBa
     <section className="py-6">
       <Header
         title="CERAD – Visuokonstruktion / Figuralgedächtnis"
-        subtitle="4 Figuren: Abzeichnen, später Erinnern"
       />
       {onBackToMenu && (
         <div className="mb-2">
@@ -3954,7 +4181,7 @@ function CERADTmtCombo({ sessionData, onPersist, onAbort, onDone, onBackToMenu }
 
   return (
     <section className="py-6">
-      <Header title="CERAD – TMT A/B" subtitle="Zwei Stopps, nacheinander" />
+      <Header title="CERAD – TMT A/B" />
       {onBackToMenu && (
         <div className="mb-2">
           <button
@@ -4050,7 +4277,7 @@ function TMTCombo({ sessionData, onPersist, onAbort, onDone }) {
 
   return (
     <section className="py-6">
-      <Header title="TMT A/B" subtitle="Zwei Stopps, nacheinander" />
+      <Header title="TMT A/B" />
       <div className="mb-3">
         <AbortButton onAbort={onAbort} />
       </div>
@@ -4253,7 +4480,6 @@ function CERADWordlistWire({ sessionData, route, onPersist, onAbort, onDone, onB
     <section className="py-6">
       <Header
         title="CERAD – Verbalgedächtnis"
-        subtitle="10 Wörter, 3 DG + DG4 (verzögerter Abruf, manuell)"
       />
 
       {onBackToMenu && (
@@ -4346,6 +4572,13 @@ function CERADWordlistWire({ sessionData, route, onPersist, onAbort, onDone, onB
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
               {CERAD_WL_RECOG_ITEMS.map((item) => {
                 const ans = recogAns[item.word] || null;
+                const isCorrect = (val) => (item.isOrig ? val === "ja" : val === "nein");
+                const btnClass = (val) => {
+                  if (ans !== val) return "bg-white border-zinc-300";
+                  return isCorrect(val)
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                    : "bg-rose-50 border-rose-200 text-rose-700";
+                };
                 return (
                   <div
                     key={item.word}
@@ -4370,9 +4603,7 @@ function CERADWordlistWire({ sessionData, route, onPersist, onAbort, onDone, onB
                         onClick={() => toggleRecog(item.word, "ja")}
                         className={cls(
                           "px-3 py-1.5 rounded-xl border text-sm",
-                          ans === "ja"
-                            ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                            : "bg-white border-zinc-300"
+                          btnClass("ja")
                         )}
                       >
                         JA
@@ -4382,9 +4613,7 @@ function CERADWordlistWire({ sessionData, route, onPersist, onAbort, onDone, onB
                         onClick={() => toggleRecog(item.word, "nein")}
                         className={cls(
                           "px-3 py-1.5 rounded-xl border text-sm",
-                          ans === "nein"
-                            ? "bg-rose-50 border-rose-200 text-rose-700"
-                            : "bg-white border-zinc-300"
+                          btnClass("nein")
                         )}
                       >
                         NEIN
