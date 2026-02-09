@@ -507,6 +507,9 @@ async function buildExportRow(sessionData, sessionUUID, opts = {}) {
     row.stroop_interferenz_errors = null;
     row.stroop_interferenz_corrected = null;
   }
+  row.stroop_notes_woerter = s.stroop_notes?.woerter || "";
+  row.stroop_notes_farbstriche = s.stroop_notes?.farbstriche || "";
+  row.stroop_notes_interferenz = s.stroop_notes?.interferenz || "";
 
   // Grooved Pegboard
   const gp = s.gp || {};
@@ -520,6 +523,7 @@ async function buildExportRow(sessionData, sessionUUID, opts = {}) {
   const mmstItems = s.cerad_mmst?.items || {};
   const hasMmst = Object.keys(mmstItems || {}).length > 0;
   row.cerad_mmst_total = hasMmst ? computeMmstTotal(mmstItems) : null;
+  row.cerad_mmst_buchstabieren_note = s.cerad_mmst?.buchstabieren_note || "";
 
   // CERAD Verbalgedächtnis
   const ceradWl = s.cerad_wl || {};
@@ -563,16 +567,21 @@ async function buildExportRow(sessionData, sessionUUID, opts = {}) {
   // CERAD Benennen
   const ben = s.cerad_benennen?.items || [];
   const hasBen = ben.length > 0;
-  row.cerad_bnt_correct = hasBen ? ben.filter((it) => it?.ok).length : null;
+  row.cerad_bnt_correct = hasBen ? ben.filter((it) => it?.correct === true).length : null;
 
   // CERAD Wortflüssigkeit
   const ceradWf = s.cerad_wf || {};
   row.cerad_wf_semantic_count = ceradWf.semantic_count ?? null;
   row.cerad_wf_phonemic_count = ceradWf.phonemic_count ?? null;
+  row.cerad_wf_semantic_note = ceradWf.semantic_note || "";
+  row.cerad_wf_phonemic_note = ceradWf.phonemic_note || "";
 
   // CERAD TMT
-  row.cerad_tmt_a_s = msToSec(s.cerad_tmt?.a_time);
-  row.cerad_tmt_b_s = msToSec(s.cerad_tmt?.b_time);
+  const ceradTmt = s.cerad_tmt || {};
+  row.cerad_tmt_a_s = msToSec(ceradTmt.a_time ?? s.cerad_tmt_a?.time);
+  row.cerad_tmt_b_s = msToSec(ceradTmt.b_time ?? s.cerad_tmt_b?.time);
+  row.cerad_tmt_a_note = (ceradTmt.note_a ?? s.cerad_tmt_a?.note) || "";
+  row.cerad_tmt_b_note = (ceradTmt.note_b ?? s.cerad_tmt_b?.note) || "";
 
   // CERAD Figural
   const fig = s.cerad_fig || {};
@@ -586,6 +595,8 @@ async function buildExportRow(sessionData, sessionUUID, opts = {}) {
   row.cerad_fig_recall_rhombus = recall.rhombus ?? null;
   row.cerad_fig_recall_rechtecke = recall.rechtecke ?? null;
   row.cerad_fig_recall_wuerfel = recall.wuerfel ?? null;
+  row.cerad_fig_draw_note = fig.draw_note || "";
+  row.cerad_fig_recall_note = fig.recall_note || "";
 
   // CERAD MMST Notiz etc. + generische Notizen
   row.notes_mmst = s.cerad_mmst?.note || "";
@@ -677,7 +688,11 @@ async function buildExportRow(sessionData, sessionUUID, opts = {}) {
     cerad_tmt_b_aborted: s.cerad_tmt_b_aborted,
   };
   Object.entries(abortedMap).forEach(([k, v]) => {
-    row[k] = v ? 1 : 0;
+    if (v && typeof v === "object") {
+      row[k] = Object.values(v).some(Boolean) ? 1 : 0;
+    } else {
+      row[k] = v ? 1 : 0;
+    }
   });
 
   // Epi Wortfl Notiz nicht vorhanden
@@ -692,7 +707,7 @@ function StopwatchScreen({ label, persisted, note, onPersist, onPersistNote, onA
   const [comment, setComment] = useState(note || "");
   return (
     <section className="py-6">
-      <Header title={label} subtitle="Subtest-Stoppuhr (Start/Stopp/Reset)" />
+      <Header title={label} />
       <div className="mb-3">
         <AbortButton onAbort={onAbort} />
       </div>
@@ -1262,60 +1277,35 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
   const data = sessionData?.uhr || {};
   const derivePartsFromScore = (val) => {
     const s = typeof val === "number" ? Math.max(0, Math.min(5, val)) : 0;
-    const parts = { kreis: false, nummern: [false, false], zeiger: [false, false] };
+    const parts = { kreis: false, nummern: false, zeiger: false };
     let remaining = s;
     if (remaining >= 1) { parts.kreis = true; remaining -= 1; }
-    if (remaining >= 1) { parts.nummern[0] = true; remaining -= 1; }
-    if (remaining >= 1) { parts.nummern[1] = true; remaining -= 1; }
-    if (remaining >= 1) { parts.zeiger[0] = true; remaining -= 1; }
-    if (remaining >= 1) { parts.zeiger[1] = true; remaining -= 1; }
+    if (remaining >= 2) { parts.nummern = true; remaining -= 2; }
+    if (remaining >= 2) { parts.zeiger = true; remaining -= 2; }
     return parts;
   };
 
-  const normalizeParts = (p) => {
-    if (!p) return derivePartsFromScore(data.score);
-    const out = {
-      kreis: !!p.kreis,
-      nummern: Array.isArray(p.nummern)
-        ? [!!p.nummern[0], !!p.nummern[1]]
-        : [!!p.nummern, !!p.nummern], // legacy bool → two points
-      zeiger: Array.isArray(p.zeiger)
-        ? [!!p.zeiger[0], !!p.zeiger[1]]
-        : [!!p.zeiger, !!p.zeiger],
-    };
-    return out;
-  };
-
-  const calcScore = (p) =>
-    (p.kreis ? 1 : 0) +
-    (p.nummern?.filter(Boolean).length || 0) +
-    (p.zeiger?.filter(Boolean).length || 0);
-
-  const [parts, setParts] = useState(() => normalizeParts(data.parts) || derivePartsFromScore(data.score));
+  const [parts, setParts] = useState(() => data.parts || derivePartsFromScore(data.score));
   const [score, setScore] = useState(() => {
     if (typeof data.score === "number") return data.score;
-    const p = normalizeParts(data.parts) || derivePartsFromScore(data.score);
-    return calcScore(p);
+    const p = data.parts || derivePartsFromScore(data.score);
+    return (p.kreis ? 1 : 0) + (p.nummern ? 2 : 0) + (p.zeiger ? 2 : 0);
   });
   const [note, setNote] = useState(data.note || "");
   useEffect(() => {
-    const nextParts = normalizeParts(data.parts) || derivePartsFromScore(data.score);
+    const nextParts = data.parts || derivePartsFromScore(data.score);
     setParts(nextParts);
-    const nextScore = typeof data.score === "number" ? data.score : calcScore(nextParts);
+    const nextScore = typeof data.score === "number"
+      ? data.score
+      : (nextParts.kreis ? 1 : 0) + (nextParts.nummern ? 2 : 0) + (nextParts.zeiger ? 2 : 0);
     setScore(nextScore);
     setNote(data.note || "");
   }, [data.score, data.note, data.parts]);
 
-  const toggleSingle = (group, idx) => {
+  const togglePart = (key, points) => {
     setParts((prev) => {
-      const next = {
-        kreis: prev.kreis,
-        nummern: [...prev.nummern],
-        zeiger: [...prev.zeiger],
-      };
-      if (group === "kreis") next.kreis = !prev.kreis;
-      else next[group][idx] = !prev[group][idx];
-      const nextScore = calcScore(next);
+      const next = { ...prev, [key]: !prev[key] };
+      const nextScore = (next.kreis ? 1 : 0) + (next.nummern ? 2 : 0) + (next.zeiger ? 2 : 0);
       setScore(nextScore);
       onPersist && onPersist({ score: nextScore, parts: next, note });
       return next;
@@ -1323,7 +1313,7 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
   };
   return (
     <section className="py-6">
-      <Header title="Uhrentest" subtitle="0–5 Punkte" />
+      <Header title="Uhrentest" />
       <div className="mb-3">
         <AbortButton onAbort={onAbort} />
       </div>
@@ -1332,53 +1322,33 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
         <div className="grid gap-2">
           <button
             type="button"
-            onClick={() => toggleSingle("kreis", 0)}
+            onClick={() => togglePart("kreis", 1)}
             className={cls(
               "w-full text-left px-3 py-2 rounded-xl border text-sm",
               parts.kreis ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
             )}
           >
-            Kreis Punkt 1
+            Kreis (1 Punkt)
           </button>
           <button
             type="button"
-            onClick={() => toggleSingle("nummern", 0)}
+            onClick={() => togglePart("nummern", 2)}
             className={cls(
               "w-full text-left px-3 py-2 rounded-xl border text-sm",
-              parts.nummern?.[0] ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
+              parts.nummern ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
             )}
           >
-            Ziffern Punkt 1
+            Nummern korrekt (2 Punkte)
           </button>
           <button
             type="button"
-            onClick={() => toggleSingle("nummern", 1)}
+            onClick={() => togglePart("zeiger", 2)}
             className={cls(
               "w-full text-left px-3 py-2 rounded-xl border text-sm",
-              parts.nummern?.[1] ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
+              parts.zeiger ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
             )}
           >
-            Ziffern Punkt 2
-          </button>
-          <button
-            type="button"
-            onClick={() => toggleSingle("zeiger", 0)}
-            className={cls(
-              "w-full text-left px-3 py-2 rounded-xl border text-sm",
-              parts.zeiger?.[0] ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
-            )}
-          >
-            Zeiger Punkt 1
-          </button>
-          <button
-            type="button"
-            onClick={() => toggleSingle("zeiger", 1)}
-            className={cls(
-              "w-full text-left px-3 py-2 rounded-xl border text-sm",
-              parts.zeiger?.[1] ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
-            )}
-          >
-            Zeiger Punkt 2
+            Zeiger korrekt (2 Punkte)
           </button>
         </div>
         <label className="block mt-2 text-sm">Kommentar</label>
@@ -4139,7 +4109,7 @@ function CERADTmtScreen({ label, persisted, note, onPersist, onPersistNote, onAb
   const [comment, setComment] = useState(note || "");
   return (
     <section className="py-6">
-      <Header title={label} subtitle="Stoppuhr + Notiz" />
+      <Header title={label} />
       <div className="mb-3">
         <AbortButton onAbort={onAbort} />
       </div>
