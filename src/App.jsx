@@ -378,6 +378,21 @@ async function loadDcsrDrawings(sessionUUID, sessionData) {
   });
 }
 
+async function loadDcsrFigureGalleries(sessionData) {
+  const dcsr = sessionData?.dcsr || {};
+  const galleryKeysByDg = Array.isArray(dcsr.drawingGalleryKeys) ? dcsr.drawingGalleryKeys : [];
+  const out = Array.from({ length: 5 }, () => []);
+  await Promise.all(out.map(async (_, dgIdx) => {
+    const keys = Array.isArray(galleryKeysByDg[dgIdx]) ? galleryKeysByDg[dgIdx] : [];
+    if (!keys.length) return;
+    const data = await Promise.all(keys.map((k) => (k ? idbGetDrawing(k) : null)));
+    out[dgIdx] = data
+      .filter(Boolean)
+      .map((val) => (val instanceof Blob ? URL.createObjectURL(val) : val));
+  }));
+  return out;
+}
+
 // Build flat export row (CSV) with curated keys; skips große Blobs wie DCS-Zeichnungen
 async function buildExportRow(sessionData, sessionUUID, opts = {}) {
   const s = sessionData || {};
@@ -1538,10 +1553,6 @@ export default function App() {
   });
   const [authError, setAuthError] = useState("");
   const [showImpressum, setShowImpressum] = useState(false);
-  const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem("darkMode");
-    return saved === "true";
-  });
   const [screen, setScreen] = useState(
     { name: "menu" } // many names: "vlmt","dcsr","cerad_wl","tmt_a","tmt_b","zahl_fwd","zahl_rev","block_fwd","block_rev","rwt","stroop","epi","gp","uhr","cerad_menu","cerad_mmst","cerad_benennen","cerad_wf"
   );
@@ -1647,10 +1658,8 @@ export default function App() {
   }, [persistNow]);
 
   useEffect(() => {
-    localStorage.setItem("darkMode", darkMode ? "true" : "false");
-    if (darkMode) document.documentElement.classList.add("dark");
-    else document.documentElement.classList.remove("dark");
-  }, [darkMode]);
+    document.documentElement.classList.remove("dark");
+  }, []);
 
   const passwordHash = (import.meta.env?.VITE_APP_PASSWORD_HASH || "e3f67bab0aaf4f97f50b6d999c89300f988ca9e34895207bf9e700591406e09c").toLowerCase();
 
@@ -1682,18 +1691,10 @@ export default function App() {
   };
 
   const authScreen = (
-    <div className={cls("min-h-screen flex flex-col items-center justify-center px-4", darkMode ? "bg-zinc-900 text-zinc-100" : "bg-zinc-50 text-zinc-900")}>
-      <div className="w-full max-w-md p-5 rounded-2xl border border-zinc-200 bg-white shadow-sm dark:bg-zinc-800 dark:border-zinc-700">
-        <div className="flex justify-between items-center mb-3">
-          <div className="text-lg font-semibold">Zugang</div>
-          <button
-            onClick={() => setDarkMode((v) => !v)}
-            className="px-3 py-1.5 rounded-xl border text-sm"
-          >
-            {darkMode ? "Light" : "Dark"}
-          </button>
-        </div>
-        <p className="text-sm text-zinc-600 dark:text-zinc-300 mb-3">Bitte Passwort eingeben, um die Tests zu öffnen.</p>
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-zinc-50 text-zinc-900">
+      <div className="w-full max-w-md p-5 rounded-2xl border border-zinc-200 bg-white shadow-sm">
+        <div className="mb-3 text-lg font-semibold">Zugang</div>
+        <p className="text-sm text-zinc-600 mb-3">Bitte Passwort eingeben, um die Tests zu öffnen.</p>
         <PasswordPrompt onSubmit={handleAuth} error={authError} />
       </div>
       <button
@@ -1731,9 +1732,12 @@ export default function App() {
   };
 
   const triggerPdfExport = async () => {
+    const row = await buildExportRow(sessionData, sessionUUID, { includeDrawings: false });
     const drawingsData = await loadDcsrDrawings(sessionUUID, sessionData);
-    const row = await buildExportRow(sessionData, sessionUUID, { includeDrawings: true, drawingsData });
-    const drawings = Object.entries(row).filter(([k]) => k.startsWith("dcsr_drawing_") && row[k]);
+    const figureGalleries = await loadDcsrFigureGalleries(sessionData);
+    const drawings = drawingsData
+      .map((img, idx) => [`dcsr_drawing_dg${idx + 1}`, img])
+      .filter(([, img]) => !!img);
     // Simple HTML print view
     const pat = (sessionData?.demographics?.patient_initials || "Pat").replace(/[^A-Za-z0-9_-]/g, "");
     const doc = (sessionData?.demographics?.examiner_initials || "NP").replace(/[^A-Za-z0-9_-]/g, "");
@@ -1749,14 +1753,23 @@ export default function App() {
       .meta { font-size: 12px; color: #555; margin-bottom: 12px; }
       .draw-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
       .draw-card { border: 1px solid #ccc; padding: 8px; }
+      .dg-label { font-size: 14px; font-weight: 700; margin-top: 12px; margin-bottom: 6px; }
       img { max-width: 100%; height: auto; border: 1px solid #ddd; }
     `;
     const rowsHtml = Object.entries(row)
-      .filter(([k]) => !k.startsWith("dcsr_drawing_"))
       .map(([k, v]) => `<tr><td>${k}</td><td>${v === null || v === undefined ? "" : v}</td></tr>`)
       .join("");
     const drawingsHtml = drawings
       .map(([k, v]) => `<div class="draw-card"><div style="font-size:12px;margin-bottom:4px;">${k}</div><img src="${v}" alt="${k}"/></div>`)
+      .join("");
+    const galleriesHtml = figureGalleries
+      .map((imgs, idx) => {
+        if (!imgs.length) return "";
+        const cards = imgs
+          .map((src, figIdx) => `<div class="draw-card"><div style="font-size:12px;margin-bottom:4px;">Figur ${figIdx + 1}</div><img src="${src}" alt="DG${idx + 1} Figur ${figIdx + 1}"/></div>`)
+          .join("");
+        return `<div class="dg-label">DG${idx + 1}</div><div class="draw-grid">${cards}</div>`;
+      })
       .join("");
 
     win.document.write(`
@@ -1771,6 +1784,7 @@ export default function App() {
           <h2>Messwerte</h2>
           <table><tbody>${rowsHtml}</tbody></table>
           ${drawings.length ? `<h2>DCS-R Zeichnungen</h2><div class="draw-grid">${drawingsHtml}</div>` : ""}
+          ${galleriesHtml ? `<h2>DCS-R Figurengalerien</h2>${galleriesHtml}` : ""}
           <script>window.onload = function(){ window.print(); };</script>
         </body>
       </html>
@@ -1875,7 +1889,7 @@ export default function App() {
 
   return (
     <ErrorBoundary onReset={() => setScreen({ name: "menu" })}>
-      <div className={cls("min-h-screen font-sans antialiased", darkMode ? "bg-zinc-900 text-zinc-100" : "bg-zinc-50 text-zinc-900")}>
+      <div className="min-h-screen font-sans antialiased bg-zinc-50 text-zinc-900">
         <TopBar
           sessionUUID={sessionUUID}
           onBackToMenu={() => setScreen({ name: "menu" })}
@@ -1883,8 +1897,6 @@ export default function App() {
           onClearTimer={clearGlobalTimer}
           onOpenTimer={(t) => { setScreen(t.nav || { name: "menu" }); clearGlobalTimer(t.id); }}
           onNewSession={newSession}
-          darkMode={darkMode}
-          onToggleDark={() => setDarkMode((v) => !v)}
           sessionData={sessionData}
         onOpenCeradRecall={() => {
           setSessionData(s => ({
@@ -1893,7 +1905,7 @@ export default function App() {
           }));
           setScreen({ name: "cerad_wl", go: "dg4" });
         }}
-       onOpenCeradFigRecall={() => {
+        onOpenCeradFigRecall={() => {
         setSessionData((s) => ({
           ...s,
           cerad_fig: { ...(s.cerad_fig || {}), recall_pending: false }
@@ -1901,6 +1913,7 @@ export default function App() {
         setScreen({ name: "cerad_fig", go: "recall" });
       }}
         onExportCsv={triggerCsvExport}
+        onExportPdf={triggerPdfExport}
       />
         <main className="max-w-5xl mx-auto px-4 pb-24 pt-3">
         {screen.name === "menu" && (
@@ -2324,16 +2337,15 @@ function TopBar({
   onClearTimer,
   onOpenTimer,
   onNewSession,
-  darkMode,
-  onToggleDark,
   sessionData,
   onOpenCeradRecall,
   onOpenCeradFigRecall,
   onExportCsv,
+  onExportPdf,
 }) {
   return (
-    <div id="topbar-root" className="sticky top-0 z-30 bg-white/90 dark:bg-zinc-900/90 backdrop-blur border-b border-zinc-200 dark:border-zinc-800">
-      <div className="max-w-5xl mx-auto px-4 py-2 flex items-center gap-3 text-zinc-900 dark:text-zinc-100">
+    <div id="topbar-root" className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-zinc-200">
+      <div className="max-w-5xl mx-auto px-4 py-2 flex items-center gap-3 text-zinc-900">
         <button
           onClick={onBackToMenu}
           onTouchEnd={(e) => { e.preventDefault(); onBackToMenu && onBackToMenu(); }}
@@ -2368,18 +2380,17 @@ function TopBar({
             CSV Export
           </button>
           <button
+            className="px-3 py-1.5 rounded-xl bg-zinc-900 text-white text-sm"
+            onClick={onExportPdf}
+          >
+            PDF Export
+          </button>
+          <button
             type="button"
             onClick={onNewSession}
             className="px-3 py-1.5 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 text-sm"
           >
             Neue Testung
-          </button>
-          <button
-            type="button"
-            onClick={onToggleDark}
-            className="px-3 py-1.5 rounded-xl border text-sm"
-          >
-            {darkMode ? "Light" : "Dark"}
           </button>
           <GlobalTimers timers={globalTimers} onClear={onClearTimer} onOpen={onOpenTimer} />
         </div>
@@ -3074,9 +3085,17 @@ function DCSRWire({ addGlobalReminder, route, sessionData, sessionUUID, onStateC
     }
     return Array.from({ length: 5 }, () => null);
   }, [saved.drawingKeys, saved.drawings, drawingNamespace]);
+  const initialGalleryKeys = useMemo(() => {
+    if (!Array.isArray(saved.drawingGalleryKeys)) return Array.from({ length: 5 }, () => []);
+    return Array.from({ length: 5 }, (_, idx) => (
+      Array.isArray(saved.drawingGalleryKeys[idx]) ? saved.drawingGalleryKeys[idx].slice() : []
+    ));
+  }, [saved.drawingGalleryKeys]);
   const drawingKeysRef = useRef(initialKeys);
+  const drawingGalleryKeysRef = useRef(initialGalleryKeys);
   const [drawingKeysVersion, bumpDrawingKeysVersion] = useState(0); // used to trigger effect when keys mutate
   const [drawings, setDrawings] = useState(() => Array.from({ length: 5 }, () => null));
+  const [drawingGalleries, setDrawingGalleries] = useState(() => Array.from({ length: 5 }, () => []));
   const [rekogResp, setRekogResp] = useState(() => saved.rekog?.responses || { korrekt: 0, falsch: 0, gedreht: 0 });
   const totalFirst3 = counts.slice(0, 3).reduce((a, c) => a + c.richtig, 0);
   const ceilingHit = counts.some((c) => c.richtig === 9);
@@ -3120,6 +3139,7 @@ function DCSRWire({ addGlobalReminder, route, sessionData, sessionUUID, onStateC
         dg,
         counts,
         drawingKeys: keys,
+        drawingGalleryKeys: drawingGalleryKeysRef.current,
         rekog: { responses: rekogResp },
       });
     })();
@@ -3129,17 +3149,28 @@ function DCSRWire({ addGlobalReminder, route, sessionData, sessionUUID, onStateC
   // Load drawings for current session from IDB
   useEffect(() => {
     const keys = drawingKeysRef.current;
+    const galleryKeys = drawingGalleryKeysRef.current;
     (async () => {
       const loaded = await Promise.all(keys.map((k) => (k ? idbGetDrawing(k) : null)));
+      const loadedGalleries = await Promise.all(galleryKeys.map(async (list) => {
+        if (!Array.isArray(list) || !list.length) return [];
+        const vals = await Promise.all(list.map((k) => (k ? idbGetDrawing(k) : null)));
+        return vals.filter(Boolean);
+      }));
       setDrawings((arr) => {
         const next = arr.slice();
         loaded.forEach((d, i) => { if (d) next[i] = d; });
         return next;
       });
+      setDrawingGalleries((arr) => {
+        const next = arr.slice();
+        loadedGalleries.forEach((list, i) => { next[i] = list; });
+        return next;
+      });
       // prune drawings from old sessions to avoid quota bloat
       idbPruneDrawingsExcept([`${sessionUUID}:`]).catch((e) => console.error("Prune drawings failed", e));
     })();
-  }, [sessionUUID, drawingKeysVersion]);
+  }, [sessionUUID]);
 
   useEffect(() => {
     onStateChange && onStateChange({
@@ -3148,13 +3179,16 @@ function DCSRWire({ addGlobalReminder, route, sessionData, sessionUUID, onStateC
       dg,
       counts,
       drawingKeys: drawingKeysRef.current,
+      drawingGalleryKeys: drawingGalleryKeysRef.current,
       rekog: { responses: rekogResp },
     });
   }, [onStateChange, step, ver, dg, counts, rekogResp, drawingKeysVersion]);
 
   const handleDrawingChange = useCallback(async (data) => {
+    const hadKey = !!drawingKeysRef.current[dg - 1];
     const key = drawingKeysRef.current[dg - 1] || `${drawingNamespace}dg${dg}`;
     drawingKeysRef.current[dg - 1] = key;
+    if (!hadKey) bumpDrawingKeysVersion((v) => v + 1);
     setDrawings((arr) => {
       const next = arr.slice();
       next[dg - 1] = data;
@@ -3163,9 +3197,27 @@ function DCSRWire({ addGlobalReminder, route, sessionData, sessionUUID, onStateC
     try {
       if (data) await idbSetDrawing(key, data);
       else await idbDeleteDrawing(key);
-      bumpDrawingKeysVersion((v) => v + 1);
     } catch (e) {
       console.error("Zeichnung speichern fehlgeschlagen", e);
+    }
+  }, [dg, drawingNamespace]);
+
+  const handleSaveFigure = useCallback(async (data) => {
+    if (!data) return;
+    const key = `${drawingNamespace}dg${dg}:fig_${crypto && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`}`;
+    const list = drawingGalleryKeysRef.current[dg - 1] || [];
+    drawingGalleryKeysRef.current[dg - 1] = [...list, key];
+    setDrawingGalleries((arr) => {
+      const next = arr.slice();
+      const cur = Array.isArray(next[dg - 1]) ? next[dg - 1] : [];
+      next[dg - 1] = [...cur, data];
+      return next;
+    });
+    try {
+      await idbSetDrawing(key, data);
+      bumpDrawingKeysVersion((v) => v + 1);
+    } catch (e) {
+      console.error("Galerie-Figur speichern fehlgeschlagen", e);
     }
   }, [dg, drawingNamespace]);
 
@@ -3211,10 +3263,12 @@ function DCSRWire({ addGlobalReminder, route, sessionData, sessionUUID, onStateC
                 <div className="text-xs text-zinc-600">Skizze der vom Patienten gelegten Figur</div>
                 <DrawPad
                   key={`dcsr-dg-${dg}`}
-                  width={820}
-                  height={360}
+                  width={410}
+                  height={180}
                   initialData={drawings[dg - 1]}
                   onChange={handleDrawingChange}
+                  savedFigures={drawingGalleries[dg - 1] || []}
+                  onSaveFigure={handleSaveFigure}
                 />
               </div>
             </div>
