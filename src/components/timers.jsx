@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
 import { useInterval } from "../lib/utils";
 
 function fmtMs(ms) {
@@ -8,7 +8,7 @@ function fmtMs(ms) {
   return `${m}:${s.toString().padStart(2, "0")}.${cs.toString().padStart(2, "0")}`;
 }
 
-export function Stopwatch({ persisted, onPersist, autoAbortMs, onAutoAbort }) {
+export const Stopwatch = forwardRef(function Stopwatch({ persisted, onPersist, autoAbortMs, onAutoAbort }, ref) {
   const [state, setState] = useState("idle"); // "idle" | "running" | "stopped" | "aborted"
   const [start, setStart] = useState(null);
   const [elapsed, setElapsed] = useState(0);
@@ -67,13 +67,14 @@ export function Stopwatch({ persisted, onPersist, autoAbortMs, onAutoAbort }) {
     setAborted(false);
     autoAbortFiredRef.current = false;
   };
-  const onStop = () => {
+  const stopNow = () => {
     const now = Date.now();
     const final = start !== null ? now - start : elapsed;
     setElapsed(final);
     setState("stopped");
     if (onPersist) onPersist(final);
   };
+  const onStop = () => stopNow();
   const onReset = () => {
     setState("idle");
     setStart(null);
@@ -82,6 +83,11 @@ export function Stopwatch({ persisted, onPersist, autoAbortMs, onAutoAbort }) {
     autoAbortFiredRef.current = false;
     if (onPersist) onPersist(0);
   };
+
+  useImperativeHandle(ref, () => ({
+    stop: () => stopNow(),
+    reset: () => onReset(),
+  }), [stopNow, onReset]);
 
   const limitSeconds = autoAbortMs ? Math.round(autoAbortMs / 1000) : null;
 
@@ -109,7 +115,7 @@ export function Stopwatch({ persisted, onPersist, autoAbortMs, onAutoAbort }) {
       </div>
     </div>
   );
-}
+});
 
 export function Countdown60() {
   const [state, setState] = useState("idle"); // "idle" | "running" | "stopped"

@@ -40,64 +40,51 @@ const VLMT_INTERFERENCE = [
 
 const VLMT_RECOG = {
   A: [
-    { w: "Vorhang", t: true }, { w: "Glocke", t: true }, { w: "Schuh", t: false }, { w: "Tisch", t: false },
-    { w: "Garbe", t: false }, { w: "Locke", t: false }, { w: "See", t: false }, { w: "Truthahn", t: true },
-    { w: "Garten", t: true }, { w: "Trommel", t: true }, { w: "Sonne", t: false }, { w: "Ofen", t: false },
-    { w: "Schule", t: true }, { w: "Fisch", t: false }, { w: "Bleistift", t: false }, { w: "Jäger", t: false },
-    { w: "Haus", t: true }, { w: "Vogel", t: false }, { w: "Warten", t: false }, { w: "Kinder", t: false },
-    { w: "Boot", t: false }, { w: "Lehrer", t: false }, { w: "Fenster", t: false }, { w: "Kuchen", t: false },
-    { w: "Maus", t: false }, { w: "Fluss", t: true }, { w: "Handtuch", t: false }, { w: "Bein", t: false },
-    { w: "Eltern", t: true }, { w: "Bauer", t: true }, { w: "Vase", t: false }, { w: "Kuh", t: false },
-    { w: "Förster", t: false }, { w: "Lamm", t: false }, { w: "Wolke", t: false }, { w: "Gewehr", t: false },
-    { w: "Mut", t: false }, { w: "Brille", t: false }, { w: "Pauke", t: false }, { w: "Arm", t: false },
-    { w: "Farbe", t: true }, { w: "Hut", t: true }, { w: "Mond", t: true }, { w: "Nase", t: true },
-    { w: "Kaffee", t: true }, { w: "Stille", t: false }, { w: "Mauer", t: false }, { w: "Schaf", t: false },
-    { w: "Berg", t: false }, { w: "Kirsche", t: false },
+    { w: "Vorhang", t: true }, { w: "Sonne", t: false }, { w: "Boot", t: false }, { w: "Vase", t: false }, { w: "Farbe", t: true },
+    { w: "Glocke", t: true }, { w: "Ofen", t: false }, { w: "Lehrer", t: false }, { w: "Kuh", t: false }, { w: "Hut", t: true },
+    { w: "Schuh", t: false }, { w: "Schule", t: true }, { w: "Fenster", t: false }, { w: "Förster", t: false }, { w: "Mond", t: true },
+    { w: "Tisch", t: false }, { w: "Fisch", t: false }, { w: "Kuchen", t: false }, { w: "Lamm", t: false }, { w: "Nase", t: true },
+    { w: "Garbe", t: false }, { w: "Bleistift", t: false }, { w: "Maus", t: false }, { w: "Wolke", t: false }, { w: "Kaffee", t: true },
+    { w: "Locke", t: false }, { w: "Jäger", t: false }, { w: "Fluss", t: true }, { w: "Gewehr", t: false }, { w: "Stille", t: false },
+    { w: "See", t: false }, { w: "Haus", t: true }, { w: "Handtuch", t: false }, { w: "Mut", t: false }, { w: "Mauer", t: false },
+    { w: "Truthahn", t: true }, { w: "Vogel", t: false }, { w: "Bein", t: false }, { w: "Brille", t: false }, { w: "Schaf", t: false },
+    { w: "Garten", t: true }, { w: "Warten", t: false }, { w: "Eltern", t: true }, { w: "Pauke", t: false }, { w: "Berg", t: false },
+    { w: "Trommel", t: true }, { w: "Kinder", t: false }, { w: "Bauer", t: true }, { w: "Arm", t: false }, { w: "Kirsche", t: false },
   ],
   B: [
-    { w: "Stadt", t: true }, { w: "Ofen", t: false }, { w: "Schuh", t: false }, { w: "Tisch", t: false },
-    { w: "Neige", t: false }, { w: "Wonne", t: false }, { w: "Glas", t: false }, { w: "Musik", t: true },
-    { w: "Tiger", t: true }, { w: "Geige", t: true }, { w: "Flöte", t: false }, { w: "Fenster", t: true },
-    { w: "Treppe", t: true }, { w: "Fisch", t: false }, { w: "Bleistift", t: false }, { w: "Jäger", t: false },
-    { w: "Museum", t: true }, { w: "Vogel", t: false }, { w: "Rampe", t: false }, { w: "Löwe", t: false },
-    { w: "Boot", t: false }, { w: "Licht", t: false }, { w: "Urlaub", t: false }, { w: "Gras", t: false },
-    { w: "Klee", t: false }, { w: "Sonne", t: true }, { w: "Handtuch", t: false }, { w: "Bein", t: false },
-    { w: "See", t: true }, { w: "Tee", t: true }, { w: "Riese", t: false }, { w: "Kuh", t: false },
-    { w: "Förster", t: false }, { w: "Lamm", t: false }, { w: "Wolke", t: false }, { w: "Gewehr", t: false },
-    { w: "Mauer", t: false }, { w: "Brille", t: false }, { w: "Stufe", t: false }, { w: "Arm", t: false },
-    { w: "Zunge", t: true }, { w: "Reise", t: true }, { w: "Lampe", t: true }, { w: "Maurer", t: true },
-    { w: "Wiese", t: true }, { w: "Stille", t: false }, { w: "Sieger", t: false }, { w: "Schaf", t: false },
-    { w: "Berg", t: false }, { w: "Kirsche", t: false },
+    { w: "Stadt", t: true }, { w: "Flöte", t: false }, { w: "Boot", t: false }, { w: "Riese", t: false }, { w: "Zunge", t: true },
+    { w: "Ofen", t: false }, { w: "Fenster", t: true }, { w: "Licht", t: false }, { w: "Kuh", t: false }, { w: "Reise", t: true },
+    { w: "Schuh", t: false }, { w: "Treppe", t: true }, { w: "Urlaub", t: false }, { w: "Förster", t: false }, { w: "Lampe", t: true },
+    { w: "Tisch", t: false }, { w: "Fisch", t: false }, { w: "Gras", t: false }, { w: "Lamm", t: false }, { w: "Maurer", t: true },
+    { w: "Neige", t: false }, { w: "Bleistift", t: false }, { w: "Klee", t: false }, { w: "Wolke", t: false }, { w: "Wiese", t: true },
+    { w: "Wonne", t: false }, { w: "Jäger", t: false }, { w: "Sonne", t: true }, { w: "Gewehr", t: false }, { w: "Stille", t: false },
+    { w: "Glas", t: false }, { w: "Museum", t: true }, { w: "Handtuch", t: false }, { w: "Mauer", t: false }, { w: "Sieger", t: false },
+    { w: "Musik", t: true }, { w: "Vogel", t: false }, { w: "Bein", t: false }, { w: "Brille", t: false }, { w: "Schaf", t: false },
+    { w: "Tiger", t: true }, { w: "Rampe", t: false }, { w: "See", t: true }, { w: "Stufe", t: false }, { w: "Berg", t: false },
+    { w: "Geige", t: true }, { w: "Löwe", t: false }, { w: "Tee", t: true }, { w: "Arm", t: false }, { w: "Kirsche", t: false },
   ],
   C: [
-    { w: "Seil", t: true }, { w: "Ofen", t: false }, { w: "Schuh", t: false }, { w: "Vogel", t: false },
-    { w: "Brille", t: false }, { w: "Mantel", t: true }, { w: "Förster", t: false }, { w: "Lamm", t: false },
-    { w: "Wolke", t: false }, { w: "Gewehr", t: false }, { w: "Geweih", t: false }, { w: "Horn", t: true },
-    { w: "Gericht", t: true }, { w: "Hand", t: false }, { w: "Schaf", t: false }, { w: "Arm", t: false },
-    { w: "Wagen", t: true }, { w: "Kakao", t: true }, { w: "Baum", t: true }, { w: "Stille", t: false },
-    { w: "Boot", t: false }, { w: "Huhn", t: false }, { w: "Degen", t: false }, { w: "Gesicht", t: false },
-    { w: "Berg", t: false }, { w: "Kirsche", t: false }, { w: "Tisch", t: false }, { w: "Beil", t: false },
-    { w: "Norm", t: false }, { w: "Auto", t: false }, { w: "Hund", t: false }, { w: "Kuh", t: false },
-    { w: "Mund", t: true }, { w: "Regen", t: true }, { w: "Land", t: true }, { w: "Sterne", t: true },
-    { w: "Fisch", t: false }, { w: "Bleistift", t: false }, { w: "Jäger", t: false }, { w: "Form", t: true },
-    { w: "Gans", t: true }, { w: "Tür", t: true }, { w: "Milch", t: false }, { w: "Bein", t: false },
-    { w: "Jacke", t: false }, { w: "Fenster", t: false }, { w: "Wald", t: false }, { w: "Mandel", t: false },
-    { w: "Pfarrer", t: true }, { w: "Handtuch", t: false },
+    { w: "Seil", t: true }, { w: "Geweih", t: false }, { w: "Boot", t: false }, { w: "Hund", t: false }, { w: "Gans", t: true },
+    { w: "Ofen", t: false }, { w: "Horn", t: true }, { w: "Huhn", t: false }, { w: "Kuh", t: false }, { w: "Tür", t: true },
+    { w: "Schuh", t: false }, { w: "Gericht", t: true }, { w: "Degen", t: false }, { w: "Mund", t: true }, { w: "Milch", t: false },
+    { w: "Vogel", t: false }, { w: "Hand", t: false }, { w: "Gesicht", t: false }, { w: "Regen", t: true }, { w: "Bein", t: false },
+    { w: "Brille", t: false }, { w: "Schaf", t: false }, { w: "Berg", t: false }, { w: "Land", t: true }, { w: "Jacke", t: false },
+    { w: "Mantel", t: true }, { w: "Arm", t: false }, { w: "Kirsche", t: false }, { w: "Sterne", t: true }, { w: "Fenster", t: false },
+    { w: "Förster", t: false }, { w: "Wagen", t: true }, { w: "Tisch", t: false }, { w: "Fisch", t: false }, { w: "Wald", t: false },
+    { w: "Lamm", t: false }, { w: "Kakao", t: true }, { w: "Beil", t: false }, { w: "Bleistift", t: false }, { w: "Mandel", t: false },
+    { w: "Wolke", t: false }, { w: "Baum", t: true }, { w: "Norm", t: false }, { w: "Jäger", t: false }, { w: "Pfarrer", t: true },
+    { w: "Gewehr", t: false }, { w: "Stille", t: false }, { w: "Auto", t: false }, { w: "Form", t: true }, { w: "Handtuch", t: false },
   ],
   D: [
-    { w: "Trompete", t: true }, { w: "Ofen", t: false }, { w: "Schuh", t: false }, { w: "Tisch", t: false },
-    { w: "Lage", t: false }, { w: "Land", t: false }, { w: "Stirn", t: false }, { w: "Regal", t: true },
-    { w: "Messer", t: true }, { w: "Leopard", t: true }, { w: "Posaune", t: false }, { w: "Kamin", t: true },
-    { w: "Aufzug", t: true }, { w: "Fisch", t: false }, { w: "Bleistift", t: false }, { w: "Jäger", t: false },
-    { w: "Suppe", t: true }, { w: "Vogel", t: false }, { w: "Backe", t: false }, { w: "Gabel", t: false },
-    { w: "Boot", t: false }, { w: "Schornstein", t: false }, { w: "See", t: false }, { w: "Tango", t: false },
-    { w: "legal", t: false }, { w: "Jacke", t: true }, { w: "Handtuch", t: false }, { w: "Bein", t: false },
-    { w: "Teich", t: true }, { w: "Kinn", t: true }, { w: "Anzug", t: false }, { w: "Kuh", t: false },
-    { w: "Förster", t: false }, { w: "Lamm", t: false }, { w: "Wolke", t: false }, { w: "Gewehr", t: false },
-    { w: "Wall", t: false }, { w: "Brille", t: false }, { w: "Bruder", t: false }, { w: "Arm", t: false },
-    { w: "Schwester", t: true }, { w: "Wald", t: true }, { w: "Sand", t: true }, { w: "Tanz", t: true },
-    { w: "Lager", t: true }, { w: "Stille", t: false }, { w: "Schuppe", t: false }, { w: "Schaf", t: false },
-    { w: "Berg", t: false }, { w: "Kirsche", t: false },
+    { w: "Ofen", t: false }, { w: "Kamin", t: true }, { w: "Schornstein", t: false }, { w: "Kuh", t: false }, { w: "Wald", t: true },
+    { w: "Schuh", t: false }, { w: "Aufzug", t: true }, { w: "See", t: false }, { w: "Förster", t: false }, { w: "Sand", t: true },
+    { w: "Tisch", t: false }, { w: "Fisch", t: false }, { w: "Tango", t: false }, { w: "Lamm", t: false }, { w: "Tanz", t: true },
+    { w: "Lage", t: false }, { w: "Bleistift", t: false }, { w: "legal", t: false }, { w: "Wolke", t: false }, { w: "Lager", t: true },
+    { w: "Land", t: false }, { w: "Jäger", t: false }, { w: "Jacke", t: true }, { w: "Gewehr", t: false }, { w: "Stille", t: false },
+    { w: "Stirn", t: false }, { w: "Suppe", t: true }, { w: "Handtuch", t: false }, { w: "Wall", t: false }, { w: "Schuppe", t: false },
+    { w: "Regal", t: true }, { w: "Vogel", t: false }, { w: "Bein", t: false }, { w: "Brille", t: false }, { w: "Schaf", t: false },
+    { w: "Messer", t: true }, { w: "Backe", t: false }, { w: "Teich", t: true }, { w: "Bruder", t: false }, { w: "Berg", t: false },
+    { w: "Leopard", t: true }, { w: "Gabel", t: false }, { w: "Kinn", t: true }, { w: "Arm", t: false }, { w: "Kirsche", t: false },
   ],
 };
 
@@ -1083,6 +1070,8 @@ function StroopWire({ sessionData, onPersistTime, onPersistNote, onAbort }) {
     });
   };
 
+  const interferenzTimerRef = useRef(null);
+
   return (
     <section className="py-6">
       <Header title="Stroop" />
@@ -1112,48 +1101,14 @@ function StroopWire({ sessionData, onPersistTime, onPersistNote, onAbort }) {
       <div className="mt-3">
         <div className="p-3 rounded-2xl border bg-white space-y-3">
           <div className="font-medium mb-1">Interferenz</div>
-          <div className="grid md:grid-cols-3 gap-3 items-start">
-            <div className="md:col-span-2 space-y-2">
-              <div className="rounded-xl border bg-zinc-50 p-2 text-xs text-zinc-700">
-                <div className="grid grid-cols-3 gap-2">
-                  {Array.from({ length: maxRows }).map((_, idx) => {
-                    const words = [col1[idx], col2[idx], col3[idx]];
-                    return words.map((w, colIdx) => {
-                      if (!w) return <div key={`empty-${colIdx}-${idx}`} />;
-                      const key = `c${colIdx + 1}_${idx}`;
-                      const cur = fails[key] ?? 0;
-                      const label =
-                        cur === 1 ? "F" : cur === 2 ? "F korr." : "F";
-                      const clsBtn =
-                        cur === 1
-                          ? "bg-rose-50 border-rose-200 text-rose-700"
-                          : cur === 2
-                            ? "bg-amber-50 border-amber-200 text-amber-700"
-                            : "bg-white";
-                      return (
-                        <div key={key} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1 bg-white border">
-                          <span className="font-mono">{w}</span>
-                          <button
-                            type="button"
-                            className={`px-2 py-0.5 rounded-md border text-[11px] ${clsBtn}`}
-                            onClick={() => toggleFail(key)}
-                            title="Fehl-Nennung markieren/korrigieren"
-                          >
-                            {label}
-                          </button>
-                        </div>
-                      );
-                    });
-                  })}
-                </div>
-              </div>
-            </div>
-            <div className="md:col-span-1 space-y-2">
+          <div className="space-y-3">
+            <div className="md:w-80">
               <Stopwatch
+                ref={interferenzTimerRef}
                 persisted={sessionData?.stroop?.interferenz ?? null}
                 onPersist={(ms) => onPersistTime && onPersistTime("interferenz", ms)}
               />
-              <div>
+              <div className="mt-2">
                 <label className="block text-sm">Kommentar / Fehler</label>
                 <input
                   className="mt-1 w-full rounded-xl border px-3 py-2"
@@ -1161,6 +1116,48 @@ function StroopWire({ sessionData, onPersistTime, onPersistNote, onAbort }) {
                   onChange={(e) => onPersistNote && onPersistNote("interferenz", e.target.value)}
                 />
               </div>
+            </div>
+            <div className="rounded-xl border bg-zinc-50 p-2 text-xs text-zinc-700">
+              <div className="grid grid-cols-3 gap-2">
+                {Array.from({ length: maxRows }).map((_, idx) => {
+                  const words = [col1[idx], col2[idx], col3[idx]];
+                  return words.map((w, colIdx) => {
+                    if (!w) return <div key={`empty-${colIdx}-${idx}`} />;
+                    const key = `c${colIdx + 1}_${idx}`;
+                    const cur = fails[key] ?? 0;
+                    const label =
+                      cur === 1 ? "F" : cur === 2 ? "F korr." : "F";
+                    const clsBtn =
+                      cur === 1
+                        ? "bg-rose-50 border-rose-200 text-rose-700"
+                        : cur === 2
+                          ? "bg-amber-50 border-amber-200 text-amber-700"
+                          : "bg-white";
+                    return (
+                      <div key={key} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1 bg-white border">
+                        <span className="font-mono">{w}</span>
+                        <button
+                          type="button"
+                          className={`px-2 py-0.5 rounded-md border text-[11px] ${clsBtn}`}
+                          onClick={() => toggleFail(key)}
+                          title="Fehl-Nennung markieren/korrigieren"
+                        >
+                          {label}
+                        </button>
+                      </div>
+                    );
+                  });
+                })}
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => interferenzTimerRef.current?.stop?.()}
+                className="px-3 py-2 rounded-xl border bg-white"
+              >
+                Timer stoppen
+              </button>
             </div>
           </div>
         </div>
