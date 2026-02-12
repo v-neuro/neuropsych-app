@@ -4107,6 +4107,13 @@ function CERADFiguralWire({ sessionData, route, onPersist, onAbort, onDone, onBa
 
 function CERADTmtScreen({ label, persisted, note, onPersist, onPersistNote, onAbort, onDone }) {
   const [comment, setComment] = useState(note || "");
+  const isA = label.toLowerCase().includes("tmt-a");
+  const autoLimit = isA ? 180_000 : 300_000;
+  const handleAutoAbort = (info) => {
+    const limit = autoLimit;
+    onPersist && onPersist(limit);
+    onAbort && onAbort({ reason: "Automatischer Abbruch", limit_ms: limit, at: info?.at || Date.now(), part: isA ? "A" : "B" });
+  };
   return (
     <section className="py-6">
       <Header title={label} />
@@ -4114,7 +4121,12 @@ function CERADTmtScreen({ label, persisted, note, onPersist, onPersistNote, onAb
         <AbortButton onAbort={onAbort} />
       </div>
       <div className="space-y-3">
-        <Stopwatch persisted={persisted} onPersist={onPersist} />
+        <Stopwatch
+          persisted={persisted}
+          onPersist={onPersist}
+          autoAbortMs={autoLimit}
+          onAutoAbort={handleAutoAbort}
+        />
         <div className="flex items-center gap-2">
           <label className="text-sm text-zinc-700 w-24">Notiz</label>
           <input
@@ -4171,11 +4183,15 @@ function CERADTmtCombo({ sessionData, onPersist, onAbort, onDone, onBackToMenu }
         <Card className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="text-lg font-semibold">TMT-A</div>
-            <div className="text-sm text-zinc-600">Zeit & Notiz</div>
           </div>
           <Stopwatch
             persisted={data.a_time ?? null}
             onPersist={(ms) => onPersist && onPersist({ a_time: ms })}
+            autoAbortMs={180_000}
+            onAutoAbort={(info) => {
+              onPersist && onPersist({ a_time: 180_000 });
+              onAbort && onAbort({ reason: "Automatischer Abbruch", limit_ms: 180_000, at: info?.at || Date.now(), part: "A" });
+            }}
           />
           <div className="flex items-center gap-2">
             <label className="text-sm text-zinc-700 w-24">Notiz</label>
@@ -4202,11 +4218,15 @@ function CERADTmtCombo({ sessionData, onPersist, onAbort, onDone, onBackToMenu }
         <Card className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="text-lg font-semibold">TMT-B</div>
-            <div className="text-sm text-zinc-600">Zeit & Notiz</div>
           </div>
           <Stopwatch
             persisted={data.b_time ?? null}
             onPersist={(ms) => onPersist && onPersist({ b_time: ms })}
+            autoAbortMs={300_000}
+            onAutoAbort={(info) => {
+              onPersist && onPersist({ b_time: 300_000 });
+              onAbort && onAbort({ reason: "Automatischer Abbruch", limit_ms: 300_000, at: info?.at || Date.now(), part: "B" });
+            }}
           />
           <div className="flex items-center gap-2">
             <label className="text-sm text-zinc-700 w-24">Notiz</label>
@@ -4259,6 +4279,12 @@ function TMTCombo({ sessionData, onPersist, onAbort, onDone }) {
           <Stopwatch
             persisted={tA}
             onPersist={(ms) => persist({ tmt_a: ms })}
+            autoAbortMs={180_000}
+            onAutoAbort={(info) => {
+              const payload = { reason: "Automatischer Abbruch", limit_ms: 180_000, at: info?.at || Date.now(), part: "A" };
+              persist({ tmt_a: 180_000, tmt_a_aborted: payload });
+              onAbort && onAbort(payload);
+            }}
           />
           <Card className="space-y-1">
             <label className="text-sm text-zinc-700">Notiz</label>
@@ -4278,6 +4304,12 @@ function TMTCombo({ sessionData, onPersist, onAbort, onDone }) {
           <Stopwatch
             persisted={tB}
             onPersist={(ms) => persist({ tmt_b: ms })}
+            autoAbortMs={300_000}
+            onAutoAbort={(info) => {
+              const payload = { reason: "Automatischer Abbruch", limit_ms: 300_000, at: info?.at || Date.now(), part: "B" };
+              persist({ tmt_b: 300_000, tmt_b_aborted: payload });
+              onAbort && onAbort(payload);
+            }}
           />
           <Card className="space-y-1">
             <label className="text-sm text-zinc-700">Notiz</label>
