@@ -733,10 +733,9 @@ const OptBtn = ({ selected, ok, onSelect, children, testid }) => (
   <button
     type="button"
     data-testid={testid}
-    onPointerUp={() => { onSelect && onSelect("pointerup"); }}
     onClick={() => { onSelect && onSelect("click"); }}
     className={cls(
-      "px-4 py-2 rounded-xl border text-base select-none inline-flex items-center gap-2",
+      "px-4 py-2 rounded-xl border text-base select-none inline-flex items-center gap-2 touch-manipulation",
       selected ? (ok ? "bg-emerald-50 border-emerald-200" : "bg-rose-50 border-rose-200") : "bg-white border-zinc-300"
     )}
   >
@@ -789,17 +788,13 @@ function ZahlenSpanneScreen({ label, sequences, persisted, extraActionLabel, onS
   }, [onStateChange, label, pairs, vals]);
 
   useEffect(() => {
-    if (persisted?.vals && Array.isArray(persisted.vals) && persisted.vals.length === pairs.length) {
-      setVals(persisted.vals);
-      return;
-    }
     setVals((prev) => {
       if (!Array.isArray(prev) || prev.length !== pairs.length) {
         return pairs.map((_, i) => prev?.[i] ?? { v1: null, v2: null });
       }
       return prev;
     });
-  }, [pairs, persisted?.vals]);
+  }, [pairs]);
 
   const longest = useMemo(() => {
     let max = 0;
@@ -870,17 +865,13 @@ function BlockSpanneScreen({ label, sequences, persisted, onStateChange, onAbort
   }, [onStateChange, label, pairs, vals]);
 
   useEffect(() => {
-    if (persisted?.vals && Array.isArray(persisted.vals) && persisted.vals.length === pairs.length) {
-      setVals(persisted.vals);
-      return;
-    }
     setVals((prev) => {
       if (!Array.isArray(prev) || prev.length !== pairs.length) {
         return pairs.map((_, i) => prev?.[i] ?? { v1: null, v2: null });
       }
       return prev;
     });
-  }, [pairs, persisted?.vals]);
+  }, [pairs]);
 
   const longest = useMemo(() => {
     let max = 0;
@@ -1287,37 +1278,71 @@ function SpannenMenu({ statusMap, onOpen }) {
 
 function UhrentestWire({ sessionData, onPersist, onAbort }) {
   const data = sessionData?.uhr || {};
+  const scoreFromParts = (p = {}) =>
+    (p.kreis ? 1 : 0) +
+    (p.nummern1 ? 1 : 0) +
+    (p.nummern2 ? 1 : 0) +
+    (p.zeiger1 ? 1 : 0) +
+    (p.zeiger2 ? 1 : 0);
+
   const derivePartsFromScore = (val) => {
     const s = typeof val === "number" ? Math.max(0, Math.min(5, val)) : 0;
-    const parts = { kreis: false, nummern: false, zeiger: false };
+    const parts = { kreis: false, nummern1: false, nummern2: false, zeiger1: false, zeiger2: false };
     let remaining = s;
     if (remaining >= 1) { parts.kreis = true; remaining -= 1; }
-    if (remaining >= 2) { parts.nummern = true; remaining -= 2; }
-    if (remaining >= 2) { parts.zeiger = true; remaining -= 2; }
+    if (remaining >= 1) { parts.nummern1 = true; remaining -= 1; }
+    if (remaining >= 1) { parts.nummern2 = true; remaining -= 1; }
+    if (remaining >= 1) { parts.zeiger1 = true; remaining -= 1; }
+    if (remaining >= 1) { parts.zeiger2 = true; remaining -= 1; }
     return parts;
   };
 
-  const [parts, setParts] = useState(() => data.parts || derivePartsFromScore(data.score));
+  const normalizeParts = (raw) => {
+    if (!raw || typeof raw !== "object") return null;
+    // New 5-part format
+    if (["nummern1", "nummern2", "zeiger1", "zeiger2"].some((k) => k in raw)) {
+      return {
+        kreis: !!raw.kreis,
+        nummern1: !!raw.nummern1,
+        nummern2: !!raw.nummern2,
+        zeiger1: !!raw.zeiger1,
+        zeiger2: !!raw.zeiger2,
+      };
+    }
+    // Legacy 3-part format: map 2-point buttons to two 1-point buttons
+    if (["nummern", "zeiger"].some((k) => k in raw)) {
+      return {
+        kreis: !!raw.kreis,
+        nummern1: !!raw.nummern,
+        nummern2: !!raw.nummern,
+        zeiger1: !!raw.zeiger,
+        zeiger2: !!raw.zeiger,
+      };
+    }
+    return null;
+  };
+
+  const [parts, setParts] = useState(() => normalizeParts(data.parts) || derivePartsFromScore(data.score));
   const [score, setScore] = useState(() => {
     if (typeof data.score === "number") return data.score;
-    const p = data.parts || derivePartsFromScore(data.score);
-    return (p.kreis ? 1 : 0) + (p.nummern ? 2 : 0) + (p.zeiger ? 2 : 0);
+    const p = normalizeParts(data.parts) || derivePartsFromScore(data.score);
+    return scoreFromParts(p);
   });
   const [note, setNote] = useState(data.note || "");
   useEffect(() => {
-    const nextParts = data.parts || derivePartsFromScore(data.score);
+    const nextParts = normalizeParts(data.parts) || derivePartsFromScore(data.score);
     setParts(nextParts);
     const nextScore = typeof data.score === "number"
       ? data.score
-      : (nextParts.kreis ? 1 : 0) + (nextParts.nummern ? 2 : 0) + (nextParts.zeiger ? 2 : 0);
+      : scoreFromParts(nextParts);
     setScore(nextScore);
     setNote(data.note || "");
   }, [data.score, data.note, data.parts]);
 
-  const togglePart = (key, points) => {
+  const togglePart = (key) => {
     setParts((prev) => {
       const next = { ...prev, [key]: !prev[key] };
-      const nextScore = (next.kreis ? 1 : 0) + (next.nummern ? 2 : 0) + (next.zeiger ? 2 : 0);
+      const nextScore = scoreFromParts(next);
       setScore(nextScore);
       onPersist && onPersist({ score: nextScore, parts: next, note });
       return next;
@@ -1334,7 +1359,7 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
         <div className="grid gap-2">
           <button
             type="button"
-            onClick={() => togglePart("kreis", 1)}
+            onClick={() => togglePart("kreis")}
             className={cls(
               "w-full text-left px-3 py-2 rounded-xl border text-sm",
               parts.kreis ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
@@ -1344,23 +1369,43 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
           </button>
           <button
             type="button"
-            onClick={() => togglePart("nummern", 2)}
+            onClick={() => togglePart("nummern1")}
             className={cls(
               "w-full text-left px-3 py-2 rounded-xl border text-sm",
-              parts.nummern ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
+              parts.nummern1 ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
             )}
           >
-            Nummern korrekt (2 Punkte)
+            Nummern korrekt (1 Punkt)
           </button>
           <button
             type="button"
-            onClick={() => togglePart("zeiger", 2)}
+            onClick={() => togglePart("nummern2")}
             className={cls(
               "w-full text-left px-3 py-2 rounded-xl border text-sm",
-              parts.zeiger ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
+              parts.nummern2 ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
             )}
           >
-            Zeiger korrekt (2 Punkte)
+            Nummern korrekt (1 Punkt)
+          </button>
+          <button
+            type="button"
+            onClick={() => togglePart("zeiger1")}
+            className={cls(
+              "w-full text-left px-3 py-2 rounded-xl border text-sm",
+              parts.zeiger1 ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
+            )}
+          >
+            Zeiger korrekt (1 Punkt)
+          </button>
+          <button
+            type="button"
+            onClick={() => togglePart("zeiger2")}
+            className={cls(
+              "w-full text-left px-3 py-2 rounded-xl border text-sm",
+              parts.zeiger2 ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
+            )}
+          >
+            Zeiger korrekt (1 Punkt)
           </button>
         </div>
         <label className="block mt-2 text-sm">Kommentar</label>
@@ -1378,11 +1423,11 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
 function CERADMenu({ onOpen }) {
   const items = [
     { key: "cerad_mmst", label: "CERAD MMST" },
-    { key: "cerad_wl", label: "CERAD Verbalgedächtnis" },
-    { key: "cerad_benennen", label: "Boston Naming Test" },
     { key: "cerad_wf", label: "Wortflüssigkeit" },
-    { key: "cerad_tmt", label: "CERAD TMT A/B" },
+    { key: "cerad_benennen", label: "Boston Naming Test" },
+    { key: "cerad_wl", label: "CERAD Verbalgedächtnis" },
     { key: "cerad_fig", label: "Visuokonstruktion / Figuralgedächtnis" },
+    { key: "cerad_tmt", label: "CERAD TMT A/B" },
   ];
   return (
     <section className="py-6">
@@ -1732,18 +1777,31 @@ export default function App() {
   };
 
   const triggerPdfExport = async () => {
-    const row = await buildExportRow(sessionData, sessionUUID, { includeDrawings: false });
-    const drawingsData = await loadDcsrDrawings(sessionUUID, sessionData);
-    const figureGalleries = await loadDcsrFigureGalleries(sessionData);
-    const drawings = drawingsData
-      .map((img, idx) => [`dcsr_drawing_dg${idx + 1}`, img])
-      .filter(([, img]) => !!img);
-    // Simple HTML print view
     const pat = (sessionData?.demographics?.patient_initials || "Pat").replace(/[^A-Za-z0-9_-]/g, "");
     const doc = (sessionData?.demographics?.examiner_initials || "NP").replace(/[^A-Za-z0-9_-]/g, "");
     const filename = `${pat}_${doc}_${sessionUUID}`;
+    // iPad/Safari may block popups if window.open happens after awaited work.
     const win = window.open("", "_blank");
-    if (!win) return;
+    if (!win) {
+      window.alert("PDF-Export konnte nicht geöffnet werden. Bitte Pop-ups für diese Seite erlauben.");
+      return;
+    }
+    win.document.write(`
+      <html>
+        <head><title>${filename}.pdf</title></head>
+        <body style="font-family: Arial, sans-serif; padding: 20px;">PDF-Export wird vorbereitet…</body>
+      </html>
+    `);
+    win.document.close();
+
+    try {
+      const row = await buildExportRow(sessionData, sessionUUID, { includeDrawings: false });
+      const drawingsData = await loadDcsrDrawings(sessionUUID, sessionData);
+      const figureGalleries = await loadDcsrFigureGalleries(sessionData);
+      const drawings = drawingsData
+        .map((img, idx) => [`dcsr_drawing_dg${idx + 1}`, img])
+        .filter(([, img]) => !!img);
+      // Simple HTML print view
     const style = `
       body { font-family: Arial, sans-serif; padding: 20px; color: #111; }
       h1 { font-size: 20px; margin-bottom: 4px; }
@@ -1779,17 +1837,42 @@ export default function App() {
           <style>${style}</style>
         </head>
         <body>
+          <div style="margin-bottom:12px;">
+            <button onclick="window.print()" style="padding:8px 12px;">Drucken / Als PDF sichern</button>
+          </div>
           <h1>Neuropsychologische Testung</h1>
           <div class="meta">Export: ${new Date().toLocaleString()} · Session: ${sessionUUID}</div>
           <h2>Messwerte</h2>
           <table><tbody>${rowsHtml}</tbody></table>
           ${drawings.length ? `<h2>DCS-R Zeichnungen</h2><div class="draw-grid">${drawingsHtml}</div>` : ""}
           ${galleriesHtml ? `<h2>DCS-R Figurengalerien</h2>${galleriesHtml}` : ""}
-          <script>window.onload = function(){ window.print(); };</script>
+          <script>
+            window.onload = function(){
+              try { setTimeout(function(){ window.print(); }, 50); } catch (e) {}
+            };
+          </script>
         </body>
       </html>
     `);
     win.document.close();
+    } catch (e) {
+      console.error("PDF-Export fehlgeschlagen", e);
+      try {
+        win.document.open();
+        win.document.write(`
+          <html>
+            <head><title>${filename}.pdf</title></head>
+            <body style="font-family: Arial, sans-serif; padding: 20px;">
+              <h1>PDF-Export fehlgeschlagen</h1>
+              <p>Bitte erneut versuchen. Wenn das Problem auf dem iPad bleibt, Seite neu laden und Pop-ups erlauben.</p>
+            </body>
+          </html>
+        `);
+        win.document.close();
+      } catch (_) {
+        // ignore secondary rendering errors
+      }
+    }
   };
 
   const statusMap = useMemo(() => {
@@ -1942,6 +2025,7 @@ export default function App() {
             <VLMTWire
               addGlobalReminder={addGlobalReminder}
               route={screen}
+              savedState={sessionData?.vlmt}
               onDone={() => setScreen({ name: "menu" })}
               onStateChange={(data)=> setSessionData((s)=>({ ...s, vlmt: data }))}
               onAbort={(payload)=> setSessionData((s)=>({ ...s, vlmt_aborted: payload }))}
@@ -1951,7 +2035,7 @@ export default function App() {
           <DCSRWire
             addGlobalReminder={addGlobalReminder}
             route={screen}
-            sessionData={sessionData}
+            savedState={sessionData?.dcsr}
             sessionUUID={sessionUUID}
             onStateChange={(data)=> setSessionData((s)=>({ ...s, dcsr: data }))}
             onAbort={(payload)=> setSessionData((s)=>({ ...s, dcsr_aborted: payload }))}
@@ -2217,13 +2301,13 @@ export default function App() {
                 cerad_fig_aborted: payload,
               }))
             }
-            onAfterDraw={() => setScreen({ name: "cerad_tmt" })}
+            onAfterDraw={() => setScreen({ name: "cerad_menu" })}
             onAfterRecall={() => {
               setSessionData((s) => ({
                 ...s,
                 cerad_fig: { ...(s.cerad_fig || {}), recall_pending: false },
               }));
-              setScreen({ name: "cerad_menu" });
+              setScreen({ name: "cerad_tmt" });
             }}
             onDone={() => setScreen({ name: "cerad_menu" })}
             onBackToMenu={() => setScreen({ name: "cerad_menu" })}
@@ -2244,7 +2328,7 @@ export default function App() {
                 cerad_tmt_aborted: payload,
               }))
             }
-            onDone={() => setScreen({ name: "cerad_wl", go: "dg4" })}
+            onDone={() => setScreen({ name: "cerad_menu" })}
             onBackToMenu={() => setScreen({ name: "cerad_menu" })}
           />
         )}
@@ -2672,9 +2756,18 @@ function DemoCapture({ demographics, saved, onSave }) {
 }
 
 // ---------- VLMT Wireframe ----------
-function VLMTWire({ addGlobalReminder, route, onDone, onStateChange, onAbort }) {
-  const [step, setStep] = useState("choose"); // "list" | "score" | "interf" | "dg6" | "waiting" | "dg7" | "rekog"
-  const [list, setList] = useState(null); // "A"|"B"|"C"|"D"
+function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange, onAbort }) {
+  const saved = savedState || {};
+  const initialActiveIdx =
+    saved.step === "score" ? Math.max(0, (saved.dg || 1) - 1)
+    : saved.step === "dg6" ? 5
+    : saved.step === "dg7" ? 6
+    : null;
+  const initialActiveResult = (initialActiveIdx !== null && Array.isArray(saved.results))
+    ? (saved.results[initialActiveIdx] || {})
+    : {};
+  const [step, setStep] = useState(saved.step || "choose"); // "list" | "score" | "interf" | "dg6" | "waiting" | "dg7" | "rekog"
+  const [list, setList] = useState(saved.list || null); // "A"|"B"|"C"|"D"
   useEffect(() => {
     if (route && route.name === "vlmt" && route.go === "dg7") {
       if (!list && route.list) setList(route.list);
@@ -2688,13 +2781,24 @@ function VLMTWire({ addGlobalReminder, route, onDone, onStateChange, onAbort }) 
     return source && source.length ? source : Array.from({ length: 15 }, (_, i) => `${list}-Wort ${i + 1}`);
   }, [list]);
 
-  const [dg, setDG] = useState(1); // DG1..5
+  const [dg, setDG] = useState(saved.dg || 1); // DG1..5
   // per-step scoring: selected words (boolean) and perseverations per word (number)
-  const [sel, setSel] = useState({});
-  const [pers, setPers] = useState({});
-  const [intrusions, setIntrusions] = useState("");
+  const [sel, setSel] = useState(() => ({ ...(initialActiveResult.sel || {}) }));
+  const [pers, setPers] = useState(() => ({ ...(initialActiveResult.pers || {}) }));
+  const [intrusions, setIntrusions] = useState(() => initialActiveResult.intrusions || "");
   const [results, setResults] = useState(
-    Array.from({ length: 7 }, () => ({ sel: {}, pers: {}, intrusions: "" }))
+    () => {
+      const base = Array.from({ length: 7 }, () => ({ sel: {}, pers: {}, intrusions: "" }));
+      const savedResults = Array.isArray(saved.results) ? saved.results : [];
+      savedResults.slice(0, 7).forEach((r, idx) => {
+        base[idx] = {
+          sel: { ...(r?.sel || {}) },
+          pers: { ...(r?.pers || {}) },
+          intrusions: r?.intrusions || "",
+        };
+      });
+      return base;
+    }
   );
 
   const resetScoring = () => {
@@ -2733,7 +2837,7 @@ function VLMTWire({ addGlobalReminder, route, onDone, onStateChange, onAbort }) 
 
   const interferenzList = VLMT_INTERFERENCE;
   const rekogItems = useMemo(() => (list ? (VLMT_RECOG[list] || []) : []), [list]);
-  const [rekogSel, setRekogSel] = useState({}); // key: index -> boolean
+  const [rekogSel, setRekogSel] = useState(() => ({ ...(saved.rekog?.sel || {}) })); // key: index -> boolean
   const rekogHits = useMemo(() => rekogItems.reduce((a, it, i) => a + ((rekogSel[i] && it.t) ? 1 : 0), 0), [rekogItems, rekogSel]);
   const rekogFP = useMemo(() => rekogItems.reduce((a, it, i) => a + ((rekogSel[i] && !it.t) ? 1 : 0), 0), [rekogItems, rekogSel]);
 
@@ -2743,9 +2847,22 @@ function VLMTWire({ addGlobalReminder, route, onDone, onStateChange, onAbort }) 
     if (step === "dg7") loadFrom(6);
   }, [step, dg]);
 
+  const emitState = useCallback(() => {
+    const nextResults = results.slice();
+    const activeIdx =
+      step === "score" ? Math.max(0, dg - 1)
+      : step === "dg6" ? 5
+      : step === "dg7" ? 6
+      : null;
+    if (activeIdx !== null) {
+      nextResults[activeIdx] = { sel: { ...sel }, pers: { ...pers }, intrusions };
+    }
+    onStateChange && onStateChange({ step, list, dg, results: nextResults, rekog: { sel: rekogSel, items: rekogItems } });
+  }, [onStateChange, step, list, dg, results, sel, pers, intrusions, rekogSel, rekogItems]);
+
   useEffect(() => {
-    onStateChange && onStateChange({ step, list, dg, results, rekog: { sel: rekogSel, items: rekogItems } });
-  }, [onStateChange, step, list, dg, results, rekogSel, rekogItems]);
+    emitState();
+  }, [emitState]);
 
   return (
     <section className="py-6">
@@ -3049,7 +3166,10 @@ function VLMTWire({ addGlobalReminder, route, onDone, onStateChange, onAbort }) 
           </div>
           <div className="mt-4">
             <button
-              onClick={() => (onDone ? onDone() : null)}
+              onClick={() => {
+                emitState();
+                if (onDone) onDone();
+              }}
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
             >
               Fertig
@@ -3063,8 +3183,8 @@ function VLMTWire({ addGlobalReminder, route, onDone, onStateChange, onAbort }) 
 }
 
 // ---------- DCS-R Wireframe ----------
-function DCSRWire({ addGlobalReminder, route, sessionData, sessionUUID, onStateChange, onAbort, onDone }) {
-  const saved = sessionData?.dcsr || {};
+function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateChange, onAbort, onDone }) {
+  const saved = savedState || {};
   const [step, setStep] = useState(saved.step || "choose"); // "dg" | "waiting" | "rekog"
   const [ver, setVer] = useState(saved.ver || null); // "V1"|"V2"
   const [dg, setDG] = useState(saved.dg || 1);
@@ -3109,6 +3229,30 @@ function DCSRWire({ addGlobalReminder, route, sessionData, sessionUUID, onStateC
     });
   }
 
+  function dec(field) {
+    setCounts((xs) => {
+      const copy = xs.slice();
+      copy[dg - 1] = { ...copy[dg - 1], [field]: Math.max(0, copy[dg - 1][field] - 1) };
+      return copy;
+    });
+  }
+
+  function fillRemainingDgsWithCeiling() {
+    setCounts((xs) => {
+      const copy = xs.slice();
+      for (let i = dg; i < 5; i += 1) {
+        copy[i] = {
+          richtig: 9,
+          falsch: 0,
+          gedreht: 0,
+          perseveration: 0,
+        };
+      }
+      return copy;
+    });
+    setDG(5);
+  }
+
   useEffect(() => {
     if (route && route.name === "dcsr" && route.go === "rekog") {
       setStep("rekog");
@@ -3133,15 +3277,17 @@ function DCSRWire({ addGlobalReminder, route, sessionData, sessionUUID, onStateC
         return next;
       });
       bumpDrawingKeysVersion((v) => v + 1);
-      onStateChange && onStateChange({
-        step,
-        ver,
-        dg,
-        counts,
-        drawingKeys: keys,
-        drawingGalleryKeys: drawingGalleryKeysRef.current,
-        rekog: { responses: rekogResp },
-      });
+      if (onStateChange) {
+        onStateChange({
+          step,
+          ver,
+          dg,
+          counts,
+          drawingKeys: keys,
+          drawingGalleryKeys: drawingGalleryKeysRef.current,
+          rekog: { responses: rekogResp },
+        });
+      }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // run once on mount
@@ -3172,7 +3318,7 @@ function DCSRWire({ addGlobalReminder, route, sessionData, sessionUUID, onStateC
     })();
   }, [sessionUUID]);
 
-  useEffect(() => {
+  const emitState = useCallback(() => {
     onStateChange && onStateChange({
       step,
       ver,
@@ -3183,6 +3329,10 @@ function DCSRWire({ addGlobalReminder, route, sessionData, sessionUUID, onStateC
       rekog: { responses: rekogResp },
     });
   }, [onStateChange, step, ver, dg, counts, rekogResp, drawingKeysVersion]);
+
+  useEffect(() => {
+    emitState();
+  }, [emitState]);
 
   const handleDrawingChange = useCallback(async (data) => {
     const hadKey = !!drawingKeysRef.current[dg - 1];
@@ -3274,10 +3424,10 @@ function DCSRWire({ addGlobalReminder, route, sessionData, sessionUUID, onStateC
             </div>
           )}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
-            <Counter label="Richtig" val={counts[dg - 1].richtig} onPlus={() => inc("richtig")} max={9} />
-            <Counter label="Falsch" val={counts[dg - 1].falsch} onPlus={() => inc("falsch")} />
-            <Counter label="Gedreht" val={counts[dg - 1].gedreht} onPlus={() => inc("gedreht")} />
-            <Counter label="Perseveration" val={counts[dg - 1].perseveration} onPlus={() => inc("perseveration")} />
+            <Counter label="Richtig" val={counts[dg - 1].richtig} onPlus={() => inc("richtig")} onMinus={() => dec("richtig")} max={9} />
+            <Counter label="Falsch" val={counts[dg - 1].falsch} onPlus={() => inc("falsch")} onMinus={() => dec("falsch")} />
+            <Counter label="Gedreht" val={counts[dg - 1].gedreht} onPlus={() => inc("gedreht")} onMinus={() => dec("gedreht")} />
+            <Counter label="Perseveration" val={counts[dg - 1].perseveration} onPlus={() => inc("perseveration")} onMinus={() => dec("perseveration")} />
           </div>
 
           {dg <= 3 && totalFirst3 <= 1 && (
@@ -3290,10 +3440,29 @@ function DCSRWire({ addGlobalReminder, route, sessionData, sessionUUID, onStateC
           {counts[dg - 1].richtig === 9 && (
             <div className="mt-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm">
               Ceiling erreicht (9/9). Verbleibende DG werden automatisch mit 9 Punkten gefüllt.
+              {dg < 5 && (
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    onClick={fillRemainingDgsWithCeiling}
+                    className="px-3 py-2 rounded-xl border border-emerald-300 bg-white text-emerald-900"
+                  >
+                    Restliche DG mit 9 ausfüllen
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
           <div className="flex gap-2 mt-4">
+            <button
+              type="button"
+              disabled={dg <= 1}
+              onClick={() => { if (dg > 1) setDG(dg - 1); }}
+              className={cls("px-3 py-2 rounded-xl border", dg <= 1 && "opacity-40 cursor-not-allowed")}
+            >
+              {dg > 1 ? `Zurück zu DG${dg - 1}` : "Zurück"}
+            </button>
             {dg < 5 && !ceilingHit && (
               <button onClick={() => setDG(dg + 1)} className="px-3 py-2 rounded-xl bg-zinc-900 text-white">
                 Weiter zu DG{dg + 1}
@@ -3369,7 +3538,10 @@ function DCSRWire({ addGlobalReminder, route, sessionData, sessionUUID, onStateC
           <div className="mt-4">
             <button
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
-              onClick={() => onDone && onDone()}
+              onClick={() => {
+                emitState();
+                if (onDone) onDone();
+              }}
             >
               Fertig
             </button>
@@ -3380,7 +3552,7 @@ function DCSRWire({ addGlobalReminder, route, sessionData, sessionUUID, onStateC
   );
 }
 
-function Counter({ label, val, onPlus, max }) {
+function Counter({ label, val, onPlus, onMinus, max }) {
   const disabled = typeof max === "number" && val >= max;
   return (
     <div className="p-3 rounded-xl border bg-white flex items-center justify-between">
@@ -3388,13 +3560,24 @@ function Counter({ label, val, onPlus, max }) {
         <div className="text-sm text-zinc-600">{label}</div>
         <div className="text-2xl font-semibold">{val}</div>
       </div>
-      <button
-        disabled={disabled}
-        onClick={onPlus}
-        className={cls("px-3 py-2 rounded-xl border", disabled && "opacity-40 cursor-not-allowed")}
-      >
-        +1
-      </button>
+      <div className="flex items-center gap-2">
+        {val > 0 && onMinus && (
+          <button
+            type="button"
+            onClick={onMinus}
+            className="px-3 py-2 rounded-xl border"
+          >
+            -1
+          </button>
+        )}
+        <button
+          disabled={disabled}
+          onClick={onPlus}
+          className={cls("px-3 py-2 rounded-xl border", disabled && "opacity-40 cursor-not-allowed")}
+        >
+          +1
+        </button>
+      </div>
     </div>
   );
 }
