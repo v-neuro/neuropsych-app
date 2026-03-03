@@ -407,6 +407,10 @@ async function buildExportRow(sessionData, sessionUUID, opts = {}) {
   row.demographics_patient_initials = demo.patient_initials || "";
   row.demographics_patient_gender = demo.patient_gender || "";
   row.demographics_examiner_initials = demo.examiner_initials || "";
+  const startedAt = typeof s.testing_started_at === "number" ? s.testing_started_at : null;
+  const startedDate = startedAt ? new Date(startedAt) : null;
+  row.testing_start_date = startedDate ? startedDate.toLocaleDateString("de-DE") : "";
+  row.testing_start_time = startedDate ? startedDate.toLocaleTimeString("de-DE") : "";
 
   // VLMT
   const vlmt = s.vlmt || {};
@@ -1706,6 +1710,15 @@ export default function App() {
     document.documentElement.classList.remove("dark");
   }, []);
 
+  // Set once when the first actual test screen is opened.
+  useEffect(() => {
+    if (sessionData?.testing_started_at) return;
+    const name = screen?.name;
+    if (!name) return;
+    if (name === "menu" || name === "cerad_menu" || name === "spannen_menu") return;
+    setSessionData((s) => (s?.testing_started_at ? s : { ...s, testing_started_at: Date.now() }));
+  }, [screen?.name, sessionData?.testing_started_at]);
+
   const passwordHash = (import.meta.env?.VITE_APP_PASSWORD_HASH || "e3f67bab0aaf4f97f50b6d999c89300f988ca9e34895207bf9e700591406e09c").toLowerCase();
 
   async function hashText(text) {
@@ -1770,16 +1783,28 @@ export default function App() {
     const a = document.createElement("a");
     a.href = url;
     const pat = (sessionData?.demographics?.patient_initials || "Pat").replace(/[^A-Za-z0-9_-]/g, "");
-    const doc = (sessionData?.demographics?.examiner_initials || "NP").replace(/[^A-Za-z0-9_-]/g, "");
-    a.download = `${pat}_${doc}_${sessionUUID}.csv`;
+    const startedAt = typeof sessionData?.testing_started_at === "number" ? sessionData.testing_started_at : Date.now();
+    const started = new Date(startedAt);
+    const yyyy = started.getFullYear();
+    const mm = String(started.getMonth() + 1).padStart(2, "0");
+    const dd = String(started.getDate()).padStart(2, "0");
+    const hh = String(started.getHours()).padStart(2, "0");
+    const min = String(started.getMinutes()).padStart(2, "0");
+    a.download = `${yyyy}-${mm}-${dd}_${hh}-${min}_${pat}_${sessionUUID}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const triggerPdfExport = async () => {
     const pat = (sessionData?.demographics?.patient_initials || "Pat").replace(/[^A-Za-z0-9_-]/g, "");
-    const doc = (sessionData?.demographics?.examiner_initials || "NP").replace(/[^A-Za-z0-9_-]/g, "");
-    const filename = `${pat}_${doc}_${sessionUUID}`;
+    const startedAt = typeof sessionData?.testing_started_at === "number" ? sessionData.testing_started_at : Date.now();
+    const started = new Date(startedAt);
+    const yyyy = started.getFullYear();
+    const mm = String(started.getMonth() + 1).padStart(2, "0");
+    const dd = String(started.getDate()).padStart(2, "0");
+    const hh = String(started.getHours()).padStart(2, "0");
+    const min = String(started.getMinutes()).padStart(2, "0");
+    const filename = `${yyyy}-${mm}-${dd}_${hh}-${min}_${pat}_${sessionUUID}`;
     // iPad/Safari may block popups if window.open happens after awaited work.
     const win = window.open("", "_blank");
     if (!win) {
@@ -1798,9 +1823,12 @@ export default function App() {
       const row = await buildExportRow(sessionData, sessionUUID, { includeDrawings: false });
       const drawingsData = await loadDcsrDrawings(sessionUUID, sessionData);
       const figureGalleries = await loadDcsrFigureGalleries(sessionData);
-      const drawings = drawingsData
-        .map((img, idx) => [`dcsr_drawing_dg${idx + 1}`, img])
-        .filter(([, img]) => !!img);
+      const dcsrByDg = Array.from({ length: 5 }, (_, idx) => {
+        const main = drawingsData[idx] || null;
+        const gallery = Array.isArray(figureGalleries[idx]) ? figureGalleries[idx].filter(Boolean) : [];
+        const images = [main, ...gallery].filter(Boolean);
+        return { dg: idx + 1, images };
+      }).filter((x) => x.images.length > 0);
       // Simple HTML print view
     const style = `
       body { font-family: Arial, sans-serif; padding: 20px; color: #111; }
@@ -1817,16 +1845,12 @@ export default function App() {
     const rowsHtml = Object.entries(row)
       .map(([k, v]) => `<tr><td>${k}</td><td>${v === null || v === undefined ? "" : v}</td></tr>`)
       .join("");
-    const drawingsHtml = drawings
-      .map(([k, v]) => `<div class="draw-card"><div style="font-size:12px;margin-bottom:4px;">${k}</div><img src="${v}" alt="${k}"/></div>`)
-      .join("");
-    const galleriesHtml = figureGalleries
-      .map((imgs, idx) => {
-        if (!imgs.length) return "";
-        const cards = imgs
-          .map((src, figIdx) => `<div class="draw-card"><div style="font-size:12px;margin-bottom:4px;">Figur ${figIdx + 1}</div><img src="${src}" alt="DG${idx + 1} Figur ${figIdx + 1}"/></div>`)
+    const dcsrHtml = dcsrByDg
+      .map(({ dg, images }) => {
+        const cards = images
+          .map((src, figIdx) => `<div class="draw-card"><div style="font-size:12px;margin-bottom:4px;">DG${dg} – Zeichnung ${figIdx + 1}</div><img src="${src}" alt="DCS-R DG${dg} Zeichnung ${figIdx + 1}"/></div>`)
           .join("");
-        return `<div class="dg-label">DG${idx + 1}</div><div class="draw-grid">${cards}</div>`;
+        return `<div class="dg-label">DG${dg}</div><div class="draw-grid">${cards}</div>`;
       })
       .join("");
 
@@ -1844,8 +1868,7 @@ export default function App() {
           <div class="meta">Export: ${new Date().toLocaleString()} · Session: ${sessionUUID}</div>
           <h2>Messwerte</h2>
           <table><tbody>${rowsHtml}</tbody></table>
-          ${drawings.length ? `<h2>DCS-R Zeichnungen</h2><div class="draw-grid">${drawingsHtml}</div>` : ""}
-          ${galleriesHtml ? `<h2>DCS-R Figurengalerien</h2>${galleriesHtml}` : ""}
+          ${dcsrHtml ? `<h2>DCS-R Zeichnungen</h2>${dcsrHtml}` : ""}
           <script>
             window.onload = function(){
               try { setTimeout(function(){ window.print(); }, 50); } catch (e) {}
@@ -2301,7 +2324,7 @@ export default function App() {
                 cerad_fig_aborted: payload,
               }))
             }
-            onAfterDraw={() => setScreen({ name: "cerad_menu" })}
+            onAfterDraw={() => setScreen({ name: "cerad_wl", go: "dg4" })}
             onAfterRecall={() => {
               setSessionData((s) => ({
                 ...s,

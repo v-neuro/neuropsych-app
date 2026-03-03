@@ -103,15 +103,13 @@ export const Stopwatch = forwardRef(function Stopwatch({ persisted, onPersist, a
         </div>
       )}
       <div className="flex gap-2 mt-3">
-        {state === "idle" && (
-          <button onClick={onStart} className="px-3 py-2 rounded-xl bg-zinc-900 text-white">Start</button>
-        )}
-        {state === "running" && (
-          <button onClick={onStop} className="px-3 py-2 rounded-xl border">Stopp</button>
-        )}
-        {state !== "running" && (
-          <button onClick={onReset} className="px-3 py-2 rounded-xl border">Reset</button>
-        )}
+        <button
+          onClick={state === "running" ? onStop : onStart}
+          className={state === "running" ? "px-3 py-2 rounded-xl border" : "px-3 py-2 rounded-xl bg-zinc-900 text-white"}
+        >
+          {state === "running" ? "Stopp" : "Start"}
+        </button>
+        <button onClick={onReset} className="px-3 py-2 rounded-xl border">Reset</button>
       </div>
     </div>
   );
@@ -133,15 +131,17 @@ export function Countdown60() {
     <div className="p-4 rounded-2xl border bg-white max-w-md">
       <div className="text-4xl font-mono tabular-nums">{fmtMs(t)}</div>
       <div className="flex gap-2 mt-3">
-        {state !== "running" && t > 0 && (
-          <button onClick={onStart} className="px-3 py-2 rounded-xl bg-zinc-900 text-white">Start</button>
+        {t > 0 ? (
+          <button
+            onClick={state === "running" ? onStop : onStart}
+            className={state === "running" ? "px-3 py-2 rounded-xl border" : "px-3 py-2 rounded-xl bg-zinc-900 text-white"}
+          >
+            {state === "running" ? "Stopp" : "Start"}
+          </button>
+        ) : (
+          <button disabled className="px-3 py-2 rounded-xl border opacity-40 cursor-not-allowed">Start</button>
         )}
-        {state === "running" && (
-          <button onClick={onStop} className="px-3 py-2 rounded-xl border">Stopp</button>
-        )}
-        {state !== "running" && (
-          <button onClick={onReset} className="px-3 py-2 rounded-xl border">Reset</button>
-        )}
+        <button onClick={onReset} className="px-3 py-2 rounded-xl border">Reset</button>
       </div>
     </div>
   );
