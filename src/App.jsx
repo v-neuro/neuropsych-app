@@ -177,6 +177,10 @@ function TestbereicheModal({ open, onClose, onOpenTest }) {
     onClose();
     onOpenTest(route);
   };
+  const [openSections, setOpenSections] = useState({});
+  const toggleSection = (key) => {
+    setOpenSections((s) => ({ ...s, [key]: !s[key] }));
+  };
   const bereiche = [
     {
       titel: "Epileptologie – Lokalisationsdiagnostik, prächirurgische und Verlaufsdiagnostik + Neurochirurgie",
@@ -255,41 +259,72 @@ function TestbereicheModal({ open, onClose, onOpenTest }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div className="w-full max-w-3xl rounded-2xl border border-zinc-200 bg-white p-5 shadow-lg dark:bg-zinc-900 dark:border-zinc-700 max-h-[85vh] overflow-auto">
-        <div className="flex items-center justify-between mb-3">
-          <div className="text-lg font-semibold">Testungsaufbau / Testbereiche</div>
+      <div className="w-full max-w-4xl rounded-2xl border border-zinc-200 bg-white p-5 shadow-lg dark:bg-zinc-900 dark:border-zinc-700 max-h-[85vh] overflow-auto">
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div>
+            <div className="text-lg font-semibold">Testungsaufbau für verschiedene Fragestellungen</div>
+            <p className="text-sm text-zinc-600 mt-1">Direktstart verfügbarer Tests mit einem Klick. Nicht digital verfügbare Module sind hier abgelegt.</p>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 rounded-xl border text-sm"
+            className="px-3 py-1.5 rounded-xl border text-sm shrink-0"
           >
             Schließen
           </button>
         </div>
-        <div className="text-sm space-y-4 leading-relaxed">
+        <div className="space-y-3 text-sm">
           {bereiche.map((bereich) => (
-            <section key={bereich.titel}>
-              <h3 className="font-semibold">{bereich.titel}</h3>
-              {bereich.subtitle && <p className="mt-1 text-sm italic">{bereich.subtitle}</p>}
-              <ul className="mt-1 list-disc list-inside space-y-1">
-                {bereich.items.map((item) => (
-                  <li key={item.name} className="flex items-center justify-between gap-2">
-                    <span>{item.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => onOpen(item.testRoute)}
-                      disabled={!item.testRoute}
-                      className={`px-2 py-1 rounded-lg text-xs border ${
-                        item.testRoute
-                          ? "bg-zinc-900 text-white"
-                          : "bg-zinc-100 text-zinc-500"
-                      }`}
+            <section
+              key={bereich.titel}
+              className="rounded-xl border border-zinc-200 bg-zinc-50 dark:bg-zinc-800/50 dark:border-zinc-700"
+            >
+              <div
+                className="p-3 cursor-pointer flex items-center justify-between gap-2 border-b border-zinc-200 dark:border-zinc-700"
+                onClick={() => toggleSection(bereich.titel)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    toggleSection(bereich.titel);
+                  }
+                }}
+              >
+                <h3 className="font-semibold leading-tight">{bereich.titel}</h3>
+                <span className="text-xs text-zinc-500">
+                  {openSections[bereich.titel] ? "▾" : "▸"}
+                </span>
+              </div>
+              <div
+                className="overflow-hidden transition-all duration-200"
+                style={{ maxHeight: openSections[bereich.titel] ? "2000px" : "0px" }}
+                aria-hidden={!openSections[bereich.titel]}
+              >
+                <div className="p-3 pt-2 space-y-2">
+                  {bereich.subtitle && <p className="text-sm italic text-zinc-600 dark:text-zinc-300">{bereich.subtitle}</p>}
+                  {bereich.items.map((item) => (
+                    <div
+                      key={item.name}
+                      className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto] sm:items-center"
                     >
-                      {item.testRoute ? "Test starten" : "Nicht digital verfügbar"}
-                    </button>
-                  </li>
-                ))}
-              </ul>
+                      <span>{item.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => onOpen(item.testRoute)}
+                        disabled={!item.testRoute}
+                        className={`w-full sm:w-auto justify-self-start sm:justify-self-end px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium border transition ${
+                          item.testRoute
+                            ? "bg-zinc-900 text-white hover:opacity-90"
+                            : "bg-zinc-100 text-zinc-500"
+                        }`}
+                      >
+                        {item.testRoute ? "Test starten" : "Nicht digital verfügbar"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </section>
           ))}
         </div>
