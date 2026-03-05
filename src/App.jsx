@@ -170,6 +170,134 @@ function ImpressumModal({ open, onClose }) {
   );
 }
 
+function TestbereicheModal({ open, onClose, onOpenTest }) {
+  if (!open) return null;
+  const onOpen = (route) => {
+    if (!onOpenTest || !route) return;
+    onClose();
+    onOpenTest(route);
+  };
+  const bereiche = [
+    {
+      titel: "Epileptologie – Lokalisationsdiagnostik, prächirurgische und Verlaufsdiagnostik + Neurochirurgie",
+      items: [
+        { name: "Strukturierte Anamnese einschl. psychiatrischer Screeningfragen", testRoute: null },
+        { name: "VLMT", testRoute: "vlmt" },
+        { name: "DCS-R", testRoute: "dcsr" },
+        { name: "EpiTrack (TMT A & B, Interferenz,  Zahlenspanne rückwärts,  Labyrinth,    Wortflüssigkeit phonematisch [P, L])", testRoute: "epi" },
+        { name: "Stroop (Farbwörter lesen, Farbstriche benennen, Farb-Wort Interferenz)", testRoute: "stroop" },
+        { name: "Zahlenspanne vorwärts und rückwärts", testRoute: "spannen_menu" },
+        { name: "Blockspanne vorwärts und rückwärts", testRoute: "spannen_menu" },
+        { name: "Wortflüssigkeit phonematisch (P, G-R) und semantisch (Tier, Sportarten + Früchte)", testRoute: "rwt" },
+        { name: "PHQ-9 und GAD-7", testRoute: null },
+        { name: "QOLIE-31", testRoute: null },
+      ],
+    },
+    {
+      titel: "Epileptologie – kognitives Screening zu Medikamentennebenwirkungen",
+      items: [
+        { name: "Strukturierte Anamnese einschl. psychiatrischer Screeningfragen", testRoute: null },
+        { name: "EpiTrack (TMT A & B, Interferenz, Zahlenspanne rückwärts, Labyrinth, Wortflüssigkeit phonematisch)", testRoute: "epi" },
+        { name: "PHQ-9 und GAD-7", testRoute: null },
+      ],
+    },
+    {
+      titel: "Kognitives Leistungsprofil/Allgemeine Neurologie",
+      items: [
+        { name: "Strukturierte Anamnese einschl. Screening-Fragen Depression/Ängste", testRoute: null },
+        { name: "VLMT", testRoute: "vlmt" },
+        { name: "Rey-Figur – Copy", testRoute: null },
+        { name: "TMT A & B", testRoute: "tmt_ab" },
+        { name: "Zahlenspanne vorwärts und rückwärts", testRoute: "spannen_menu" },
+        { name: "Stroop (Farbwörter lesen, Farben benennen, Farb-Wort Interferenz)", testRoute: "stroop" },
+        { name: "Wortflüssigkeit phonematisch (P, G-R) und semantisch (Tier, Sportarten + Früchte)", testRoute: "rwt" },
+        { name: "PHQ-9 und GAD-7", testRoute: null },
+      ],
+    },
+    {
+      titel: "THS-Indikationsprüfung",
+      items: [
+        { name: "Strukturierte Anamnese einschl. Screening-Fragen Depression/Ängste", testRoute: null },
+        { name: "ACE", testRoute: null },
+        { name: "PHQ-9 und GAD-7", testRoute: null },
+      ],
+    },
+    {
+      titel: "Kognitiver Status/Orientierende Testung",
+      items: [
+        { name: "Strukturierte Anamnese einschl. psychiatrischer Screeningfragen und Abfrage der Orientierung", testRoute: null },
+        { name: "ACE oder MoCA", testRoute: null },
+      ],
+    },
+    {
+      titel: "V. a. Normaldruckhydrozephalus (NPH)",
+      subtitle: "Vor und nach Entlastungspunktion:",
+      items: [
+        { name: "Strukturierte Anamnese einschl. Screening-Fragen Depression/Ängste", testRoute: null },
+        { name: "EpiTrack (TMT A & B, Interferenz, Zahlenspanne rückwärts,  Labyrinth,    Wortflüssigkeit phonematisch)", testRoute: "epi" },
+        { name: "Grooved Pegboard", testRoute: "gp" },
+        { name: "MoCA", testRoute: null },
+        { name: "PHQ-9 und GAD-7", testRoute: null },
+      ],
+    },
+    {
+      titel: "Demenz-Diagnostik/Memory Clinic",
+      items: [
+        { name: "Strukturierte Anamnese einschl. Screening-Fragen Depression/Ängste und Abfrage der Orientierung", testRoute: null },
+        { name: "CERAD+", testRoute: "cerad_menu" },
+        { name: "Zahlenspanne vorwärts und rückwärts", testRoute: "spannen_menu" },
+        { name: "Uhrentest", testRoute: "uhr" },
+        { name: "PHQ-9 und GAD-7", testRoute: null },
+        { name: "GDS", testRoute: null },
+      ],
+    },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      <div className="w-full max-w-3xl rounded-2xl border border-zinc-200 bg-white p-5 shadow-lg dark:bg-zinc-900 dark:border-zinc-700 max-h-[85vh] overflow-auto">
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-lg font-semibold">Testungsaufbau / Testbereiche</div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3 py-1.5 rounded-xl border text-sm"
+          >
+            Schließen
+          </button>
+        </div>
+        <div className="text-sm space-y-4 leading-relaxed">
+          {bereiche.map((bereich) => (
+            <section key={bereich.titel}>
+              <h3 className="font-semibold">{bereich.titel}</h3>
+              {bereich.subtitle && <p className="mt-1 text-sm italic">{bereich.subtitle}</p>}
+              <ul className="mt-1 list-disc list-inside space-y-1">
+                {bereich.items.map((item) => (
+                  <li key={item.name} className="flex items-center justify-between gap-2">
+                    <span>{item.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => onOpen(item.testRoute)}
+                      disabled={!item.testRoute}
+                      className={`px-2 py-1 rounded-lg text-xs border ${
+                        item.testRoute
+                          ? "bg-zinc-900 text-white"
+                          : "bg-zinc-100 text-zinc-500"
+                      }`}
+                    >
+                      {item.testRoute ? "Test starten" : "Nicht digital verfügbar"}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PasswordPrompt({ onSubmit, error }) {
   const [pwd, setPwd] = useState("");
   const [remember, setRemember] = useState(true);
@@ -399,14 +527,35 @@ async function buildExportRow(sessionData, sessionUUID, opts = {}) {
   const row = { session_uuid: sessionUUID };
   const includeDrawings = !!opts.includeDrawings;
   const drawingsData = includeDrawings ? (opts.drawingsData || []) : [];
+  const toSchoolLabel = (years) => {
+    if (years === 9 || years === "9") return "Haupt-/Volksschulabschluss";
+    if (years === 10 || years === "10") return "Realschulabschluss";
+    if (years === 12 || years === "12") return "Fachhochschulreife";
+    if (years === 13 || years === "13") return "Abitur/Hochschulreife";
+    return "";
+  };
+  const toTrainingLabel = (code) => {
+    if (code === "lehre_3") return "Ausbildung/Lehre: 3 Jahre";
+    if (code === "bachelor") return "Bachelor";
+    if (code === "master") return "Master (Bachelor+Master)";
+    if (code === "promotion") return "Promotion";
+    return "Keine";
+  };
 
   const msToSec = (ms) => (typeof ms === "number" ? Math.round(ms / 1000) : null);
 
   // Basisdaten
   const demo = s.demographics || {};
   row.demographics_patient_initials = demo.patient_initials || "";
+  row.demographics_patient_age = demo.patient_age || "";
   row.demographics_patient_gender = demo.patient_gender || "";
   row.demographics_examiner_initials = demo.examiner_initials || "";
+  row.demographics_education_school_years = demo.education_school_years ?? "";
+  row.demographics_education_school_label = demo.education_school_label || toSchoolLabel(demo.education_school_years);
+  row.demographics_education_training_label = demo.education_training_label || toTrainingLabel(demo.education_training_code);
+  row.demographics_education_dissertation_years = demo.education_dissertation_years ?? "";
+  row.demographics_education_training_years = demo.education_training_years ?? "";
+  row.demographics_education_years = demo.education_years ?? "";
   const startedAt = typeof s.testing_started_at === "number" ? s.testing_started_at : null;
   const startedDate = startedAt ? new Date(startedAt) : null;
   row.testing_start_date = startedDate ? startedDate.toLocaleDateString("de-DE") : "";
@@ -1602,6 +1751,7 @@ export default function App() {
   });
   const [authError, setAuthError] = useState("");
   const [showImpressum, setShowImpressum] = useState(false);
+  const [showTestbereiche, setShowTestbereiche] = useState(false);
   const [screen, setScreen] = useState(
     { name: "menu" } // many names: "vlmt","dcsr","cerad_wl","tmt_a","tmt_b","zahl_fwd","zahl_rev","block_fwd","block_rev","rwt","stroop","epi","gp","uhr","cerad_menu","cerad_mmst","cerad_benennen","cerad_wf"
   );
@@ -1842,7 +1992,15 @@ export default function App() {
       .dg-label { font-size: 14px; font-weight: 700; margin-top: 12px; margin-bottom: 6px; }
       img { max-width: 100%; height: auto; border: 1px solid #ddd; }
     `;
-    const rowsHtml = Object.entries(row)
+    const formatValue = (v) => (v === null || v === undefined ? "" : v);
+    const demoRows = Object.entries(row)
+      .filter(([k]) => k.startsWith("demographics_"));
+    const dataRows = Object.entries(row)
+      .filter(([k]) => !k.startsWith("demographics_"));
+    const demoRowsHtml = demoRows
+      .map(([k, v]) => `<tr><td>${k}</td><td>${formatValue(v)}</td></tr>`)
+      .join("");
+    const rowsHtml = dataRows
       .map(([k, v]) => `<tr><td>${k}</td><td>${v === null || v === undefined ? "" : v}</td></tr>`)
       .join("");
     const dcsrHtml = dcsrByDg
@@ -1866,6 +2024,8 @@ export default function App() {
           </div>
           <h1>Neuropsychologische Testung</h1>
           <div class="meta">Export: ${new Date().toLocaleString()} · Session: ${sessionUUID}</div>
+          <h2>Basisdaten</h2>
+          <table><tbody>${demoRowsHtml}</tbody></table>
           <h2>Messwerte</h2>
           <table><tbody>${rowsHtml}</tbody></table>
           ${dcsrHtml ? `<h2>DCS-R Zeichnungen</h2>${dcsrHtml}` : ""}
@@ -2418,8 +2578,20 @@ export default function App() {
         >
           Impressum
         </button>
+        <button
+          type="button"
+          onClick={() => setShowTestbereiche(true)}
+          className="text-sm underline underline-offset-4 ml-4"
+        >
+          Testungsaufbau für verschiedene Fragestellungen
+        </button>
       </div>
       <ImpressumModal open={showImpressum} onClose={() => setShowImpressum(false)} />
+      <TestbereicheModal
+        open={showTestbereiche}
+        onClose={() => setShowTestbereiche(false)}
+        onOpenTest={(name) => setScreen({ name })}
+      />
     </div>
     </ErrorBoundary>
   );
@@ -2718,56 +2890,209 @@ function TileMenu({ onOpen, onOpenCERAD, statusMap, disabled }) {
 }
 
 function DemoCapture({ demographics, saved, onSave }) {
-  const { patient_initials = "", patient_gender = "", examiner_initials = "" } = demographics;
-  const [local, setLocal] = useState({ patient_initials, patient_gender, examiner_initials });
+  const {
+    patient_initials = "",
+    patient_age = "",
+    patient_gender = "",
+    examiner_initials = "",
+    education_school_years = "",
+    education_school_label = "",
+    education_training_code = "none",
+    education_training_label = "",
+    education_dissertation_years = 0,
+  } = demographics;
+
+  const trainingCodeToYears = (code, dissertationYears = 0) => {
+    const disc = Math.max(0, Math.min(3, Number(dissertationYears) || 0));
+    if (code === "lehre_2") return 2;
+    if (code === "lehre_3") return 3;
+    if (code === "lehre_3_5") return 3.5;
+    if (code === "bachelor") return 3;
+    if (code === "master") return 5;
+    if (code === "promotion") return 5 + disc;
+    return 0;
+  };
+  const schoolYearsToLabel = (years) => {
+    if (years === 9 || years === "9") return "Haupt-/Volksschulabschluss";
+    if (years === 10 || years === "10") return "Realschulabschluss";
+    if (years === 12 || years === "12") return "Fachhochschulreife";
+    if (years === 13 || years === "13") return "Abitur/Hochschulreife";
+    return "";
+  };
+  const trainingCodeToLabel = (code) => {
+    if (code === "lehre_3") return "Ausbildung/Lehre: 3 Jahre";
+    if (code === "bachelor") return "Bachelor";
+    if (code === "master") return "Master (Bachelor+Master)";
+    if (code === "promotion") return "Promotion";
+    return "Keine";
+  };
+
+  const [local, setLocal] = useState({
+    patient_initials: (patient_initials || "").toUpperCase(),
+    patient_age: patient_age || "",
+    patient_gender,
+    examiner_initials: (examiner_initials || "").toUpperCase(),
+    education_school_years: education_school_years || "",
+    education_school_label: education_school_label || schoolYearsToLabel(education_school_years),
+    education_training_code,
+    education_training_label: education_training_label || trainingCodeToLabel(education_training_code),
+    education_dissertation_years,
+  });
 
   useEffect(() => {
-    setLocal({ patient_initials, patient_gender, examiner_initials });
-  }, [patient_initials, patient_gender, examiner_initials]);
+    setLocal({
+      patient_initials: (patient_initials || "").toUpperCase(),
+      patient_age: patient_age || "",
+      patient_gender,
+      examiner_initials: (examiner_initials || "").toUpperCase(),
+      education_school_years: education_school_years || "",
+      education_school_label: education_school_label || schoolYearsToLabel(education_school_years),
+      education_training_code,
+      education_training_label: education_training_label || trainingCodeToLabel(education_training_code),
+      education_dissertation_years,
+    });
+  }, [patient_initials, patient_age, patient_gender, examiner_initials, education_school_years, education_school_label, education_training_code, education_training_label, education_dissertation_years]);
+
+  const schoolYears = Number(local.education_school_years) || 0;
+  const trainingYears = trainingCodeToYears(local.education_training_code, local.education_dissertation_years);
+  const educationYears = schoolYears + trainingYears;
 
   if (saved) return null;
 
   return (
-    <div className="mb-4">
+      <div className="mb-4">
       <Card className="space-y-2">
         <div className="text-sm font-semibold">Basisdaten (nur einmalig pro Session)</div>
-        <div className="grid md:grid-cols-3 gap-2">
-          <div>
-            <label className="block text-sm text-zinc-700">Patienten-Initialen</label>
-            <input
-              className="mt-1 w-full rounded-xl border p-2"
-              value={local.patient_initials}
-              onChange={(e) => setLocal((l) => ({ ...l, patient_initials: e.target.value }))}
-              placeholder="z. B. AB"
-            />
+      <div className="grid grid-cols-1 gap-2">
+          <div className="grid grid-cols-4 gap-2">
+            <div>
+              <label className="block text-sm text-zinc-700">Patienten-Initialen</label>
+              <input
+                className="mt-1 w-28 rounded-xl border p-2"
+                value={local.patient_initials}
+                onChange={(e) => setLocal((l) => ({ ...l, patient_initials: e.target.value.replace(/[^A-Za-z]/g, "").toUpperCase() }))}
+                placeholder="z. B. AB"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-zinc-700">Patient:innen-Alter</label>
+              <input
+                className="mt-1 w-28 rounded-xl border p-2"
+                value={local.patient_age}
+                type="text"
+                inputMode="numeric"
+                pattern="\\d*"
+                onChange={(e) => setLocal((l) => ({ ...l, patient_age: e.target.value.replace(/\\D/g, "") }))}
+                placeholder="z. B. 72"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-zinc-700">Geschlecht</label>
+              <select
+                className="mt-1 w-28 rounded-xl border p-2 bg-white"
+                value={local.patient_gender}
+                onChange={(e) => setLocal((l) => ({ ...l, patient_gender: e.target.value }))}
+              >
+                <option value="">Bitte wählen …</option>
+                <option value="w">weiblich</option>
+                <option value="m">männlich</option>
+                <option value="d">divers</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-zinc-700">Initialen Neuropsycholog:in</label>
+              <input
+                className="mt-1 w-28 rounded-xl border p-2"
+                value={local.examiner_initials}
+                onChange={(e) => setLocal((l) => ({ ...l, examiner_initials: e.target.value.replace(/[^A-Za-z]/g, "").toUpperCase() }))}
+                placeholder="z. B. CD"
+              />
+            </div>
           </div>
           <div>
-            <label className="block text-sm text-zinc-700">Geschlecht</label>
+            <label className="block text-sm text-zinc-700">Schulabschluss (Jahre, ohne Wiederholung)</label>
             <select
               className="mt-1 w-full rounded-xl border p-2 bg-white"
-              value={local.patient_gender}
-              onChange={(e) => setLocal((l) => ({ ...l, patient_gender: e.target.value }))}
+              value={local.education_school_years}
+              onChange={(e) => {
+                const value = e.target.value;
+                setLocal((l) => ({
+                  ...l,
+                  education_school_years: value,
+                  education_school_label: schoolYearsToLabel(value),
+                }));
+              }}
             >
               <option value="">Bitte wählen …</option>
-              <option value="w">weiblich</option>
-              <option value="m">männlich</option>
-              <option value="d">divers</option>
+              <option value="9">9 Jahre (Haupt-/Volksschulabschluss)</option>
+              <option value="10">10 Jahre (Realschulabschluss)</option>
+              <option value="12">12 Jahre (Fachhochschulreife)</option>
+              <option value="13">13 Jahre (Abitur/Hochschulreife)</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm text-zinc-700">Initialen Neuropsycholog:in</label>
-            <input
-              className="mt-1 w-full rounded-xl border p-2"
-              value={local.examiner_initials}
-              onChange={(e) => setLocal((l) => ({ ...l, examiner_initials: e.target.value }))}
-              placeholder="z. B. CD"
-            />
+            <label className="block text-sm text-zinc-700">Längste absolvierte Ausbildung</label>
+            <select
+              className="mt-1 w-full rounded-xl border p-2 bg-white"
+              value={local.education_training_code}
+              onChange={(e) => {
+                const next = e.target.value;
+                setLocal((l) => ({
+                  ...l,
+                  education_training_code: next,
+                  education_training_label: trainingCodeToLabel(next),
+                  education_dissertation_years: next === "promotion" ? (l.education_dissertation_years || 0) : 0,
+                }));
+              }}
+            >
+              <option value="">Bitte wählen …</option>
+              <option value="none">Keine</option>
+              <option value="lehre_3">Ausbildung/Lehre: 3 Jahre</option>
+              <option value="bachelor">Bachelor</option>
+              <option value="master">Master (Bachelor+Master)</option>
+              <option value="promotion">Promotion</option>
+            </select>
+          </div>
+          {local.education_training_code === "promotion" && (
+            <div>
+              <label className="block text-sm text-zinc-700">Promotionsdauer (max. 3 Jahre)</label>
+              <select
+                className="mt-1 w-full rounded-xl border p-2 bg-white"
+                value={local.education_dissertation_years}
+                onChange={(e) => setLocal((l) => ({ ...l, education_dissertation_years: e.target.value }))}
+              >
+                <option value="0">0</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+              </select>
+            </div>
+          )}
+          <div className="text-sm">
+            <span className="font-medium">Berechnete Bildungsjahre: {educationYears}</span>
           </div>
         </div>
         <div className="flex justify-end">
           <button
             type="button"
-            onClick={() => { onSave(local); }}
+            onClick={() => {
+              const dissertation = local.education_training_code === "promotion"
+                ? Math.max(0, Math.min(3, Number(local.education_dissertation_years || 0)))
+                : 0;
+              onSave({
+                ...local,
+                patient_age: local.patient_age,
+                patient_initials: (local.patient_initials || "").toUpperCase(),
+                examiner_initials: (local.examiner_initials || "").toUpperCase(),
+                education_school_label: local.education_school_label || schoolYearsToLabel(local.education_school_years),
+                education_training_label: local.education_training_label || trainingCodeToLabel(local.education_training_code),
+                education_school_years: schoolYears,
+                education_training_code: local.education_training_code || "none",
+                education_dissertation_years: dissertation,
+                education_training_years: trainingCodeToYears(local.education_training_code, dissertation),
+                education_years: schoolYears + trainingCodeToYears(local.education_training_code, dissertation),
+              });
+            }}
             className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
           >
             Speichern
@@ -2858,6 +3183,41 @@ function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange,
     }
   }
 
+  const goBackInVlmt = () => {
+    if (step === "list") {
+      if (dg <= 1) {
+        setStep("choose");
+        return;
+      }
+      setDG(dg - 1);
+      setStep("score");
+      return;
+    }
+    if (step === "score") {
+      if (dg <= 1) {
+        setStep("choose");
+        return;
+      }
+      setStep("list");
+      return;
+    }
+    if (step === "interf") {
+      setStep("score");
+      return;
+    }
+    if (step === "dg6") {
+      setStep("interf");
+      return;
+    }
+    if (step === "waiting") {
+      setStep("dg6");
+      return;
+    }
+    if (step === "dg7") {
+      setStep("waiting");
+    }
+  };
+
   const interferenzList = VLMT_INTERFERENCE;
   const rekogItems = useMemo(() => (list ? (VLMT_RECOG[list] || []) : []), [list]);
   const [rekogSel, setRekogSel] = useState(() => ({ ...(saved.rekog?.sel || {}) })); // key: index -> boolean
@@ -2927,7 +3287,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange,
             <button onClick={() => { setStep("score"); }} className="px-3 py-2 rounded-xl bg-zinc-900 text-white">
               Weiter: Scoring DG{dg}
             </button>
-            <button onClick={() => setStep("choose")} className="px-3 py-2 rounded-xl border">
+            <button onClick={goBackInVlmt} className="px-3 py-2 rounded-xl border">
               Zurück
             </button>
           </div>
@@ -2987,8 +3347,8 @@ function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange,
             <button onClick={nextDG} className="px-3 py-2 rounded-xl bg-zinc-900 text-white">
               Weiter
             </button>
-            <button onClick={resetScoring} className="px-3 py-2 rounded-xl border">
-              Zurücksetzen
+            <button onClick={goBackInVlmt} className="px-3 py-2 rounded-xl border">
+              Zurück
             </button>
           </div>
         </Card>
@@ -3005,6 +3365,9 @@ function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange,
             ))}
           </ul>
           <div className="flex gap-2 mt-4">
+            <button onClick={goBackInVlmt} className="px-3 py-2 rounded-xl border">
+              Zurück
+            </button>
             <button
               onClick={() => {
                 setStep("dg6");
@@ -3075,7 +3438,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange,
             >
               30-Min. Reminder starten
             </button>
-            <button onClick={resetScoring} className="px-3 py-2 rounded-xl border">Zurücksetzen</button>
+            <button onClick={goBackInVlmt} className="px-3 py-2 rounded-xl border">Zurück</button>
           </div>
         </Card>
       )}
@@ -3087,8 +3450,11 @@ function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange,
             Der Reminder läuft oben rechts. Du kannst andere Tests durchführen und später zu VLMT
             zurückkehren.
           </p>
-          <div className="mt-4">
-            <button onClick={() => setStep("dg7")} className="px-3 py-2 rounded-xl border">
+          <div className="flex gap-2 mt-4">
+            <button onClick={goBackInVlmt} className="px-3 py-2 rounded-xl border">
+              Zurück
+            </button>
+            <button onClick={() => setStep("dg7")} className="px-3 py-2 rounded-xl border bg-zinc-900 text-white">
               DG7 jetzt durchführen
             </button>
           </div>
@@ -3144,7 +3510,10 @@ function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange,
             className="w-full mt-1 rounded-xl border p-2 h-20"
             placeholder="frei…"
           />
-          <div className="mt-4">
+          <div className="flex gap-2 mt-4">
+            <button onClick={goBackInVlmt} className="px-3 py-2 rounded-xl border">
+              Zurück
+            </button>
             <button
               onClick={() => { commitCurrent(6); setStep("rekog"); }}
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
@@ -3240,6 +3609,7 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
   const [drawings, setDrawings] = useState(() => Array.from({ length: 5 }, () => null));
   const [drawingGalleries, setDrawingGalleries] = useState(() => Array.from({ length: 5 }, () => []));
   const [rekogResp, setRekogResp] = useState(() => saved.rekog?.responses || { korrekt: 0, falsch: 0, gedreht: 0 });
+  const [drawPadResetIndex, setDrawPadResetIndex] = useState(0);
   const totalFirst3 = counts.slice(0, 3).reduce((a, c) => a + c.richtig, 0);
   const ceilingHit = counts.some((c) => c.richtig === 9);
   const figSrc = ver === "V2" ? "/material/DCS-2.png" : "/material/DCS-1.png";
@@ -3394,6 +3764,93 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
     }
   }, [dg, drawingNamespace]);
 
+  const clearCurrentDrawing = useCallback(async () => {
+    await handleDrawingChange(null);
+    setDrawPadResetIndex((x) => x + 1);
+  }, [handleDrawingChange]);
+
+  const saveFigureAndClear = useCallback(async (data) => {
+    if (!data) return;
+    await handleSaveFigure(data);
+    await clearCurrentDrawing();
+  }, [handleSaveFigure, clearCurrentDrawing]);
+
+  const saveLabeledDrawing = useCallback(async (data, tag) => {
+    if (!data || !tag) return null;
+    const src = data instanceof Blob ? URL.createObjectURL(data) : data;
+    const cleanup = data instanceof Blob ? () => URL.revokeObjectURL(src) : () => {};
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const width = img.naturalWidth || img.width;
+        const height = img.naturalHeight || img.height;
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          cleanup();
+          resolve(null);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        const size = Math.max(12, Math.floor(Math.min(width, height) * 0.09));
+        ctx.font = `bold ${size}px sans-serif`;
+        ctx.textBaseline = "top";
+        const padding = 4;
+        const text = tag;
+        const metrics = ctx.measureText(text);
+        const boxW = metrics.width + padding * 2;
+        const boxH = size + padding * 2;
+        ctx.fillStyle = "rgba(255,255,255,0.85)";
+        ctx.fillRect(4, 4, boxW, boxH);
+        ctx.strokeStyle = "rgba(0,0,0,0.5)";
+        ctx.lineWidth = Math.max(1, Math.floor(size / 10));
+        ctx.strokeText(text, 4 + padding, 4 + padding);
+        ctx.fillStyle = "#0f172a";
+        ctx.fillText(text, 4 + padding, 4 + padding);
+        canvas.toBlob((blob) => {
+          cleanup();
+          if (!blob) {
+            reject(new Error("Bild mit Label konnte nicht erzeugt werden"));
+            return;
+          }
+          resolve(blob);
+        }, "image/png");
+      };
+      img.onerror = () => {
+        cleanup();
+        reject(new Error("Bild mit Label konnte nicht geladen werden"));
+      };
+      img.src = src;
+    });
+  }, []);
+
+  const saveScoredFigure = useCallback(async (label) => {
+    const current = drawings[dg - 1];
+    if (!current) return;
+    try {
+      const labeled = await saveLabeledDrawing(current, label);
+      if (labeled) {
+        await saveFigureAndClear(labeled);
+      }
+    } catch (e) {
+      console.error("Bewertete Figur speichern fehlgeschlagen", e);
+    }
+  }, [dg, drawings, saveLabeledDrawing, saveFigureAndClear]);
+
+  const saveUnscoredFigureAndClear = useCallback(async (data) => {
+    if (!data) return;
+    const labeled = await saveLabeledDrawing(data, "?");
+    if (!labeled) return;
+    await saveFigureAndClear(labeled);
+  }, [saveFigureAndClear, saveLabeledDrawing]);
+
+  const onScoringPlus = useCallback((field, tag) => {
+    inc(field);
+    void saveScoredFigure(tag);
+  }, [saveScoredFigure]);
+
   return (
     <section className="py-6">
       <Header title="DCS-R" />
@@ -3435,22 +3892,22 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
               <div className="mt-3 space-y-1">
                 <div className="text-xs text-zinc-600">Skizze der vom Patienten gelegten Figur</div>
                 <DrawPad
-                  key={`dcsr-dg-${dg}`}
+                  key={`dcsr-dg-${dg}-${drawPadResetIndex}`}
                   width={410}
                   height={180}
                   initialData={drawings[dg - 1]}
                   onChange={handleDrawingChange}
                   savedFigures={drawingGalleries[dg - 1] || []}
-                  onSaveFigure={handleSaveFigure}
+                  onSaveFigure={saveUnscoredFigureAndClear}
                 />
               </div>
             </div>
           )}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
-            <Counter label="Richtig" val={counts[dg - 1].richtig} onPlus={() => inc("richtig")} onMinus={() => dec("richtig")} max={9} />
-            <Counter label="Falsch" val={counts[dg - 1].falsch} onPlus={() => inc("falsch")} onMinus={() => dec("falsch")} />
-            <Counter label="Gedreht" val={counts[dg - 1].gedreht} onPlus={() => inc("gedreht")} onMinus={() => dec("gedreht")} />
-            <Counter label="Perseveration" val={counts[dg - 1].perseveration} onPlus={() => inc("perseveration")} onMinus={() => dec("perseveration")} />
+            <Counter label="Richtig" val={counts[dg - 1].richtig} onPlus={() => onScoringPlus("richtig", "R")} onMinus={() => dec("richtig")} max={9} />
+            <Counter label="Falsch" val={counts[dg - 1].falsch} onPlus={() => onScoringPlus("falsch", "F")} onMinus={() => dec("falsch")} />
+            <Counter label="Gedreht" val={counts[dg - 1].gedreht} onPlus={() => onScoringPlus("gedreht", "D")} onMinus={() => dec("gedreht")} />
+            <Counter label="Perseveration" val={counts[dg - 1].perseveration} onPlus={() => onScoringPlus("perseveration", "P")} onMinus={() => dec("perseveration")} />
           </div>
 
           {dg <= 3 && totalFirst3 <= 1 && (
