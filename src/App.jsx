@@ -157,7 +157,7 @@ function ImpressumModal({ open, onClose }) {
           </button>
         </div>
         <div className="text-sm space-y-2 leading-relaxed">
-          <p><strong>Betreiber*in:</strong> AG Verhaltensneurologie, Klinik für Neurologie, Knappschaft Kliniken Universitätsklinikum Bochum</p>
+          <p><strong>Betreiber*in:</strong> Forschungsgruppe Verhaltensneurologie, Klinik für Neurologie, Knappschaft Kliniken Universitätsklinikum Bochum</p>
           <p><strong>Anschrift:</strong> In der Schornau 23-25, 44892 Bochum</p>
           <p><strong>Kontakt:</strong> Tel: 0234-299-0 · E-Mail: neuropsychologie.bochum@knappschaft-kliniken.de</p>
           <p><strong>Zweck der Anwendung:</strong> interne, nicht-kommerzielle Nutzung für neuropsychologische Testung</p>
