@@ -1144,6 +1144,13 @@ function RWTTestPanel({ meta, modeKey, sessionData, onPersist, onClose }) {
   }, [modeKey, sessionData, meta.options]);
 
   const persist = (patch) => onPersist && onPersist(modeKey, patch);
+  const setWordCount = (updater) => {
+    const current = Number(sum) || 0;
+    const val = updater(current);
+    const clamped = Math.max(0, val);
+    setSum(clamped);
+    persist({ sum: clamped });
+  };
 
   return (
     <Card>
@@ -1168,12 +1175,7 @@ function RWTTestPanel({ meta, modeKey, sessionData, onPersist, onClose }) {
           <div className="flex items-stretch gap-3">
             <button
               type="button"
-              onClick={() => {
-                const next = Number(sum) || 0;
-                const val = next + 1;
-                setSum(val);
-                persist({ sum: val });
-              }}
+              onClick={() => setWordCount((v) => v + 1)}
               className="px-8 py-4 rounded-xl border text-lg bg-zinc-50 h-16"
             >
               +1 Wort
@@ -1183,13 +1185,20 @@ function RWTTestPanel({ meta, modeKey, sessionData, onPersist, onClose }) {
               placeholder="0"
               inputMode="numeric"
               value={sum}
-              onChange={(e) => {
-                const v = e.target.value;
-                const n = v === "" ? "" : Math.max(0, parseInt(v, 10) || 0);
-                setSum(n);
-              }}
-              onBlur={() => persist({ sum: sum === "" ? null : Number(sum) })}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const n = v === "" ? "" : Math.max(0, parseInt(v, 10) || 0);
+                  setSum(n);
+                }}
+                onBlur={() => persist({ sum: sum === "" ? null : Number(sum) })}
             />
+            <button
+              type="button"
+              onClick={() => setWordCount((v) => v - 1)}
+              className="px-8 py-4 rounded-xl border text-lg bg-zinc-50 h-16"
+            >
+              -1 Wort
+            </button>
           </div>
         </div>
       </div>
@@ -1652,6 +1661,17 @@ function CERADWFWire({ sessionData, onPersist, onPersistNote, onAbort, onDone, o
   }, [base.semantic_count, base.semantic_note, base.phonemic_count, base.phonemic_note, base.note]);
 
   const persist = (patch) => onPersist && onPersist(patch);
+  const bumpCount = (key, delta) => {
+    const current = key === "sem" ? Number(semCount) || 0 : Number(phonCount) || 0;
+    const next = Math.max(0, current + delta);
+    if (key === "sem") {
+      setSemCount(next);
+      persist({ semantic_count: next });
+    } else {
+      setPhonCount(next);
+      persist({ phonemic_count: next });
+    }
+  };
 
   return (
     <section className="py-6">
@@ -1680,12 +1700,7 @@ function CERADWFWire({ sessionData, onPersist, onPersistNote, onAbort, onDone, o
             <div className="flex items-stretch gap-3 mt-1">
               <button
                 type="button"
-                onClick={() => {
-                  const next = Number(semCount) || 0;
-                  const val = next + 1;
-                  setSemCount(val);
-                  persist({ semantic_count: val });
-                }}
+                onClick={() => bumpCount("sem", 1)}
                 className="px-8 py-4 rounded-xl border text-lg bg-zinc-50 h-16"
               >
                 +1 Wort
@@ -1702,6 +1717,13 @@ function CERADWFWire({ sessionData, onPersist, onPersistNote, onAbort, onDone, o
                 }}
                 onBlur={() => persist({ semantic_count: semCount === "" ? null : Number(semCount) })}
               />
+              <button
+                type="button"
+                onClick={() => bumpCount("sem", -1)}
+                className="px-8 py-4 rounded-xl border text-lg bg-zinc-50 h-16"
+              >
+                -1 Wort
+              </button>
             </div>
           </div>
           <div>
@@ -1723,12 +1745,7 @@ function CERADWFWire({ sessionData, onPersist, onPersistNote, onAbort, onDone, o
             <div className="flex items-stretch gap-3 mt-1">
               <button
                 type="button"
-                onClick={() => {
-                  const next = Number(phonCount) || 0;
-                  const val = next + 1;
-                  setPhonCount(val);
-                  persist({ phonemic_count: val });
-                }}
+                onClick={() => bumpCount("phon", 1)}
                 className="px-8 py-4 rounded-xl border text-lg bg-zinc-50 h-16"
               >
                 +1 Wort
@@ -1745,6 +1762,13 @@ function CERADWFWire({ sessionData, onPersist, onPersistNote, onAbort, onDone, o
                 }}
                 onBlur={() => persist({ phonemic_count: phonCount === "" ? null : Number(phonCount) })}
               />
+              <button
+                type="button"
+                onClick={() => bumpCount("phon", -1)}
+                className="px-8 py-4 rounded-xl border text-lg bg-zinc-50 h-16"
+              >
+                -1 Wort
+              </button>
             </div>
           </div>
           <div>
@@ -2997,11 +3021,11 @@ function DemoCapture({ demographics, saved, onSave }) {
   return (
       <div className="mb-4">
       <Card className="space-y-2">
-        <div className="text-sm font-semibold">Basisdaten (nur einmalig pro Session)</div>
+        <div className="text-sm font-semibold">Basisdaten</div>
       <div className="grid grid-cols-1 gap-2">
           <div className="grid grid-cols-4 gap-2">
             <div>
-              <label className="block text-sm text-zinc-700">Patienten-Initialen</label>
+              <label className="block text-sm text-zinc-700 leading-tight min-h-[2.5rem]">Patient:innen-Initialen</label>
               <input
                 className="mt-1 w-28 rounded-xl border p-2"
                 value={local.patient_initials}
@@ -3010,7 +3034,7 @@ function DemoCapture({ demographics, saved, onSave }) {
               />
             </div>
             <div>
-              <label className="block text-sm text-zinc-700">Patient:innen-Alter</label>
+              <label className="block text-sm text-zinc-700 leading-tight min-h-[2.5rem]">Patient:innen-Alter</label>
               <input
                 className="mt-1 w-28 rounded-xl border p-2"
                 value={local.patient_age}
@@ -3022,7 +3046,7 @@ function DemoCapture({ demographics, saved, onSave }) {
               />
             </div>
             <div>
-              <label className="block text-sm text-zinc-700">Geschlecht</label>
+              <label className="block text-sm text-zinc-700 leading-tight min-h-[2.5rem]">Geschlecht</label>
               <select
                 className="mt-1 w-28 rounded-xl border p-2 bg-white"
                 value={local.patient_gender}
@@ -3035,7 +3059,7 @@ function DemoCapture({ demographics, saved, onSave }) {
               </select>
             </div>
             <div>
-              <label className="block text-sm text-zinc-700">Initialen Neuropsycholog:in</label>
+              <label className="block text-sm text-zinc-700 leading-tight min-h-[2.5rem]">Initialien Neuropsycholog:in</label>
               <input
                 className="mt-1 w-28 rounded-xl border p-2"
                 value={local.examiner_initials}
@@ -4856,6 +4880,7 @@ function CERADFiguralWire({ sessionData, route, onPersist, onAbort, onDone, onBa
 
 function CERADTmtScreen({ label, persisted, note, onPersist, onPersistNote, onAbort, onDone }) {
   const [comment, setComment] = useState(note || "");
+  const stopwatchRef = useRef(null);
   const isA = label.toLowerCase().includes("tmt-a");
   const autoLimit = isA ? 180_000 : 300_000;
   const handleAutoAbort = (info) => {
@@ -4871,6 +4896,7 @@ function CERADTmtScreen({ label, persisted, note, onPersist, onPersistNote, onAb
       </div>
       <div className="space-y-3">
         <Stopwatch
+          ref={stopwatchRef}
           persisted={persisted}
           onPersist={onPersist}
           autoAbortMs={autoLimit}
@@ -4888,7 +4914,10 @@ function CERADTmtScreen({ label, persisted, note, onPersist, onPersistNote, onAb
         <div className="pt-1">
           <button
             type="button"
-            onClick={() => onDone && onDone()}
+            onClick={() => {
+              stopwatchRef.current?.stop?.();
+              onDone && onDone();
+            }}
             className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
           >
             Fertig
@@ -4904,11 +4933,18 @@ function CERADTmtCombo({ sessionData, onPersist, onAbort, onDone, onBackToMenu }
   const [step, setStep] = useState("a"); // "a" | "b"
   const [noteA, setNoteA] = useState(data.note_a || "");
   const [noteB, setNoteB] = useState(data.note_b || "");
+  const stopARef = useRef(null);
+  const stopBRef = useRef(null);
 
   useEffect(() => {
     setNoteA(data.note_a || "");
     setNoteB(data.note_b || "");
   }, [data.note_a, data.note_b]);
+
+  const stopBothTimers = () => {
+    stopARef.current?.stop?.();
+    stopBRef.current?.stop?.();
+  };
 
   return (
     <section className="py-6">
@@ -4917,7 +4953,10 @@ function CERADTmtCombo({ sessionData, onPersist, onAbort, onDone, onBackToMenu }
         <div className="mb-2">
           <button
             type="button"
-            onClick={onBackToMenu}
+            onClick={() => {
+              stopBothTimers();
+              onBackToMenu();
+            }}
             className="px-3 py-1.5 rounded-xl border text-sm"
           >
             Zur CERAD-Auswahl
@@ -4934,6 +4973,7 @@ function CERADTmtCombo({ sessionData, onPersist, onAbort, onDone, onBackToMenu }
             <div className="text-lg font-semibold">TMT-A</div>
           </div>
           <Stopwatch
+            ref={stopARef}
             persisted={data.a_time ?? null}
             onPersist={(ms) => onPersist && onPersist({ a_time: ms })}
             autoAbortMs={180_000}
@@ -4954,7 +4994,10 @@ function CERADTmtCombo({ sessionData, onPersist, onAbort, onDone, onBackToMenu }
           <div className="pt-1">
             <button
               type="button"
-              onClick={() => setStep("b")}
+              onClick={() => {
+                stopBothTimers();
+                setStep("b");
+              }}
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
             >
               Weiter zu TMT-B
@@ -4969,6 +5012,7 @@ function CERADTmtCombo({ sessionData, onPersist, onAbort, onDone, onBackToMenu }
             <div className="text-lg font-semibold">TMT-B</div>
           </div>
           <Stopwatch
+            ref={stopBRef}
             persisted={data.b_time ?? null}
             onPersist={(ms) => onPersist && onPersist({ b_time: ms })}
             autoAbortMs={300_000}
@@ -4989,7 +5033,10 @@ function CERADTmtCombo({ sessionData, onPersist, onAbort, onDone, onBackToMenu }
           <div className="pt-1">
             <button
               type="button"
-              onClick={() => onDone && onDone()}
+              onClick={() => {
+                stopBothTimers();
+                onDone && onDone();
+              }}
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
             >
               Fertig (weiter)
@@ -5006,6 +5053,8 @@ function TMTCombo({ sessionData, onPersist, onAbort, onDone }) {
   const tB = sessionData?.tmt_b ?? null;
   const [noteA, setNoteA] = useState(sessionData?.tmt_a_note ?? "");
   const [noteB, setNoteB] = useState(sessionData?.tmt_b_note ?? "");
+  const tARef = useRef(null);
+  const tBRef = useRef(null);
 
   useEffect(() => {
     setNoteA(sessionData?.tmt_a_note ?? "");
@@ -5013,6 +5062,10 @@ function TMTCombo({ sessionData, onPersist, onAbort, onDone }) {
   }, [sessionData?.tmt_a_note, sessionData?.tmt_b_note]);
 
   const persist = (patch) => onPersist && onPersist(patch);
+  const stopBothTimers = () => {
+    tARef.current?.stop?.();
+    tBRef.current?.stop?.();
+  };
 
   return (
     <section className="py-6">
@@ -5026,6 +5079,7 @@ function TMTCombo({ sessionData, onPersist, onAbort, onDone }) {
             <div className="text-lg font-semibold">TMT-A</div>
           </div>
           <Stopwatch
+            ref={tARef}
             persisted={tA}
             onPersist={(ms) => persist({ tmt_a: ms })}
             autoAbortMs={180_000}
@@ -5051,6 +5105,7 @@ function TMTCombo({ sessionData, onPersist, onAbort, onDone }) {
             <div className="text-lg font-semibold">TMT-B</div>
           </div>
           <Stopwatch
+            ref={tBRef}
             persisted={tB}
             onPersist={(ms) => persist({ tmt_b: ms })}
             autoAbortMs={300_000}
@@ -5074,7 +5129,10 @@ function TMTCombo({ sessionData, onPersist, onAbort, onDone }) {
       <div className="mt-4">
         <button
           type="button"
-          onClick={() => onDone && onDone()}
+          onClick={() => {
+            stopBothTimers();
+            onDone && onDone();
+          }}
           className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
         >
           Fertig
