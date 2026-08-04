@@ -6,7 +6,6 @@ import { DrawPad } from "./components/draw-pad";
 import { Stopwatch, Countdown60 } from "./components/timers";
 import { AbortButton } from "./components/abort-button";
 import { ErrorBoundary } from "./components/error-boundary";
-import aceNamingMaterial from "../material/ACE-benennen.png";
 
 // ---------- Preloaded test materials (read-only in UI) ----------
 const VLMT_LISTS = {
@@ -1406,7 +1405,7 @@ function AceMaterial({ item }) {
   if (type === "comprehension") return <div className="rounded-xl border bg-zinc-50 p-3 text-sm">Stift und Blatt Papier vor jeder Aufgabe erneut vor die Patientin bzw. den Patienten legen. Jede korrekt ausgeführte Anweisung wird unten einzeln bewertet.</div>;
   if (type === "writing") return <div className="rounded-xl border bg-zinc-50 p-3 text-sm">Bitte schreiben Sie zwei vollständige Sätze. Inhalt frei wählbar; jeder Satz benötigt Subjekt und Verb.</div>;
   if (type === "repetition-words" || type === "repetition-sentences") return null;
-  if (type === "naming") return <div className="overflow-hidden rounded-xl border bg-white"><img src={aceNamingMaterial} alt="ACE-III Benennmaterial" className="h-auto w-full" /></div>;
+  if (type === "naming") return <div className="overflow-hidden rounded-xl border bg-white"><img src="/material/ACE-benennen.png" alt="ACE-III Benennmaterial" className="h-auto w-full" /></div>;
   if (type === "reading") return <div className="rounded-xl border bg-zinc-50 p-4 text-center text-3xl font-bold tracking-wide">Uhr<br />Maß<br />fort<br />platt<br />Schrank</div>;
   if (type === "infinity") return <div className="rounded-xl border bg-zinc-50 p-3"><AceInfinityFigure /></div>;
   if (type === "cube") return <div className="rounded-xl border bg-zinc-50 p-3"><AceCubeFigure /></div>;
