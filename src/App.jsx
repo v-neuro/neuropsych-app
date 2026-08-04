@@ -6,6 +6,7 @@ import { DrawPad } from "./components/draw-pad";
 import { Stopwatch, Countdown60 } from "./components/timers";
 import { AbortButton } from "./components/abort-button";
 import { ErrorBoundary } from "./components/error-boundary";
+import aceNamingMaterial from "../material/ACE-benennen.png";
 
 // ---------- Preloaded test materials (read-only in UI) ----------
 const VLMT_LISTS = {
@@ -368,7 +369,6 @@ function TestbereicheModal({ open, onClose, onOpenTest }) {
       titel: "THS-Indikationsprüfung",
       items: [
         { name: "Strukturierte Anamnese einschl. Screening-Fragen Depression/Ängste", testRoute: null },
-        { name: "ACE", testRoute: null },
         { name: "PHQ-9 und GAD-7", testRoute: null },
       ],
     },
@@ -376,7 +376,6 @@ function TestbereicheModal({ open, onClose, onOpenTest }) {
       titel: "Kognitiver Status/Orientierende Testung",
       items: [
         { name: "Strukturierte Anamnese einschl. psychiatrischer Screeningfragen und Abfrage der Orientierung", testRoute: null },
-        { name: "ACE oder MoCA", testRoute: null },
       ],
     },
     {
@@ -1075,6 +1074,24 @@ async function buildExportRow(sessionData, sessionUUID, opts = {}) {
 
   // Epi Wortfl Notiz nicht vorhanden
 
+  // ACE-III — bewusst ganz am Ende angehängt, um bestehende CSV-Spaltenreihenfolge stabil zu halten
+  const ace = s.ace || {};
+  const aceScores = ace.scores || {};
+  const hasAce = Object.keys(aceScores).length > 0 || !!ace.notes || !!s.ace_aborted;
+  ACE_SECTIONS.forEach((section) => {
+    row[`ace_${section.key}_score`] = hasAce ? getAceSectionScore(ace, section) : null;
+    section.items.forEach((item) => {
+      row[`ace_${section.key}_${item.key}`] = hasAce ? (aceScores[item.key] ?? null) : null;
+    });
+  });
+  row.ace_total = hasAce ? getAceTotal(ace) : null;
+  row.ace_notes = ace.notes || "";
+  row.ace_aborted = s.ace_aborted ? 1 : 0;
+  row.ace_fluency_letter_raw = ace.raw?.letter_fluency?.count ?? "";
+  row.ace_fluency_letter_transcript = ace.raw?.letter_fluency?.transcript || "";
+  row.ace_fluency_animal_raw = ace.raw?.animal_fluency?.count ?? "";
+  row.ace_fluency_animal_transcript = ace.raw?.animal_fluency?.transcript || "";
+
   return row;
 }
 
@@ -1305,6 +1322,226 @@ const RWT_MODES = {
   sem_complex: { title: "Komplexe semantische Wortflüssigkeit", options: ["Sport - Obst", "Blumen - Kleidung"] },
 };
 
+const ACE_NAME_AND_ADDRESS = ["Peter Müller", "Dorf Straße 73", "Wolfsburg", "Niedersachsen"];
+const ACE_NAME_ADDRESS_SCORE_ITEMS = ["Peter", "Müller", "Dorf", "Straße", "73", "Wolfsburg", "Niedersachsen"];
+const ACE_RETROGRADE_QUESTIONS = [
+  "Name des/der amtierenden Bundeskanzlers/in",
+  "Name des/der amtierenden Bundespräsidenten/in",
+  "Name des/der amtierenden Präsidenten/in der USA",
+  "Name des US-amerikanischen Präsidenten, der in den 1960ern ermordet wurde",
+];
+const ACE_RECOGNITION_CHOICES = [
+  ["Hans Müller", "Peter Müller", "Peter Schmidt"],
+  ["37", "73", "76"],
+  ["Dorf Gasse", "Land Straße", "Dorf Straße"],
+  ["Kassel", "Wolfsburg", "Braunschweig"],
+  ["Niedersachsen", "Sachsen-Anhalt", "Baden-Württemberg"],
+];
+const ACE_DOT_COUNTS = [8, 10, 6, 9];
+
+function AceMaterialHeading({ children }) {
+  return <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{children}</div>;
+}
+
+function AceInfinityFigure() {
+  return (
+    <svg viewBox="0 0 360 150" className="mx-auto w-full max-w-md" role="img" aria-label="Unendlichkeitssymbol">
+      <path d="M20 75 C70 -5 110 -5 180 75 C250 155 290 155 340 75 C290 -5 250 -5 180 75 C110 155 70 155 20 75Z" fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function AceCubeFigure() {
+  return (
+    <svg viewBox="0 0 250 190" className="mx-auto w-full max-w-xs" role="img" aria-label="Drahtwürfel">
+      <g fill="none" stroke="currentColor" strokeWidth="6" strokeLinejoin="round">
+        <path d="M42 62 L128 28 L208 59 L120 94 Z M42 62 V150 L120 180 L208 146 V59 M120 94 V180 M128 28 V118" />
+      </g>
+    </svg>
+  );
+}
+
+function AceDotsFigure({ index }) {
+  const layouts = [
+    [[16,16],[80,28],[48,54],[19,70],[79,72],[42,100],[66,122],[90,116]],
+    [[14,56],[26,34],[43,71],[57,48],[73,26],[88,40],[62,95],[76,116],[91,131],[43,118]],
+    [[27,26],[72,26],[32,58],[50,53],[48,78],[18,118]],
+    [[18,19],[72,26],[48,49],[15,64],[79,64],[86,79],[25,96],[49,100],[91,130]],
+  ];
+  return (
+    <div className="aspect-square rounded-xl border-2 border-zinc-800 bg-white p-3">
+      <svg viewBox="0 0 110 145" className="h-full w-full" aria-label={`Punktmenge ${index + 1}`}>
+        {layouts[index].map(([cx, cy], dotIndex) => <circle key={dotIndex} cx={cx} cy={cy} r="5.5" fill="currentColor" />)}
+      </svg>
+    </div>
+  );
+}
+
+function AceLetterFigure({ letter, className = "" }) {
+  return (
+    <div className={cls("relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl border bg-white", className)} aria-label="Fragmentierter Buchstabe">
+      <span className="select-none text-[clamp(6rem,18vw,11rem)] font-black leading-none tracking-tight">{letter}</span>
+      <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_0%,transparent_28%,white_28%,white_36%,transparent_36%,transparent_53%,white_53%,white_62%,transparent_62%,transparent_76%,white_76%,white_85%,transparent_85%)]" />
+    </div>
+  );
+}
+
+function AceMaterial({ item }) {
+  const type = item.materialType;
+  if (!type) return null;
+
+  if (type === "name-address") return (
+    <div className="rounded-xl border bg-zinc-50 p-3">
+      <AceMaterialHeading>Vorlesen und dreimal wiederholen lassen</AceMaterialHeading>
+      <div className="mt-2 text-xl font-semibold leading-relaxed">{ACE_NAME_AND_ADDRESS.map((line) => <div key={line}>{line}</div>)}</div>
+    </div>
+  );
+  if (type === "retrograde") return null;
+  if (type === "recognition") return (
+    <div className="rounded-xl border bg-zinc-50 p-3">
+      <AceMaterialHeading>Bei nicht erinnertem Item Auswahlhilfe anbieten</AceMaterialHeading>
+      <div className="mt-2 grid gap-2 md:grid-cols-2">{ACE_RECOGNITION_CHOICES.map((choices, index) => <div key={choices.join()} className="rounded-lg border bg-white p-2 text-sm"><span className="mr-2 font-semibold">{index + 1}.</span>{choices.join(" · ")}</div>)}</div>
+    </div>
+  );
+  if (type === "comprehension") return <div className="rounded-xl border bg-zinc-50 p-3 text-sm">Stift und Blatt Papier vor jeder Aufgabe erneut vor die Patientin bzw. den Patienten legen. Jede korrekt ausgeführte Anweisung wird unten einzeln bewertet.</div>;
+  if (type === "writing") return <div className="rounded-xl border bg-zinc-50 p-3 text-sm">Bitte schreiben Sie zwei vollständige Sätze. Inhalt frei wählbar; jeder Satz benötigt Subjekt und Verb.</div>;
+  if (type === "repetition-words" || type === "repetition-sentences") return null;
+  if (type === "naming") return <div className="overflow-hidden rounded-xl border bg-white"><img src={aceNamingMaterial} alt="ACE-III Benennmaterial" className="h-auto w-full" /></div>;
+  if (type === "reading") return <div className="rounded-xl border bg-zinc-50 p-4 text-center text-3xl font-bold tracking-wide">Uhr<br />Maß<br />fort<br />platt<br />Schrank</div>;
+  if (type === "infinity") return <div className="rounded-xl border bg-zinc-50 p-3"><AceInfinityFigure /></div>;
+  if (type === "cube") return <div className="rounded-xl border bg-zinc-50 p-3"><AceCubeFigure /></div>;
+  if (type === "clock") return <div className="rounded-xl border bg-zinc-50 p-3 text-sm">Bitte zeichnen Sie ein Zifferblatt, dessen Zeiger auf zehn nach fünf stehen.</div>;
+  if (type === "dots") return <div className="grid grid-cols-2 gap-3">{ACE_DOT_COUNTS.map((count, index) => <AceDotsFigure key={count} index={index} />)}</div>;
+  if (type === "letters") return <div className="grid grid-cols-2 gap-3"><AceLetterFigure letter="K" /><AceLetterFigure letter="W" /><AceLetterFigure letter="A" /><AceLetterFigure letter="T" /></div>;
+  return null;
+}
+
+const ACE_SECTIONS = [
+  {
+    key: "attention",
+    title: "Aufmerksamkeit",
+    max: 18,
+    items: [
+      {
+        key: "orientation_time",
+        label: "Orientierung – Zeit",
+        max: 5,
+        prompt: "Fragen zu Wochentag, Datum, Monat, Jahr und Jahreszeit stellen.",
+        materials: ["Wochentag", "Datum", "Monat", "Jahr", "Jahreszeit"],
+      },
+      {
+        key: "orientation_place",
+        label: "Orientierung – Ort",
+        max: 5,
+        prompt: "Fragen zum aktuellen Ort stellen.",
+        materials: ["Zimmer/Etage", "Straße/Krankenhaus", "Stadt", "Bundesland", "Land"],
+      },
+      {
+        key: "registration",
+        label: "Einprägen / Wiederholen",
+        max: 3,
+        prompt: "Drei Wörter vorlesen, nachsprechen lassen und für später merken lassen. Nur der erste Versuch wird bewertet.",
+        materials: ["Zitrone", "Schlüssel", "Ball"],
+      },
+      {
+        key: "serial_subtraction",
+        label: "Aufmerksamkeit / serielles Rechnen",
+        max: 5,
+        prompt: "Von 100 fortlaufend 7 abziehen lassen; nach fünf Subtraktionen stoppen.",
+        materials: ["93", "86", "79", "72", "65"],
+      },
+    ],
+  },
+  {
+    key: "memory",
+    title: "Gedächtnis",
+    max: 26,
+    items: [
+      { key: "recall_words", label: "Wörter erinnern", max: 3, prompt: "Welche drei Wörter hatte ich Sie gebeten zu wiederholen und sich zu merken?", materials: ["Zitrone", "Schlüssel", "Ball"] },
+      { key: "anterograde_memory", label: "Name und Adresse einprägen", max: 7, prompt: "Name und Adresse vorlesen und dreimal wiederholen lassen. Der dritte Versuch wird bewertet.", materialType: "name-address", materials: ACE_NAME_ADDRESS_SCORE_ITEMS },
+      { key: "retrograde_memory", label: "Retrogrades Gedächtnis", max: 4, prompt: "Allgemeinwissensbezogene Gedächtnisfragen stellen.", materialType: "retrograde", materials: ACE_RETROGRADE_QUESTIONS },
+      { key: "recall_name_address", label: "Abruf Name und Adresse", max: 7, prompt: "Name und Adresse, die am Anfang wiederholt wurden, frei abrufen lassen.", materialType: "name-address", materials: ACE_NAME_ADDRESS_SCORE_ITEMS },
+      { key: "recognition", label: "Wiedererkennen", max: 5, prompt: "Nur durchführen, wenn mindestens ein Item beim freien Abruf nicht genannt wurde.", materialType: "recognition" },
+    ],
+  },
+  {
+    key: "fluency",
+    title: "Fluency",
+    max: 14,
+    items: [
+      { key: "letter_fluency", label: "Phonematische Wortflüssigkeit", max: 7, prompt: "Eine Minute Wörter mit dem vorgegebenen Buchstaben nennen lassen.", materials: ["Buchstabe: P"], timed: true, fluencyType: "letter" },
+      { key: "animal_fluency", label: "Semantische Wortflüssigkeit", max: 7, prompt: "Eine Minute lang so viele Tiere wie möglich nennen lassen.", materials: ["Kategorie: Tiere"], timed: true, fluencyType: "animal" },
+    ],
+  },
+  {
+    key: "language",
+    title: "Sprache",
+    max: 26,
+    items: [
+      { key: "comprehension", label: "Verstehen / Handlungsanweisungen", max: 3, prompt: "Stift und Papier bereitlegen und die Anweisungen durchführen lassen.", materialType: "comprehension", materials: ["Blatt Papier auf den Stift legen", "Stift anheben, aber nicht das Blatt Papier", "Stift reichen, nachdem das Blatt Papier berührt wurde"] },
+      { key: "sentence_writing", label: "Sätze schreiben", max: 2, prompt: "Patient:in schreibt die Sätze auf Papier; hier bewerten.", materialType: "writing" },
+      { key: "repetition_words", label: "Wörter nachsprechen", max: 2, prompt: "Die vier Wörter vorlesen und Wiederholung bewerten.", materialType: "repetition-words", materials: ["Butterblume", "Exzentriker", "unentzifferbar", "Statistiker"], scoringMode: "all-or-three" },
+      { key: "repetition_sentences", label: "Sätze nachsprechen", max: 2, prompt: "Die beiden Sätze vorlesen und Wiederholung bewerten.", materialType: "repetition-sentences", materials: ["Es ist nicht alles Gold, was glänzt.", "Der frühe Vogel fängt den Wurm."] },
+      { key: "naming", label: "Benennen", max: 12, prompt: "Die Begriffe bzw. Bildvorlagen zeigen und korrekte Benennungen zählen.", materialType: "naming" },
+      { key: "semantic_association", label: "Semantisches Wissen", max: 4, prompt: "Mit Hilfe der gezeigten Bilder passende Zuordnungen erfragen.", materials: ["Wird mit Monarchie in Verbindung gebracht", "Stellt ein Beuteltier dar", "Kann in der Antarktis gefunden werden", "Hat einen Bezug zur Seefahrt"] },
+      { key: "reading", label: "Wörter lesen", max: 1, prompt: "Alle fünf Wörter korrekt lesen lassen.", materialType: "reading" },
+    ],
+  },
+  {
+    key: "visuospatial",
+    title: "Visuell-räumliche Fähigkeiten",
+    max: 16,
+    items: [
+      { key: "infinity", label: "Unendlichkeitssymbol abzeichnen", max: 1, hint: "Patient:in zeichnet auf Papier; hier nur Punkte vergeben.", materialType: "infinity" },
+      { key: "cube", label: "Würfel abzeichnen", max: 2, hint: "Patient:in zeichnet auf Papier; hier nur Punkte vergeben.", materialType: "cube" },
+      { key: "clock", label: "Uhr zeichnen", max: 5, hint: "Patient:in zeichnet auf Papier; hier nur Punkte vergeben.", materialType: "clock" },
+      { key: "dots", label: "Punkte zählen", max: 4, prompt: "Punktmengen zeigen und Antworten bewerten.", materialType: "dots" },
+      { key: "letters", label: "Buchstaben identifizieren", max: 4, prompt: "Fragmentierte Buchstaben zeigen und Antworten bewerten.", materialType: "letters" },
+    ],
+  },
+];
+
+const ACE_TEST_FLOW = [
+  { sectionKey: "attention", itemKeys: ["orientation_time", "orientation_place", "registration", "serial_subtraction"] },
+  { sectionKey: "memory", itemKeys: ["recall_words"] },
+  { sectionKey: "fluency", itemKeys: ["letter_fluency", "animal_fluency"] },
+  { sectionKey: "memory", itemKeys: ["anterograde_memory", "retrograde_memory"] },
+  { sectionKey: "language", itemKeys: ["comprehension", "sentence_writing", "repetition_words", "repetition_sentences", "naming", "semantic_association", "reading"] },
+  { sectionKey: "visuospatial", itemKeys: ["infinity", "cube", "clock", "dots", "letters"] },
+  { sectionKey: "memory", itemKeys: ["recall_name_address", "recognition"] },
+];
+
+function getAceSectionScore(ace, section) {
+  const scores = ace?.scores || {};
+  return section.items.reduce((sum, item) => sum + Math.max(0, Math.min(item.max, Number(scores[item.key] || 0))), 0);
+}
+
+function getAceTotal(ace) {
+  return ACE_SECTIONS.reduce((sum, section) => sum + getAceSectionScore(ace, section), 0);
+}
+
+function scoreAceFluency(type, count) {
+  const n = Math.max(0, Number(count) || 0);
+  if (type === "letter") {
+    if (n >= 18) return 7;
+    if (n >= 14) return 6;
+    if (n >= 11) return 5;
+    if (n >= 8) return 4;
+    if (n >= 6) return 3;
+    if (n >= 4) return 2;
+    if (n >= 2) return 1;
+    return 0;
+  }
+  if (n >= 22) return 7;
+  if (n >= 17) return 6;
+  if (n >= 14) return 5;
+  if (n >= 11) return 4;
+  if (n >= 9) return 3;
+  if (n >= 7) return 2;
+  if (n >= 5) return 1;
+  return 0;
+}
+
 function RWTModeMenu({ onSelect }) {
   return (
     <Card>
@@ -1450,6 +1687,217 @@ function RWTWire({ sessionData, onPersist, onAbort }) {
           onClose={() => setMode(null)}
         />
       )}
+    </section>
+  );
+}
+
+function AceScoreInput({ item, value, onChange }) {
+  const numericValue = value ?? 0;
+  const isSinglePoint = item.max === 1;
+  return (
+    <div>
+      {isSinglePoint ? (
+        <Button
+          type="button"
+          variant={numericValue ? "success" : "secondary"}
+          className="w-full justify-between"
+          onClick={() => onChange(numericValue ? 0 : 1)}
+        >
+          <span>Korrekt</span>
+          <span>{numericValue ? "✔️" : "✖️"}</span>
+        </Button>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={numericValue <= 0}
+            onClick={() => onChange(Math.max(0, numericValue - 1))}
+          >
+            −
+          </Button>
+          <div className="w-10 text-center text-2xl font-semibold tabular-nums">{numericValue}</div>
+          <div className="text-2xl font-semibold tabular-nums text-zinc-500">/ {item.max}</div>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={numericValue >= item.max}
+            onClick={() => onChange(Math.min(item.max, numericValue + 1))}
+          >
+            +1
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AceTaskCard({ item, value, raw = {}, onScoreChange, onRawChange }) {
+  const isFluency = !!item.fluencyType;
+  const hasScorableMaterials = Array.isArray(item.materials) && item.materials.length > 0 && (item.materials.length === item.max || item.scoringMode === "all-or-three");
+  const count = raw.count ?? "";
+  const transcript = raw.transcript || "";
+  const updateCount = (nextCount) => {
+    const normalized = nextCount === "" ? "" : Math.max(0, Number(nextCount) || 0);
+    onRawChange({ ...raw, count: normalized });
+    onScoreChange(scoreAceFluency(item.fluencyType, normalized));
+  };
+  const materialMarks = raw.marks || (hasScorableMaterials && item.scoringMode !== "all-or-three"
+    ? Object.fromEntries(item.materials.slice(0, Number(value) || 0).map((material) => [material, 1]))
+    : {});
+  const toggleMaterial = (material) => {
+    const marks = { ...materialMarks };
+    marks[material] = marks[material] ? 0 : 1;
+    const nextMarks = Object.fromEntries(Object.entries(marks).filter(([, checked]) => checked));
+    onRawChange({ ...raw, marks: nextMarks });
+    const correctCount = Object.keys(nextMarks).length;
+    onScoreChange(item.scoringMode === "all-or-three" ? (correctCount === 4 ? 2 : correctCount === 3 ? 1 : 0) : correctCount);
+  };
+
+  return (
+    <Card className="space-y-3">
+      <div>
+        <div>
+          <div className="text-lg font-semibold">{item.label}</div>
+          {item.prompt && <p className="mt-1 text-sm text-zinc-600">{item.prompt}</p>}
+          {item.hint && <p className="mt-1 text-xs text-zinc-500">{item.hint}</p>}
+        </div>
+      </div>
+      <AceMaterial item={item} />
+      {Array.isArray(item.materials) && item.materials.length > 0 && !hasScorableMaterials && (
+        <div className="rounded-xl border bg-zinc-50 p-3">
+          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Material / Zielantworten</div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {item.materials.map((material) => (
+              <span key={material} className="rounded-lg border bg-white px-3 py-1 text-sm">
+                {material}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {hasScorableMaterials && (
+        <div className="space-y-2">
+          <div className="grid gap-2 md:grid-cols-2">
+            {item.materials.map((material) => {
+              const checked = !!materialMarks[material];
+              return (
+                <button
+                  key={material}
+                  type="button"
+                  onClick={() => toggleMaterial(material)}
+                  className={cls(
+                    "flex min-h-12 items-center justify-between rounded-xl border px-3 py-2 text-left",
+                    checked ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-zinc-300 bg-white"
+                  )}
+                >
+                  <span>{material}</span>
+                  <span>{checked ? "✔️" : "✖️"}</span>
+                </button>
+              );
+            })}
+          </div>
+          {item.scoringMode === "all-or-three" && <div className="text-sm font-medium text-zinc-700">Aktuell: {value ?? 0} / {item.max} Punkte</div>}
+        </div>
+      )}
+      {isFluency && (
+        <div className="grid gap-3 md:grid-cols-[260px_1fr]">
+          <Countdown60 />
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Korrekte Wörter</label>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="secondary" onClick={() => updateCount((Number(count) || 0) + 1)}>+1 Wort</Button>
+              <input
+                className="h-11 w-28 rounded-xl border px-3 text-lg"
+                inputMode="numeric"
+                value={count}
+                onChange={(e) => updateCount(e.target.value)}
+                placeholder="0"
+              />
+              <Button variant="secondary" disabled={(Number(count) || 0) <= 0} onClick={() => updateCount((Number(count) || 0) - 1)}>-1 Wort</Button>
+            </div>
+            <textarea
+              className="h-24 w-full rounded-xl border p-2 text-sm"
+              value={transcript}
+              onChange={(e) => onRawChange({ ...raw, transcript: e.target.value })}
+              placeholder="Mitschrift / Fehler / Wiederholungen …"
+            />
+          </div>
+        </div>
+      )}
+      {!hasScorableMaterials && !isFluency && <AceScoreInput item={item} value={value} onChange={onScoreChange} />}
+    </Card>
+  );
+}
+
+function AceWire({ sessionData, onPersist, onAbort }) {
+  const ace = sessionData?.ace || {};
+  const scores = ace.scores || {};
+  const raw = ace.raw || {};
+  const notes = ace.notes || "";
+  const total = getAceTotal(ace);
+  const persistScore = (key, max, value) => {
+    const clamped = Math.max(0, Math.min(max, Number(value) || 0));
+    onPersist && onPersist({ scores: { ...scores, [key]: clamped } });
+  };
+  const persistRaw = (key, value) => {
+    onPersist && onPersist({ raw: { ...raw, [key]: value } });
+  };
+
+  return (
+    <section className="py-6">
+      <Header
+        title="ACE-III"
+        subtitle="Version A · Durchführung und Bewertung innerhalb der App"
+        right={<div className="rounded-2xl border bg-white px-4 py-2 text-3xl font-semibold tabular-nums">{total}/100</div>}
+      />
+      <div className="mb-3">
+        <AbortButton onAbort={onAbort} />
+      </div>
+      <Card className="mb-4">
+        <div className="text-sm text-zinc-700">
+          Aufgabenstellungen und Testmaterial werden hier angezeigt. Zeichnungsaufgaben erfolgen auf Papier; am iPad wird nur bewertet.
+        </div>
+      </Card>
+      <div className="space-y-4">
+        {ACE_TEST_FLOW.map((flowStep, flowIndex) => {
+          const section = ACE_SECTIONS.find(({ key }) => key === flowStep.sectionKey);
+          const items = section?.items.filter((item) => flowStep.itemKeys.includes(item.key)) || [];
+          if (!section || items.length === 0) return null;
+          const sectionScore = getAceSectionScore(ace, section);
+          return (
+            <section key={`${section.key}-${flowIndex}`} className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <SectionTitle>{section.title}</SectionTitle>
+                <div className="rounded-xl border bg-white px-3 py-1 text-lg font-semibold tabular-nums">
+                  {sectionScore}/{section.max}
+                </div>
+              </div>
+              <div className="grid gap-3">
+                {items.map((item) => (
+                  <AceTaskCard
+                    key={item.key}
+                    item={item}
+                    value={scores[item.key] ?? 0}
+                    raw={raw[item.key] || {}}
+                    onScoreChange={(value) => persistScore(item.key, item.max, value)}
+                    onRawChange={(value) => persistRaw(item.key, value)}
+                  />
+                ))}
+              </div>
+            </section>
+          );
+        })}
+        <Card>
+          <SectionTitle>Notizen</SectionTitle>
+          <textarea
+            className="mt-2 h-28 w-full rounded-xl border p-2"
+            value={notes}
+            onChange={(e) => onPersist && onPersist({ notes: e.target.value })}
+            placeholder="Durchführung, Besonderheiten, Papierzeichnungen, Abbruchgründe …"
+          />
+        </Card>
+      </div>
     </section>
   );
 }
@@ -2381,6 +2829,10 @@ export default function App() {
     if (s.rwt_aborted) set("rwt", "abgebrochen");
     else if (hasRwt) set("rwt", "erfasst");
 
+    // ACE-III
+    if (s.ace_aborted) set("ace", "abgebrochen");
+    else if (s.ace && (Object.keys(s.ace.scores || {}).length > 0 || s.ace.notes)) set("ace", "erfasst");
+
     // Uhrentest
     if (s.uhr_aborted) set("uhr","abgebrochen"); else if (s.uhr && (s.uhr.score !== undefined || s.uhr.note)) set("uhr","erfasst");
 
@@ -2485,6 +2937,23 @@ export default function App() {
               onAbort={(payload)=> setSessionData((s)=>({ ...s, vlmt_aborted: payload }))}
             />
           )}
+        {screen.name === "ace" && (
+          <AceWire
+            sessionData={sessionData}
+            onPersist={(patch) =>
+              setSessionData((s) => ({
+                ...s,
+                ace: { ...(s.ace || {}), ...patch },
+              }))
+            }
+            onAbort={(payload) =>
+              setSessionData((s) => ({
+                ...s,
+                ace_aborted: payload,
+              }))
+            }
+          />
+        )}
         {screen.name === "dcsr" && (
           <DCSRWire
             addGlobalReminder={addGlobalReminder}
@@ -4379,10 +4848,12 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
           <div className="flex gap-2 mt-4">
             <Button
               variant="secondary"
-              disabled={dg <= 1}
-              onClick={() => { if (dg > 1) setDG(dg - 1); }}
+              onClick={() => {
+                if (dg > 1) setDG(dg - 1);
+                else setStep("choose");
+              }}
             >
-              {dg > 1 ? `Zurück zu DG${dg - 1}` : "Zurück"}
+              {dg > 1 ? `Zurück zu DG${dg - 1}` : "Zurück zur Versionswahl"}
             </Button>
             {dg < 5 && !ceilingHit && (
               <Button variant="primary" onClick={() => setDG(dg + 1)}>
@@ -4443,9 +4914,14 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
           <p className="text-sm text-zinc-600">
             Reminder läuft oben rechts. Du kannst andere Tests durchführen und später zurückkehren.
           </p>
-          <Button variant="primary" className="mt-4" onClick={() => setStep("rekog")}>
-            Rekognition jetzt durchführen
-          </Button>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => setStep("dg")}>
+              {`Zurück zu DG${dg}`}
+            </Button>
+            <Button variant="primary" onClick={() => setStep("rekog")}>
+              Rekognition jetzt durchführen
+            </Button>
+          </div>
         </Card>
       )}
 
@@ -4466,7 +4942,7 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
                     <button
                       type="button"
                       onClick={() => adjustRekog(item.key, 1)}
-                      className="px-4 py-2 rounded-xl border bg-white text-sm"
+                      className="min-h-12 min-w-16 px-5 py-3 rounded-xl border bg-white text-base font-medium"
                     >
                       +1
                     </button>
@@ -4474,7 +4950,7 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
                       type="button"
                       onClick={() => adjustRekog(item.key, -1)}
                       disabled={!rekogResp[item.key]}
-                      className="px-4 py-2 rounded-xl border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="min-h-12 min-w-16 px-5 py-3 rounded-xl border bg-white text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       -1
                     </button>
@@ -4491,7 +4967,10 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
               </Button>
             </div>
           </div>
-          <div className="mt-4">
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => setStep("waiting")}>
+              Zurück zur Wartephase
+            </Button>
             <Button
               variant="primary"
               onClick={() => {
