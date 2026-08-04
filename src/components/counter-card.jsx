@@ -1,4 +1,5 @@
 import React from "react";
+import { Button } from "./ui";
 
 export function CounterCard({ label, value, onDec }) {
   return (
@@ -7,14 +8,16 @@ export function CounterCard({ label, value, onDec }) {
         <div className="text-xs text-zinc-600">{label}</div>
         <div className="text-2xl font-semibold tabular-nums">{value}</div>
       </div>
-      <button
+      <Button
         type="button"
         onClick={onDec}
-        className="px-3 py-1.5 rounded-xl border text-xs bg-white"
+        size="sm"
+        variant="secondary"
+        className="text-xs"
         disabled={value === 0}
       >
         −1
-      </button>
+      </Button>
     </div>
   );
 }

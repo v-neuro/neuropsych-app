@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
 import { useInterval } from "../lib/utils";
+import { Button } from "./ui";
 
 function fmtMs(ms) {
   const m = Math.floor(ms / 60000);
@@ -8,11 +9,34 @@ function fmtMs(ms) {
   return `${m}:${s.toString().padStart(2, "0")}.${cs.toString().padStart(2, "0")}`;
 }
 
+function ResetTimerConfirm({ open, onCancel, onConfirm }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 px-4">
+      <div className="w-[420px] max-w-[95vw] rounded-2xl border bg-white p-4 shadow-lg">
+        <div className="text-lg font-medium">Timer wirklich zurücksetzen?</div>
+        <p className="mt-2 text-sm text-zinc-600">
+          Der aktuell gespeicherte Zeitwert wird auf 0 gesetzt.
+        </p>
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="secondary" onClick={onCancel}>
+            Abbrechen
+          </Button>
+          <Button variant="danger" onClick={onConfirm}>
+            Zurücksetzen
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export const Stopwatch = forwardRef(function Stopwatch({ persisted, onPersist, autoAbortMs, onAutoAbort }, ref) {
   const [state, setState] = useState("idle"); // "idle" | "running" | "stopped" | "aborted"
   const [start, setStart] = useState(null);
   const [elapsed, setElapsed] = useState(0);
   const [aborted, setAborted] = useState(false);
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
   const lastPersistedRef = useRef(undefined);
   const autoAbortFiredRef = useRef(false);
 
@@ -68,10 +92,10 @@ export const Stopwatch = forwardRef(function Stopwatch({ persisted, onPersist, a
     autoAbortFiredRef.current = false;
   };
   const stopNow = () => {
-    const now = Date.now();
-    const final = start !== null ? now - start : elapsed;
+    const final = state === "running" && start !== null ? Date.now() - start : elapsed;
     setElapsed(final);
     setState("stopped");
+    setStart(null);
     if (onPersist) onPersist(final);
   };
   const onStop = () => stopNow();
@@ -103,21 +127,30 @@ export const Stopwatch = forwardRef(function Stopwatch({ persisted, onPersist, a
         </div>
       )}
       <div className="flex gap-2 mt-3">
-        <button
+        <Button
           onClick={state === "running" ? onStop : onStart}
-          className={state === "running" ? "px-3 py-2 rounded-xl border" : "px-3 py-2 rounded-xl bg-zinc-900 text-white"}
+          variant={state === "running" ? "secondary" : "primary"}
         >
           {state === "running" ? "Stopp" : "Start"}
-        </button>
-        <button onClick={onReset} className="px-3 py-2 rounded-xl border">Reset</button>
+        </Button>
+        <Button onClick={() => setConfirmResetOpen(true)} variant="secondary">Reset</Button>
       </div>
+      <ResetTimerConfirm
+        open={confirmResetOpen}
+        onCancel={() => setConfirmResetOpen(false)}
+        onConfirm={() => {
+          setConfirmResetOpen(false);
+          onReset();
+        }}
+      />
     </div>
   );
 });
 
-export function Countdown60() {
+export function Countdown60({ disabled = false }) {
   const [state, setState] = useState("idle"); // "idle" | "running" | "stopped"
   const [t, setT] = useState(60_000);
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
 
   useInterval(() => {
     if (state === "running" && t > 0) setT((x) => Math.max(0, x - 100));
@@ -132,17 +165,26 @@ export function Countdown60() {
       <div className="text-4xl font-mono tabular-nums">{fmtMs(t)}</div>
       <div className="flex gap-2 mt-3">
         {t > 0 ? (
-          <button
+          <Button
             onClick={state === "running" ? onStop : onStart}
-            className={state === "running" ? "px-3 py-2 rounded-xl border" : "px-3 py-2 rounded-xl bg-zinc-900 text-white"}
+            disabled={disabled}
+            variant={state === "running" ? "secondary" : "primary"}
           >
             {state === "running" ? "Stopp" : "Start"}
-          </button>
+          </Button>
         ) : (
-          <button disabled className="px-3 py-2 rounded-xl border opacity-40 cursor-not-allowed">Start</button>
+          <Button disabled variant="secondary">Start</Button>
         )}
-        <button onClick={onReset} className="px-3 py-2 rounded-xl border">Reset</button>
+        <Button onClick={() => setConfirmResetOpen(true)} disabled={disabled} variant="secondary">Reset</Button>
       </div>
+      <ResetTimerConfirm
+        open={confirmResetOpen}
+        onCancel={() => setConfirmResetOpen(false)}
+        onConfirm={() => {
+          setConfirmResetOpen(false);
+          onReset();
+        }}
+      />
     </div>
   );
 }

@@ -1,12 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cls, useInterval } from "./lib/utils";
 import { idbGet, idbSet, idbDel, idbSetDrawing, idbGetDrawing, idbDeleteDrawing, idbDeleteDrawingNamespace, idbPruneDrawingsExcept, idbPruneOldSessions } from "./lib/persist";
-import { Card, Header, SectionTitle } from "./components/ui";
+import { Button, Card, Header, SectionTitle } from "./components/ui";
 import { DrawPad } from "./components/draw-pad";
 import { Stopwatch, Countdown60 } from "./components/timers";
 import { AbortButton } from "./components/abort-button";
 import { ErrorBoundary } from "./components/error-boundary";
-import { CounterCard } from "./components/counter-card";
 
 // ---------- Preloaded test materials (read-only in UI) ----------
 const VLMT_LISTS = {
@@ -88,6 +87,152 @@ const VLMT_RECOG = {
   ],
 };
 
+const TEST_LANGUAGE_OPTIONS = [
+  { code: "de", label: "Deutsch" },
+  { code: "en", label: "Englisch" },
+  { code: "tr", label: "Türkisch" },
+  { code: "ru", label: "Russisch" },
+  { code: "ar", label: "Arabisch" },
+  { code: "uk", label: "Ukrainisch" },
+  { code: "pl", label: "Polnisch" },
+];
+
+const normalizeTestLanguage = (language) => (
+  TEST_LANGUAGE_OPTIONS.some((option) => option.code === language) ? language : "de"
+);
+
+function normalizeMaterialEntry(item, fallbackKey) {
+  if (item && typeof item === "object") {
+    return {
+      ...item,
+      key: item.key || item.id || item.word || item.w || fallbackKey,
+      label: item.label || item.word || item.w || item.key || fallbackKey,
+    };
+  }
+  return {
+    key: fallbackKey || item,
+    label: item,
+  };
+}
+
+const WORD_TRANSLATIONS = {
+  en: {
+    Trommel: "drum", Vorhang: "curtain", Glocke: "bell", Kaffee: "coffee", Schule: "school", Eltern: "parents", Mond: "moon", Garten: "garden", Hut: "hat", Bauer: "farmer", Nase: "nose", Truthahn: "turkey", Farbe: "color", Haus: "house", Fluss: "river",
+    Geige: "violin", Fenster: "window", Lampe: "lamp", Museum: "museum", Tee: "tea", Reise: "trip", Sonne: "sun", Wiese: "meadow", Treppe: "stairs", Maurer: "bricklayer", Zunge: "tongue", Tiger: "tiger", Musik: "music", Stadt: "city", See: "lake",
+    Horn: "horn", Tür: "door", Seil: "rope", Kakao: "cocoa", Gericht: "dish", Wagen: "carriage", Sterne: "stars", Baum: "tree", Mantel: "coat", Pfarrer: "pastor", Mund: "mouth", Gans: "goose", Form: "shape", Land: "country", Regen: "rain",
+    Trompete: "trumpet", Regal: "shelf", Kamin: "fireplace", Suppe: "soup", Schwester: "sister", Messer: "knife", Jacke: "jacket", Wald: "forest", Aufzug: "elevator", Lager: "camp", Kinn: "chin", Leopard: "leopard", Tanz: "dance", Sand: "sand", Teich: "pond",
+    Tisch: "table", Förster: "forester", Vogel: "bird", Schuh: "shoe", Ofen: "oven", Berg: "mountain", Handtuch: "towel", Brille: "glasses", Wolke: "cloud", Boot: "boat", Lamm: "lamb", Gewehr: "rifle", Bleistift: "pencil", Kirsche: "cherry", Arm: "arm",
+    Vase: "vase", Lehrer: "teacher", Kuh: "cow", Fisch: "fish", Kuchen: "cake", Garbe: "sheaf", Maus: "mouse", Locke: "curl", Jäger: "hunter", Stille: "silence", Mut: "courage", Mauer: "wall", Bein: "leg", Schaf: "sheep", Warten: "waiting", Pauke: "kettledrum", Kinder: "children",
+    Flöte: "flute", Riese: "giant", Licht: "light", Urlaub: "vacation", Gras: "grass", Neige: "slope", Klee: "clover", Wonne: "delight", Glas: "glass", Sieger: "winner", Rampe: "ramp", Stufe: "step", Löwe: "lion",
+    Geweih: "antlers", Hund: "dog", Huhn: "chicken", Degen: "rapier", Milch: "milk", Hand: "hand", Gesicht: "face", Beil: "hatchet", Mandel: "almond", Norm: "norm", Auto: "car",
+    Schornstein: "chimney", Tango: "tango", Lage: "position", legal: "legal", Stirn: "forehead", Wall: "rampart", Schuppe: "scale", Backe: "cheek", Bruder: "brother", Gabel: "fork",
+    Butter: "butter", Strand: "beach", Brief: "letter", Königin: "queen", Hütte: "hut", Stange: "pole", Karte: "card", Motor: "engine", Kirche: "church", Dollar: "dollar", Fünf: "five", Hotel: "hotel", Pantoffel: "slipper", Dorf: "village", Band: "ribbon", Heer: "army",
+  },
+  tr: {
+    Trommel: "davul", Vorhang: "perde", Glocke: "zil", Kaffee: "kahve", Schule: "okul", Eltern: "ebeveynler", Mond: "ay", Garten: "bahçe", Hut: "şapka", Bauer: "çiftçi", Nase: "burun", Truthahn: "hindi", Farbe: "renk", Haus: "ev", Fluss: "nehir",
+    Geige: "keman", Fenster: "pencere", Lampe: "lamba", Museum: "müze", Tee: "çay", Reise: "seyahat", Sonne: "güneş", Wiese: "çayır", Treppe: "merdiven", Maurer: "duvarcı", Zunge: "dil", Tiger: "kaplan", Musik: "müzik", Stadt: "şehir", See: "göl",
+    Horn: "boynuz", Tür: "kapı", Seil: "ip", Kakao: "kakao", Gericht: "yemek", Wagen: "araba", Sterne: "yıldızlar", Baum: "ağaç", Mantel: "palto", Pfarrer: "papaz", Mund: "ağız", Gans: "kaz", Form: "şekil", Land: "ülke", Regen: "yağmur",
+    Trompete: "trompet", Regal: "raf", Kamin: "şömine", Suppe: "çorba", Schwester: "kız kardeş", Messer: "bıçak", Jacke: "ceket", Wald: "orman", Aufzug: "asansör", Lager: "kamp", Kinn: "çene", Leopard: "leopar", Tanz: "dans", Sand: "kum", Teich: "gölet",
+    Tisch: "masa", Förster: "ormancı", Vogel: "kuş", Schuh: "ayakkabı", Ofen: "fırın", Berg: "dağ", Handtuch: "havlu", Brille: "gözlük", Wolke: "bulut", Boot: "tekne", Lamm: "kuzu", Gewehr: "tüfek", Bleistift: "kurşun kalem", Kirsche: "kiraz", Arm: "kol",
+    Vase: "vazo", Lehrer: "öğretmen", Kuh: "inek", Fisch: "balık", Kuchen: "pasta", Garbe: "demet", Maus: "fare", Locke: "bukle", Jäger: "avcı", Stille: "sessizlik", Mut: "cesaret", Mauer: "duvar", Bein: "bacak", Schaf: "koyun", Warten: "bekleme", Pauke: "timpani", Kinder: "çocuklar",
+    Flöte: "flüt", Riese: "dev", Licht: "ışık", Urlaub: "tatil", Gras: "çimen", Neige: "eğim", Klee: "yonca", Wonne: "sevinç", Glas: "bardak", Sieger: "kazanan", Rampe: "rampa", Stufe: "basamak", Löwe: "aslan",
+    Geweih: "geyik boynuzu", Hund: "köpek", Huhn: "tavuk", Degen: "meç", Milch: "süt", Hand: "el", Gesicht: "yüz", Beil: "balta", Mandel: "badem", Norm: "norm", Auto: "otomobil",
+    Schornstein: "baca", Tango: "tango", Lage: "konum", legal: "yasal", Stirn: "alın", Wall: "sur", Schuppe: "pul", Backe: "yanak", Bruder: "erkek kardeş", Gabel: "çatal",
+    Butter: "tereyağı", Strand: "plaj", Brief: "mektup", Königin: "kraliçe", Hütte: "kulübe", Stange: "direk", Karte: "kart", Motor: "motor", Kirche: "kilise", Dollar: "dolar", Fünf: "beş", Hotel: "otel", Pantoffel: "terlik", Dorf: "köy", Band: "kurdele", Heer: "ordu",
+  },
+  ru: {
+    Trommel: "барабан", Vorhang: "занавес", Glocke: "колокол", Kaffee: "кофе", Schule: "школа", Eltern: "родители", Mond: "луна", Garten: "сад", Hut: "шляпа", Bauer: "фермер", Nase: "нос", Truthahn: "индейка", Farbe: "цвет", Haus: "дом", Fluss: "река",
+    Geige: "скрипка", Fenster: "окно", Lampe: "лампа", Museum: "музей", Tee: "чай", Reise: "поездка", Sonne: "солнце", Wiese: "луг", Treppe: "лестница", Maurer: "каменщик", Zunge: "язык", Tiger: "тигр", Musik: "музыка", Stadt: "город", See: "озеро",
+    Horn: "рог", Tür: "дверь", Seil: "верёвка", Kakao: "какао", Gericht: "блюдо", Wagen: "повозка", Sterne: "звёзды", Baum: "дерево", Mantel: "пальто", Pfarrer: "священник", Mund: "рот", Gans: "гусь", Form: "форма", Land: "страна", Regen: "дождь",
+    Trompete: "труба", Regal: "полка", Kamin: "камин", Suppe: "суп", Schwester: "сестра", Messer: "нож", Jacke: "куртка", Wald: "лес", Aufzug: "лифт", Lager: "лагерь", Kinn: "подбородок", Leopard: "леопард", Tanz: "танец", Sand: "песок", Teich: "пруд",
+    Tisch: "стол", Förster: "лесник", Vogel: "птица", Schuh: "ботинок", Ofen: "печь", Berg: "гора", Handtuch: "полотенце", Brille: "очки", Wolke: "облако", Boot: "лодка", Lamm: "ягнёнок", Gewehr: "ружьё", Bleistift: "карандаш", Kirsche: "вишня", Arm: "рука",
+    Vase: "ваза", Lehrer: "учитель", Kuh: "корова", Fisch: "рыба", Kuchen: "пирог", Garbe: "сноп", Maus: "мышь", Locke: "локон", Jäger: "охотник", Stille: "тишина", Mut: "смелость", Mauer: "стена", Bein: "нога", Schaf: "овца", Warten: "ожидание", Pauke: "литавра", Kinder: "дети",
+    Flöte: "флейта", Riese: "великан", Licht: "свет", Urlaub: "отпуск", Gras: "трава", Neige: "наклон", Klee: "клевер", Wonne: "радость", Glas: "стакан", Sieger: "победитель", Rampe: "пандус", Stufe: "ступень", Löwe: "лев",
+    Geweih: "рога", Hund: "собака", Huhn: "курица", Degen: "шпага", Milch: "молоко", Hand: "кисть", Gesicht: "лицо", Beil: "топорик", Mandel: "миндаль", Norm: "норма", Auto: "машина",
+    Schornstein: "дымоход", Tango: "танго", Lage: "положение", legal: "легальный", Stirn: "лоб", Wall: "вал", Schuppe: "чешуйка", Backe: "щека", Bruder: "брат", Gabel: "вилка",
+    Butter: "масло", Strand: "пляж", Brief: "письмо", Königin: "королева", Hütte: "хижина", Stange: "шест", Karte: "карта", Motor: "мотор", Kirche: "церковь", Dollar: "доллар", Fünf: "пять", Hotel: "отель", Pantoffel: "тапок", Dorf: "деревня", Band: "лента", Heer: "армия",
+  },
+  ar: {
+    Trommel: "طبل", Vorhang: "ستارة", Glocke: "جرس", Kaffee: "قهوة", Schule: "مدرسة", Eltern: "والدان", Mond: "قمر", Garten: "حديقة", Hut: "قبعة", Bauer: "مزارع", Nase: "أنف", Truthahn: "ديك رومي", Farbe: "لون", Haus: "بيت", Fluss: "نهر",
+    Geige: "كمان", Fenster: "نافذة", Lampe: "مصباح", Museum: "متحف", Tee: "شاي", Reise: "رحلة", Sonne: "شمس", Wiese: "مرج", Treppe: "درج", Maurer: "بنّاء", Zunge: "لسان", Tiger: "نمر", Musik: "موسيقى", Stadt: "مدينة", See: "بحيرة",
+    Horn: "قرن", Tür: "باب", Seil: "حبل", Kakao: "كاكاو", Gericht: "طبق", Wagen: "عربة", Sterne: "نجوم", Baum: "شجرة", Mantel: "معطف", Pfarrer: "قس", Mund: "فم", Gans: "إوزة", Form: "شكل", Land: "بلد", Regen: "مطر",
+    Trompete: "بوق", Regal: "رف", Kamin: "مدفأة", Suppe: "حساء", Schwester: "أخت", Messer: "سكين", Jacke: "سترة", Wald: "غابة", Aufzug: "مصعد", Lager: "مخيم", Kinn: "ذقن", Leopard: "فهد", Tanz: "رقص", Sand: "رمل", Teich: "بركة",
+    Tisch: "طاولة", Förster: "حارس غابة", Vogel: "طائر", Schuh: "حذاء", Ofen: "فرن", Berg: "جبل", Handtuch: "منشفة", Brille: "نظارة", Wolke: "سحابة", Boot: "قارب", Lamm: "حمل", Gewehr: "بندقية", Bleistift: "قلم رصاص", Kirsche: "كرز", Arm: "ذراع",
+    Vase: "مزهرية", Lehrer: "معلم", Kuh: "بقرة", Fisch: "سمكة", Kuchen: "كعكة", Garbe: "حزمة", Maus: "فأر", Locke: "خصلة شعر", Jäger: "صياد", Stille: "صمت", Mut: "شجاعة", Mauer: "جدار", Bein: "ساق", Schaf: "خروف", Warten: "انتظار", Pauke: "طبل كبير", Kinder: "أطفال",
+    Flöte: "ناي", Riese: "عملاق", Licht: "ضوء", Urlaub: "إجازة", Gras: "عشب", Neige: "ميل", Klee: "برسيم", Wonne: "بهجة", Glas: "كأس", Sieger: "فائز", Rampe: "منحدر", Stufe: "درجة", Löwe: "أسد",
+    Geweih: "قرون غزال", Hund: "كلب", Huhn: "دجاجة", Degen: "سيف", Milch: "حليب", Hand: "يد", Gesicht: "وجه", Beil: "بلطة", Mandel: "لوز", Norm: "معيار", Auto: "سيارة",
+    Schornstein: "مدخنة", Tango: "تانغو", Lage: "موضع", legal: "قانوني", Stirn: "جبهة", Wall: "سور", Schuppe: "قشرة", Backe: "خد", Bruder: "أخ", Gabel: "شوكة",
+    Butter: "زبدة", Strand: "شاطئ", Brief: "رسالة", Königin: "ملكة", Hütte: "كوخ", Stange: "عمود", Karte: "بطاقة", Motor: "محرك", Kirche: "كنيسة", Dollar: "دولار", Fünf: "خمسة", Hotel: "فندق", Pantoffel: "شبشب", Dorf: "قرية", Band: "شريط", Heer: "جيش",
+  },
+  uk: {
+    Trommel: "барабан", Vorhang: "завіса", Glocke: "дзвін", Kaffee: "кава", Schule: "школа", Eltern: "батьки", Mond: "місяць", Garten: "сад", Hut: "капелюх", Bauer: "фермер", Nase: "ніс", Truthahn: "індик", Farbe: "колір", Haus: "дім", Fluss: "річка",
+    Geige: "скрипка", Fenster: "вікно", Lampe: "лампа", Museum: "музей", Tee: "чай", Reise: "подорож", Sonne: "сонце", Wiese: "луг", Treppe: "сходи", Maurer: "муляр", Zunge: "язик", Tiger: "тигр", Musik: "музика", Stadt: "місто", See: "озеро",
+    Horn: "ріг", Tür: "двері", Seil: "мотузка", Kakao: "какао", Gericht: "страва", Wagen: "віз", Sterne: "зірки", Baum: "дерево", Mantel: "пальто", Pfarrer: "священник", Mund: "рот", Gans: "гуска", Form: "форма", Land: "країна", Regen: "дощ",
+    Trompete: "труба", Regal: "полиця", Kamin: "камін", Suppe: "суп", Schwester: "сестра", Messer: "ніж", Jacke: "куртка", Wald: "ліс", Aufzug: "ліфт", Lager: "табір", Kinn: "підборіддя", Leopard: "леопард", Tanz: "танець", Sand: "пісок", Teich: "ставок",
+    Tisch: "стіл", Förster: "лісник", Vogel: "птах", Schuh: "черевик", Ofen: "піч", Berg: "гора", Handtuch: "рушник", Brille: "окуляри", Wolke: "хмара", Boot: "човен", Lamm: "ягня", Gewehr: "рушниця", Bleistift: "олівець", Kirsche: "вишня", Arm: "рука",
+    Vase: "ваза", Lehrer: "учитель", Kuh: "корова", Fisch: "риба", Kuchen: "пиріг", Garbe: "сніп", Maus: "миша", Locke: "локон", Jäger: "мисливець", Stille: "тиша", Mut: "сміливість", Mauer: "стіна", Bein: "нога", Schaf: "вівця", Warten: "очікування", Pauke: "литавра", Kinder: "діти",
+    Flöte: "флейта", Riese: "велетень", Licht: "світло", Urlaub: "відпустка", Gras: "трава", Neige: "нахил", Klee: "конюшина", Wonne: "радість", Glas: "склянка", Sieger: "переможець", Rampe: "пандус", Stufe: "сходинка", Löwe: "лев",
+    Geweih: "роги", Hund: "собака", Huhn: "курка", Degen: "шпага", Milch: "молоко", Hand: "кисть", Gesicht: "обличчя", Beil: "топірець", Mandel: "мигдаль", Norm: "норма", Auto: "авто",
+    Schornstein: "димар", Tango: "танго", Lage: "положення", legal: "легальний", Stirn: "лоб", Wall: "вал", Schuppe: "луска", Backe: "щока", Bruder: "брат", Gabel: "виделка",
+    Butter: "масло", Strand: "пляж", Brief: "лист", Königin: "королева", Hütte: "хатина", Stange: "жердина", Karte: "картка", Motor: "мотор", Kirche: "церква", Dollar: "долар", Fünf: "п’ять", Hotel: "готель", Pantoffel: "капці", Dorf: "село", Band: "стрічка", Heer: "армія",
+  },
+  pl: {
+    Trommel: "bęben", Vorhang: "zasłona", Glocke: "dzwon", Kaffee: "kawa", Schule: "szkoła", Eltern: "rodzice", Mond: "księżyc", Garten: "ogród", Hut: "kapelusz", Bauer: "rolnik", Nase: "nos", Truthahn: "indyk", Farbe: "kolor", Haus: "dom", Fluss: "rzeka",
+    Geige: "skrzypce", Fenster: "okno", Lampe: "lampa", Museum: "muzeum", Tee: "herbata", Reise: "podróż", Sonne: "słońce", Wiese: "łąka", Treppe: "schody", Maurer: "murarz", Zunge: "język", Tiger: "tygrys", Musik: "muzyka", Stadt: "miasto", See: "jezioro",
+    Horn: "róg", Tür: "drzwi", Seil: "lina", Kakao: "kakao", Gericht: "danie", Wagen: "wóz", Sterne: "gwiazdy", Baum: "drzewo", Mantel: "płaszcz", Pfarrer: "ksiądz", Mund: "usta", Gans: "gęś", Form: "kształt", Land: "kraj", Regen: "deszcz",
+    Trompete: "trąbka", Regal: "regał", Kamin: "kominek", Suppe: "zupa", Schwester: "siostra", Messer: "nóż", Jacke: "kurtka", Wald: "las", Aufzug: "winda", Lager: "obóz", Kinn: "podbródek", Leopard: "lampart", Tanz: "taniec", Sand: "piasek", Teich: "staw",
+    Tisch: "stół", Förster: "leśniczy", Vogel: "ptak", Schuh: "but", Ofen: "piec", Berg: "góra", Handtuch: "ręcznik", Brille: "okulary", Wolke: "chmura", Boot: "łódź", Lamm: "jagnię", Gewehr: "karabin", Bleistift: "ołówek", Kirsche: "wiśnia", Arm: "ręka",
+    Vase: "wazon", Lehrer: "nauczyciel", Kuh: "krowa", Fisch: "ryba", Kuchen: "ciasto", Garbe: "snop", Maus: "mysz", Locke: "lok", Jäger: "myśliwy", Stille: "cisza", Mut: "odwaga", Mauer: "mur", Bein: "noga", Schaf: "owca", Warten: "czekanie", Pauke: "kocioł", Kinder: "dzieci",
+    Flöte: "flet", Riese: "olbrzym", Licht: "światło", Urlaub: "urlop", Gras: "trawa", Neige: "nachylenie", Klee: "koniczyna", Wonne: "rozkosz", Glas: "szklanka", Sieger: "zwycięzca", Rampe: "rampa", Stufe: "stopień", Löwe: "lew",
+    Geweih: "poroże", Hund: "pies", Huhn: "kura", Degen: "szpada", Milch: "mleko", Hand: "dłoń", Gesicht: "twarz", Beil: "siekierka", Mandel: "migdał", Norm: "norma", Auto: "samochód",
+    Schornstein: "komin", Tango: "tango", Lage: "położenie", legal: "legalny", Stirn: "czoło", Wall: "wał", Schuppe: "łuska", Backe: "policzek", Bruder: "brat", Gabel: "widelec",
+    Butter: "masło", Strand: "plaża", Brief: "list", Königin: "królowa", Hütte: "chata", Stange: "drążek", Karte: "karta", Motor: "silnik", Kirche: "kościół", Dollar: "dolar", Fünf: "pięć", Hotel: "hotel", Pantoffel: "pantofel", Dorf: "wieś", Band: "wstążka", Heer: "armia",
+  },
+};
+
+function translateWord(language, word) {
+  return WORD_TRANSLATIONS[normalizeTestLanguage(language)]?.[word] || word;
+}
+
+function translatedWordEntries(language, words) {
+  return words.map((word) => ({ key: word, label: translateWord(language, word) }));
+}
+
+function translatedRecognitionEntries(language, items) {
+  return items.map((item) => ({ key: item.w, label: translateWord(language, item.w), t: item.t }));
+}
+
+function getVlmtMaterials(language) {
+  const normalized = normalizeTestLanguage(language);
+  if (normalized === "de") {
+    return { lists: VLMT_LISTS, interference: VLMT_INTERFERENCE, recognition: VLMT_RECOG };
+  }
+  return {
+    lists: Object.fromEntries(
+      Object.entries(VLMT_LISTS).map(([key, words]) => [key, translatedWordEntries(normalized, words)])
+    ),
+    interference: translatedWordEntries(normalized, VLMT_INTERFERENCE),
+    recognition: Object.fromEntries(
+      Object.entries(VLMT_RECOG).map(([key, items]) => [key, translatedRecognitionEntries(normalized, items)])
+    ),
+  };
+}
+
+function getCeradWordlistMaterials(language) {
+  const normalized = normalizeTestLanguage(language);
+  if (normalized === "de") {
+    return { wordlist: CERAD_WORDLIST, recognitionItems: CERAD_WL_RECOG_ITEMS };
+  }
+  return {
+    wordlist: translatedWordEntries(normalized, CERAD_WORDLIST),
+    recognitionItems: CERAD_WL_RECOG_ITEMS.map((item) => ({
+      key: item.word,
+      label: translateWord(normalized, item.word),
+      isOrig: item.isOrig,
+    })),
+  };
+}
+
 // CERAD Benennen: 15 Bilder (Labels, keine Inhalte)
 const CERAD_BENENNEN_LABELS = [
   "Baum",
@@ -145,16 +290,17 @@ function ImpressumModal({ open, onClose }) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div className="w-full max-w-2xl rounded-2xl border border-zinc-200 bg-white p-5 shadow-lg dark:bg-zinc-900 dark:border-zinc-700">
+      <div className="w-full max-w-2xl rounded-2xl border border-zinc-200 bg-white p-5 shadow-lg">
         <div className="flex items-center justify-between mb-3">
           <div className="text-lg font-semibold">Impressum</div>
-          <button
+          <Button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 rounded-xl border text-sm"
+            size="sm"
+            variant="secondary"
           >
             Schließen
-          </button>
+          </Button>
         </div>
         <div className="text-sm space-y-2 leading-relaxed">
           <p><strong>Betreiber*in:</strong> Forschungsgruppe Verhaltensneurologie, Klinik für Neurologie, Knappschaft Kliniken Universitätsklinikum Bochum</p>
@@ -171,13 +317,13 @@ function ImpressumModal({ open, onClose }) {
 }
 
 function TestbereicheModal({ open, onClose, onOpenTest }) {
+  const [openSections, setOpenSections] = useState({});
   if (!open) return null;
   const onOpen = (route) => {
     if (!onOpenTest || !route) return;
     onClose();
     onOpenTest(route);
   };
-  const [openSections, setOpenSections] = useState({});
   const toggleSection = (key) => {
     setOpenSections((s) => ({ ...s, [key]: !s[key] }));
   };
@@ -259,28 +405,30 @@ function TestbereicheModal({ open, onClose, onOpenTest }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div className="w-full max-w-4xl rounded-2xl border border-zinc-200 bg-white p-5 shadow-lg dark:bg-zinc-900 dark:border-zinc-700 max-h-[85vh] overflow-auto">
+      <div className="w-full max-w-4xl rounded-2xl border border-zinc-200 bg-white p-5 shadow-lg max-h-[85vh] overflow-auto">
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
             <div className="text-lg font-semibold">Testungsaufbau für verschiedene Fragestellungen</div>
             <p className="text-sm text-zinc-600 mt-1">Direktstart verfügbarer Tests mit einem Klick. Nicht digital verfügbare Module sind hier abgelegt.</p>
           </div>
-          <button
+          <Button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 rounded-xl border text-sm shrink-0"
+            size="sm"
+            variant="secondary"
+            className="shrink-0"
           >
             Schließen
-          </button>
+          </Button>
         </div>
         <div className="space-y-3 text-sm">
           {bereiche.map((bereich) => (
             <section
               key={bereich.titel}
-              className="rounded-xl border border-zinc-200 bg-zinc-50 dark:bg-zinc-800/50 dark:border-zinc-700"
+              className="rounded-xl border border-zinc-200 bg-zinc-50"
             >
               <div
-                className="p-3 cursor-pointer flex items-center justify-between gap-2 border-b border-zinc-200 dark:border-zinc-700"
+                className="p-3 cursor-pointer flex items-center justify-between gap-2 border-b border-zinc-200"
                 onClick={() => toggleSection(bereich.titel)}
                 role="button"
                 tabIndex={0}
@@ -302,25 +450,23 @@ function TestbereicheModal({ open, onClose, onOpenTest }) {
                 aria-hidden={!openSections[bereich.titel]}
               >
                 <div className="p-3 pt-2 space-y-2">
-                  {bereich.subtitle && <p className="text-sm italic text-zinc-600 dark:text-zinc-300">{bereich.subtitle}</p>}
+                  {bereich.subtitle && <p className="text-sm italic text-zinc-600">{bereich.subtitle}</p>}
                   {bereich.items.map((item) => (
                     <div
                       key={item.name}
                       className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto] sm:items-center"
                     >
                       <span>{item.name}</span>
-                      <button
+                      <Button
                         type="button"
                         onClick={() => onOpen(item.testRoute)}
                         disabled={!item.testRoute}
-                        className={`w-full sm:w-auto justify-self-start sm:justify-self-end px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium border transition ${
-                          item.testRoute
-                            ? "bg-zinc-900 text-white hover:opacity-90"
-                            : "bg-zinc-100 text-zinc-500"
-                        }`}
+                        size="sm"
+                        variant={item.testRoute ? "primary" : "subtle"}
+                        className="w-full sm:w-auto justify-self-start sm:justify-self-end text-xs sm:text-sm"
                       >
                         {item.testRoute ? "Test starten" : "Nicht digital verfügbar"}
-                      </button>
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -382,8 +528,8 @@ function PasswordPrompt({ onSubmit, error }) {
 function EpiTrackWire({ sessionData, onImportInv, onPersistTime, onAbort, onSendTmt }) {
   const subs = [
     { id: "zahlen_interferenz", label: "Zahleninterferenz", type: "stopwatch" },
-    { id: "zahlen_verbinden", label: "Zahlen verbinden", type: "stopwatch" },
-    { id: "zahlen_buchstaben", label: "Zahlen-Buchstaben", type: "stopwatch" },
+    { id: "zahlen_verbinden", label: "Zahlen verbinden", type: "stopwatch", limit: 180_000 },
+    { id: "zahlen_buchstaben", label: "Zahlen-Buchstaben", type: "stopwatch", limit: 300_000 },
     { id: "labyrinth", label: "Labyrinth", type: "stopwatch" },
     { id: "wortfl", label: "Wortflüssigkeit", type: "wf" },
     { id: "inv_spanne", label: "Invertierte Zahlenspanne", type: "inv" },
@@ -424,6 +570,11 @@ function EpiTrackWire({ sessionData, onImportInv, onPersistTime, onAbort, onSend
               <Stopwatch
                 persisted={epiTimes[s.id] ?? null}
                 onPersist={(ms) => onPersistTime && onPersistTime(s.id, ms)}
+                autoAbortMs={s.limit}
+                onAutoAbort={(info) => {
+                  onPersistTime && onPersistTime(s.id, s.limit);
+                  onAbort && onAbort({ reason: "Automatischer Abbruch", limit_ms: s.limit, at: info?.at || Date.now(), subtest: s.id });
+                }}
               />
             )}
             {s.type === "stopwatch" && ["zahlen_verbinden", "zahlen_buchstaben"].includes(s.id) && (
@@ -524,6 +675,36 @@ const normalizeScreen = (value) => {
   return { name: "menu" };
 };
 
+const DCSR_RATINGS = [
+  { key: "R", field: "richtig", label: "Richtig", variant: "success", className: "bg-emerald-50 border-emerald-200 text-emerald-800" },
+  { key: "F", field: "falsch", label: "Falsch", variant: "danger", className: "bg-rose-50 border-rose-200 text-rose-800" },
+  { key: "D", field: "gedreht", label: "Gedreht", variant: "warning", className: "bg-amber-50 border-amber-200 text-amber-800" },
+  { key: "P", field: "perseveration", label: "Perseveration", variant: "info", className: "bg-sky-50 border-sky-200 text-sky-800" },
+];
+
+const DCSR_RATING_FIELDS = DCSR_RATINGS.reduce((acc, rating) => {
+  acc[rating.key] = rating.field;
+  return acc;
+}, {});
+
+const DCSR_RATING_LABELS = DCSR_RATINGS.reduce((acc, rating) => {
+  acc[rating.key] = rating.label;
+  return acc;
+}, {});
+
+const normalizeDcsrGalleryEntry = (entry) => {
+  if (typeof entry === "string") return { key: entry, rating: null };
+  if (!entry || typeof entry !== "object" || typeof entry.key !== "string") return null;
+  return {
+    key: entry.key,
+    rating: DCSR_RATING_FIELDS[entry.rating] ? entry.rating : null,
+  };
+};
+
+const normalizeDcsrGalleryEntries = (entries) => (
+  Array.isArray(entries) ? entries.map(normalizeDcsrGalleryEntry).filter(Boolean) : []
+);
+
 async function loadDcsrDrawings(sessionUUID, sessionData) {
   const dcsr = sessionData?.dcsr || {};
   const keys = Array.isArray(dcsr.drawingKeys)
@@ -546,12 +727,19 @@ async function loadDcsrFigureGalleries(sessionData) {
   const galleryKeysByDg = Array.isArray(dcsr.drawingGalleryKeys) ? dcsr.drawingGalleryKeys : [];
   const out = Array.from({ length: 5 }, () => []);
   await Promise.all(out.map(async (_, dgIdx) => {
-    const keys = Array.isArray(galleryKeysByDg[dgIdx]) ? galleryKeysByDg[dgIdx] : [];
-    if (!keys.length) return;
-    const data = await Promise.all(keys.map((k) => (k ? idbGetDrawing(k) : null)));
-    out[dgIdx] = data
-      .filter(Boolean)
-      .map((val) => (val instanceof Blob ? URL.createObjectURL(val) : val));
+    const entries = normalizeDcsrGalleryEntries(galleryKeysByDg[dgIdx]);
+    if (!entries.length) return;
+    const data = await Promise.all(entries.map((entry) => idbGetDrawing(entry.key)));
+    out[dgIdx] = entries
+      .map((entry, idx) => {
+        const val = data[idx];
+        if (!val) return null;
+        return {
+          src: val instanceof Blob ? URL.createObjectURL(val) : val,
+          rating: entry.rating,
+        };
+      })
+      .filter(Boolean);
   }));
   return out;
 }
@@ -1132,19 +1320,21 @@ function RWTModeMenu({ onSelect }) {
 
 function RWTTestPanel({ meta, modeKey, sessionData, onPersist, onClose }) {
   const persisted = (sessionData?.rwt || {})[modeKey] || {};
-  const [opt, setOpt] = useState(persisted.version || meta.options[0]);
+  const [opt, setOpt] = useState(persisted.version || "");
   const [notes, setNotes] = useState(persisted.notes || "");
   const [sum, setSum] = useState(typeof persisted.sum === "number" ? persisted.sum : (persisted.sum || ""));
 
   useEffect(() => {
     const p = (sessionData?.rwt || {})[modeKey] || {};
-    setOpt(p.version || meta.options[0]);
+    setOpt(p.version || "");
     setNotes(p.notes || "");
     setSum(typeof p.sum === "number" ? p.sum : (p.sum || ""));
-  }, [modeKey, sessionData, meta.options]);
+  }, [modeKey, sessionData]);
 
   const persist = (patch) => onPersist && onPersist(modeKey, patch);
+  const versionSelected = !!opt;
   const setWordCount = (updater) => {
+    if (!versionSelected) return;
     const current = Number(sum) || 0;
     const val = updater(current);
     const clamped = Math.max(0, val);
@@ -1155,6 +1345,9 @@ function RWTTestPanel({ meta, modeKey, sessionData, onPersist, onClose }) {
   return (
     <Card>
       <div className="text-center text-2xl font-semibold mb-2">{meta.title}</div>
+      {!versionSelected && (
+        <div className="mb-2 text-center text-sm text-zinc-600">Bitte zuerst eine Version wählen.</div>
+      )}
       <div className="flex items-center justify-center gap-4 mb-3">
         {meta.options.map((o) => (
           <button
@@ -1166,26 +1359,38 @@ function RWTTestPanel({ meta, modeKey, sessionData, onPersist, onClose }) {
           </button>
         ))}
       </div>
-      <div className="mt-4 grid md:grid-cols-2 gap-4 items-start">
+      <div className={cls(
+        "mt-4 grid md:grid-cols-2 gap-4 items-start rounded-2xl border p-3",
+        versionSelected ? "bg-white border-zinc-200" : "bg-zinc-50 border-zinc-200 opacity-50"
+      )}>
         <div className="space-y-3 md:col-span-1">
-          <Countdown60 />
+          <Countdown60 disabled={!versionSelected} />
         </div>
         <div className="space-y-2 md:col-span-1">
           <label className="block text-sm">Summe Wörter</label>
           <div className="flex items-stretch gap-3">
             <button
-              type="button"
-              onClick={() => setWordCount((v) => v + 1)}
-              className="px-8 py-4 rounded-xl border text-lg bg-zinc-50 h-16"
+            type="button"
+            onClick={() => setWordCount((v) => v + 1)}
+            disabled={!versionSelected}
+              className={cls(
+                "px-8 py-4 rounded-xl border text-lg bg-zinc-50 h-16",
+                !versionSelected && "cursor-not-allowed opacity-60"
+              )}
             >
               +1 Wort
             </button>
             <input
-              className="w-32 rounded-xl border px-3 text-lg h-16"
+              className={cls(
+                "w-32 rounded-xl border px-3 text-lg h-16",
+                !versionSelected && "cursor-not-allowed bg-zinc-100 opacity-60"
+              )}
               placeholder="0"
               inputMode="numeric"
               value={sum}
+              disabled={!versionSelected}
                 onChange={(e) => {
+                  if (!versionSelected) return;
                   const v = e.target.value;
                   const n = v === "" ? "" : Math.max(0, parseInt(v, 10) || 0);
                   setSum(n);
@@ -1193,9 +1398,13 @@ function RWTTestPanel({ meta, modeKey, sessionData, onPersist, onClose }) {
                 onBlur={() => persist({ sum: sum === "" ? null : Number(sum) })}
             />
             <button
-              type="button"
-              onClick={() => setWordCount((v) => v - 1)}
-              className="px-8 py-4 rounded-xl border text-lg bg-zinc-50 h-16"
+            type="button"
+            onClick={() => setWordCount((v) => v - 1)}
+            disabled={!versionSelected}
+              className={cls(
+                "px-8 py-4 rounded-xl border text-lg bg-zinc-50 h-16",
+                !versionSelected && "cursor-not-allowed opacity-60"
+              )}
             >
               -1 Wort
             </button>
@@ -1205,10 +1414,14 @@ function RWTTestPanel({ meta, modeKey, sessionData, onPersist, onClose }) {
       <div className="mt-4">
         <label className="block text-sm">Freihand-Mitschrift</label>
         <textarea
-          className="mt-1 w-full rounded-xl border p-2 h-52"
+          className={cls(
+            "mt-1 w-full rounded-xl border p-2 h-52",
+            !versionSelected && "cursor-not-allowed bg-zinc-100 opacity-60"
+          )}
           value={notes}
+          disabled={!versionSelected}
           onChange={(e) => setNotes(e.target.value)}
-          onBlur={() => persist({ notes })}
+          onBlur={() => versionSelected && persist({ notes })}
         />
       </div>
       <div className="mt-4 flex justify-end">
@@ -1558,7 +1771,7 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
             type="button"
             onClick={() => togglePart("kreis")}
             className={cls(
-              "w-full text-left px-3 py-2 rounded-xl border text-sm",
+              "w-full min-h-12 text-left px-4 py-3 rounded-xl border text-sm",
               parts.kreis ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
             )}
           >
@@ -1568,7 +1781,7 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
             type="button"
             onClick={() => togglePart("nummern1")}
             className={cls(
-              "w-full text-left px-3 py-2 rounded-xl border text-sm",
+              "w-full min-h-12 text-left px-4 py-3 rounded-xl border text-sm",
               parts.nummern1 ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
             )}
           >
@@ -1578,7 +1791,7 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
             type="button"
             onClick={() => togglePart("nummern2")}
             className={cls(
-              "w-full text-left px-3 py-2 rounded-xl border text-sm",
+              "w-full min-h-12 text-left px-4 py-3 rounded-xl border text-sm",
               parts.nummern2 ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
             )}
           >
@@ -1588,7 +1801,7 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
             type="button"
             onClick={() => togglePart("zeiger1")}
             className={cls(
-              "w-full text-left px-3 py-2 rounded-xl border text-sm",
+              "w-full min-h-12 text-left px-4 py-3 rounded-xl border text-sm",
               parts.zeiger1 ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
             )}
           >
@@ -1598,7 +1811,7 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
             type="button"
             onClick={() => togglePart("zeiger2")}
             className={cls(
-              "w-full text-left px-3 py-2 rounded-xl border text-sm",
+              "w-full min-h-12 text-left px-4 py-3 rounded-xl border text-sm",
               parts.zeiger2 ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
             )}
           >
@@ -1644,21 +1857,19 @@ function CERADMenu({ onOpen }) {
   );
 }
 
-function CERADWFWire({ sessionData, onPersist, onPersistNote, onAbort, onDone, onBackToMenu }) {
+function CERADWFWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu }) {
   const base = sessionData?.cerad_wf || {};
   const [semCount, setSemCount] = useState(base.semantic_count ?? "");
   const [semNote, setSemNote] = useState(base.semantic_note || "");
   const [phonCount, setPhonCount] = useState(base.phonemic_count ?? "");
   const [phonNote, setPhonNote] = useState(base.phonemic_note || "");
-  const [totalNote, setTotalNote] = useState(base.note || "");
 
   useEffect(() => {
     setSemCount(base.semantic_count ?? "");
     setSemNote(base.semantic_note || "");
     setPhonCount(base.phonemic_count ?? "");
     setPhonNote(base.phonemic_note || "");
-    setTotalNote(base.note || "");
-  }, [base.semantic_count, base.semantic_note, base.phonemic_count, base.phonemic_note, base.note]);
+  }, [base.semantic_count, base.semantic_note, base.phonemic_count, base.phonemic_note]);
 
   const persist = (patch) => onPersist && onPersist(patch);
   const bumpCount = (key, delta) => {
@@ -1811,6 +2022,7 @@ export default function App() {
   const [authError, setAuthError] = useState("");
   const [showImpressum, setShowImpressum] = useState(false);
   const [showTestbereiche, setShowTestbereiche] = useState(false);
+  const [editingDemographics, setEditingDemographics] = useState(false);
   const [screen, setScreen] = useState(
     { name: "menu" } // many names: "vlmt","dcsr","cerad_wl","tmt_a","tmt_b","zahl_fwd","zahl_rev","block_fwd","block_rev","rwt","stroop","epi","gp","uhr","cerad_menu","cerad_mmst","cerad_benennen","cerad_wf"
   );
@@ -1914,10 +2126,6 @@ export default function App() {
       window.removeEventListener("beforeunload", flush);
     };
   }, [persistNow]);
-
-  useEffect(() => {
-    document.documentElement.classList.remove("dark");
-  }, []);
 
   // Set once when the first actual test screen is opened.
   useEffect(() => {
@@ -2033,7 +2241,7 @@ export default function App() {
       const drawingsData = await loadDcsrDrawings(sessionUUID, sessionData);
       const figureGalleries = await loadDcsrFigureGalleries(sessionData);
       const dcsrByDg = Array.from({ length: 5 }, (_, idx) => {
-        const main = drawingsData[idx] || null;
+        const main = drawingsData[idx] ? { src: drawingsData[idx], rating: null } : null;
         const gallery = Array.isArray(figureGalleries[idx]) ? figureGalleries[idx].filter(Boolean) : [];
         const images = [main, ...gallery].filter(Boolean);
         return { dg: idx + 1, images };
@@ -2065,7 +2273,10 @@ export default function App() {
     const dcsrHtml = dcsrByDg
       .map(({ dg, images }) => {
         const cards = images
-          .map((src, figIdx) => `<div class="draw-card"><div style="font-size:12px;margin-bottom:4px;">DG${dg} – Zeichnung ${figIdx + 1}</div><img src="${src}" alt="DCS-R DG${dg} Zeichnung ${figIdx + 1}"/></div>`)
+          .map((figure, figIdx) => {
+            const ratingText = figure.rating ? DCSR_RATING_LABELS[figure.rating] : "ohne Bewertung";
+            return `<div class="draw-card"><div style="font-size:12px;margin-bottom:4px;">DG${dg} – Zeichnung ${figIdx + 1} · ${ratingText}</div><img src="${figure.src}" alt="DCS-R DG${dg} Zeichnung ${figIdx + 1}"/></div>`;
+          })
           .join("");
         return `<div class="dg-label">DG${dg}</div><div class="draw-grid">${cards}</div>`;
       })
@@ -2111,7 +2322,7 @@ export default function App() {
           </html>
         `);
         win.document.close();
-      } catch (_) {
+      } catch {
         // ignore secondary rendering errors
       }
     }
@@ -2216,7 +2427,6 @@ export default function App() {
     <ErrorBoundary onReset={() => setScreen({ name: "menu" })}>
       <div className="min-h-screen font-sans antialiased bg-zinc-50 text-zinc-900">
         <TopBar
-          sessionUUID={sessionUUID}
           onBackToMenu={() => setScreen({ name: "menu" })}
           globalTimers={globalTimers}
           onClearTimer={clearGlobalTimer}
@@ -2252,14 +2462,15 @@ export default function App() {
         {screen.name === "menu" && (
           <DemoCapture
             demographics={sessionData?.demographics || {}}
-            saved={!!sessionData?.demographics_saved}
-            onSave={(payload) =>
+            saved={!!sessionData?.demographics_saved && !editingDemographics}
+            onSave={(payload) => {
               setSessionData((s) => ({
                 ...s,
                 demographics: { ...(s.demographics || {}), ...payload },
                 demographics_saved: true,
-              }))
-            }
+              }));
+              setEditingDemographics(false);
+            }}
           />
         )}
 
@@ -2268,6 +2479,7 @@ export default function App() {
               addGlobalReminder={addGlobalReminder}
               route={screen}
               savedState={sessionData?.vlmt}
+              testLanguage={sessionData?.demographics?.test_language}
               onDone={() => setScreen({ name: "menu" })}
               onStateChange={(data)=> setSessionData((s)=>({ ...s, vlmt: data }))}
               onAbort={(payload)=> setSessionData((s)=>({ ...s, vlmt_aborted: payload }))}
@@ -2288,6 +2500,7 @@ export default function App() {
             <CERADWordlistWire
               sessionData={sessionData}
               route={screen}
+              testLanguage={sessionData?.demographics?.test_language}
               onBackToMenu={() => setScreen({ name: "cerad_menu" })}
               onDone={() => setScreen({ name: "cerad_menu" })}
               onAfterDG3={() => setScreen({ name: "cerad_fig" })}
@@ -2629,20 +2842,30 @@ export default function App() {
 
         <DevSelfTests />
       </main>
-      <div className="max-w-5xl mx-auto px-4 pb-6 -mt-4">
+      <div className="max-w-5xl mx-auto px-4 pb-6 -mt-4 flex flex-col items-start gap-3">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setScreen({ name: "menu" });
+              setEditingDemographics(true);
+            }}
+          >
+            Basisdaten bearbeiten
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => setShowTestbereiche(true)}
+          >
+            Testungsaufbau für verschiedene Fragestellungen
+          </Button>
+        </div>
         <button
           type="button"
           onClick={() => setShowImpressum(true)}
           className="text-sm underline underline-offset-4"
         >
           Impressum
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowTestbereiche(true)}
-          className="text-sm underline underline-offset-4 ml-4"
-        >
-          Testungsaufbau für verschiedene Fragestellungen
         </button>
       </div>
       <ImpressumModal open={showImpressum} onClose={() => setShowImpressum(false)} />
@@ -2669,7 +2892,6 @@ function DevSelfTests() {
 
 // ---------- Top Bar ----------
 function TopBar({
-  sessionUUID,
   onBackToMenu,
   globalTimers,
   onClearTimer,
@@ -2684,52 +2906,56 @@ function TopBar({
   return (
     <div id="topbar-root" className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-zinc-200">
       <div className="max-w-5xl mx-auto px-4 py-2 flex items-center gap-3 text-zinc-900">
-        <button
+        <Button
+          variant="primary"
+          size="sm"
           onClick={onBackToMenu}
           onTouchEnd={(e) => { e.preventDefault(); onBackToMenu && onBackToMenu(); }}
-          className="px-3 py-1.5 rounded-xl bg-zinc-900 text-white text-sm"
         >
           Übersicht
-        </button>
-        <div className="text-xs text-zinc-600">Session: {sessionUUID.slice(0, 8)}…</div>
+        </Button>
         <div className="ml-auto flex items-center gap-2">
           {sessionData?.cerad_wl?.recall_pending && (
-            <button
+            <Button
+              variant="warning"
+              size="sm"
               onClick={onOpenCeradRecall}
               onTouchEnd={(e) => { e.preventDefault(); onOpenCeradRecall && onOpenCeradRecall(); }}
-              className="px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 text-sm"
             >
               CERAD-Verbalgedächtnis – Abruf starten
-            </button>
+            </Button>
           )}
           {sessionData?.cerad_fig?.recall_pending && (
-            <button
+            <Button
+              variant="warning"
+              size="sm"
               onClick={onOpenCeradFigRecall}
               onTouchEnd={(e) => { e.preventDefault(); onOpenCeradFigRecall && onOpenCeradFigRecall(); }}
-              className="px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 text-sm"
             >
               CERAD Figuralgedächtnis – Abruf starten
-            </button>
+            </Button>
           )}
-          <button
-            className="px-3 py-1.5 rounded-xl bg-zinc-900 text-white text-sm"
+          <Button
+            variant="primary"
+            size="sm"
             onClick={onExportCsv}
           >
             CSV Export
-          </button>
-          <button
-            className="px-3 py-1.5 rounded-xl bg-zinc-900 text-white text-sm"
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
             onClick={onExportPdf}
           >
             PDF Export
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
             onClick={onNewSession}
-            className="px-3 py-1.5 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 text-sm"
           >
             Neue Testung
-          </button>
+          </Button>
           <GlobalTimers timers={globalTimers} onClear={onClearTimer} onOpen={onOpenTimer} />
         </div>
       </div>
@@ -2931,10 +3157,10 @@ function TileMenu({ onOpen, onOpenCERAD, statusMap, disabled }) {
                     className={cls(
                       "mt-1 inline-block px-2 py-0.5 rounded-full text-xs border",
                       statusMap[t.key] === "abgebrochen"
-                        ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/40 dark:text-rose-200 dark:border-rose-700"
+                        ? "bg-rose-50 text-rose-700 border-rose-200"
                         : statusMap[t.key] === "fällig"
-                          ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/40 dark:text-amber-100 dark:border-amber-700"
-                          : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-100 dark:border-emerald-700"
+                          ? "bg-amber-50 text-amber-700 border-amber-200"
+                          : "bg-emerald-50 text-emerald-700 border-emerald-200"
                     )}
                   >
                     {statusMap[t.key]}
@@ -2953,6 +3179,7 @@ function DemoCapture({ demographics, saved, onSave }) {
     patient_initials = "",
     patient_age = "",
     patient_gender = "",
+    test_language = "de",
     examiner_initials = "",
     education_school_years = "",
     education_school_label = "",
@@ -2990,6 +3217,7 @@ function DemoCapture({ demographics, saved, onSave }) {
     patient_initials: (patient_initials || "").toUpperCase(),
     patient_age: patient_age || "",
     patient_gender,
+    test_language: normalizeTestLanguage(test_language),
     examiner_initials: (examiner_initials || "").toUpperCase(),
     education_school_years: education_school_years || "",
     education_school_label: education_school_label || schoolYearsToLabel(education_school_years),
@@ -3003,6 +3231,7 @@ function DemoCapture({ demographics, saved, onSave }) {
       patient_initials: (patient_initials || "").toUpperCase(),
       patient_age: patient_age || "",
       patient_gender,
+      test_language: normalizeTestLanguage(test_language),
       examiner_initials: (examiner_initials || "").toUpperCase(),
       education_school_years: education_school_years || "",
       education_school_label: education_school_label || schoolYearsToLabel(education_school_years),
@@ -3010,7 +3239,7 @@ function DemoCapture({ demographics, saved, onSave }) {
       education_training_label: education_training_label || trainingCodeToLabel(education_training_code),
       education_dissertation_years,
     });
-  }, [patient_initials, patient_age, patient_gender, examiner_initials, education_school_years, education_school_label, education_training_code, education_training_label, education_dissertation_years]);
+  }, [patient_initials, patient_age, patient_gender, test_language, examiner_initials, education_school_years, education_school_label, education_training_code, education_training_label, education_dissertation_years]);
 
   const schoolYears = Number(local.education_school_years) || 0;
   const trainingYears = trainingCodeToYears(local.education_training_code, local.education_dissertation_years);
@@ -3021,7 +3250,7 @@ function DemoCapture({ demographics, saved, onSave }) {
   return (
       <div className="mb-4">
       <Card className="space-y-2">
-        <div className="text-sm font-semibold">Basisdaten</div>
+        <div className="text-sm font-semibold">Basisdaten {demographics && Object.keys(demographics).length ? "bearbeiten" : ""}</div>
       <div className="grid grid-cols-1 gap-2">
           <div className="grid grid-cols-4 gap-2">
             <div>
@@ -3067,6 +3296,20 @@ function DemoCapture({ demographics, saved, onSave }) {
                 placeholder="z. B. CD"
               />
             </div>
+          </div>
+          <div>
+            <label className="block text-sm text-zinc-700">Testsprache</label>
+            <select
+              className="mt-1 w-full rounded-xl border p-2 bg-white"
+              value={local.test_language}
+              onChange={(e) => setLocal((l) => ({ ...l, test_language: normalizeTestLanguage(e.target.value) }))}
+            >
+              {TEST_LANGUAGE_OPTIONS.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-sm text-zinc-700">Schulabschluss (Jahre, ohne Wiederholung)</label>
@@ -3142,6 +3385,7 @@ function DemoCapture({ demographics, saved, onSave }) {
                 ...local,
                 patient_age: local.patient_age,
                 patient_initials: (local.patient_initials || "").toUpperCase(),
+                test_language: normalizeTestLanguage(local.test_language),
                 examiner_initials: (local.examiner_initials || "").toUpperCase(),
                 education_school_label: local.education_school_label || schoolYearsToLabel(local.education_school_years),
                 education_training_label: local.education_training_label || trainingCodeToLabel(local.education_training_code),
@@ -3163,7 +3407,7 @@ function DemoCapture({ demographics, saved, onSave }) {
 }
 
 // ---------- VLMT Wireframe ----------
-function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange, onAbort }) {
+function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, onStateChange, onAbort }) {
   const saved = savedState || {};
   const initialActiveIdx =
     saved.step === "score" ? Math.max(0, (saved.dg || 1) - 1)
@@ -3173,7 +3417,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange,
   const initialActiveResult = (initialActiveIdx !== null && Array.isArray(saved.results))
     ? (saved.results[initialActiveIdx] || {})
     : {};
-  const [step, setStep] = useState(saved.step || "choose"); // "list" | "score" | "interf" | "dg6" | "waiting" | "dg7" | "rekog"
+  const [step, setStep] = useState(saved.step === "list" ? "score" : saved.step || "choose"); // "score" | "interf" | "dg6" | "waiting" | "dg7" | "rekog"
   const [list, setList] = useState(saved.list || null); // "A"|"B"|"C"|"D"
   useEffect(() => {
     if (route && route.name === "vlmt" && route.go === "dg7") {
@@ -3182,11 +3426,15 @@ function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange,
     }
   }, [route]);
 
+  const materials = useMemo(() => getVlmtMaterials(testLanguage), [testLanguage]);
   const words = useMemo(() => {
     if (!list) return [];
-    const source = VLMT_LISTS[list];
-    return source && source.length ? source : Array.from({ length: 15 }, (_, i) => `${list}-Wort ${i + 1}`);
-  }, [list]);
+    const source = materials.lists[list];
+    const fallback = Array.from({ length: 15 }, (_, i) => `${list}-Wort ${i + 1}`);
+    return (source && source.length ? source : fallback).map((item, idx) => (
+      normalizeMaterialEntry(item, VLMT_LISTS[list]?.[idx] || `${list}-Wort ${idx + 1}`)
+    ));
+  }, [list, materials]);
 
   const [dg, setDG] = useState(saved.dg || 1); // DG1..5
   // per-step scoring: selected words (boolean) and perseverations per word (number)
@@ -3235,7 +3483,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange,
     if (dg < 5) {
       setDG(dg + 1);
       resetScoring();
-      setStep("list");
+      setStep("score");
     } else {
       resetScoring();
       setStep("interf");
@@ -3243,21 +3491,13 @@ function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange,
   }
 
   const goBackInVlmt = () => {
-    if (step === "list") {
-      if (dg <= 1) {
-        setStep("choose");
-        return;
-      }
-      setDG(dg - 1);
-      setStep("score");
-      return;
-    }
     if (step === "score") {
       if (dg <= 1) {
         setStep("choose");
         return;
       }
-      setStep("list");
+      commitCurrent(dg - 1);
+      setDG(dg - 1);
       return;
     }
     if (step === "interf") {
@@ -3277,8 +3517,22 @@ function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange,
     }
   };
 
-  const interferenzList = VLMT_INTERFERENCE;
-  const rekogItems = useMemo(() => (list ? (VLMT_RECOG[list] || []) : []), [list]);
+  const interferenzList = useMemo(() => (
+    materials.interference.map((item, idx) => normalizeMaterialEntry(item, VLMT_INTERFERENCE[idx] || `Interferenz ${idx + 1}`))
+  ), [materials]);
+  const rekogItems = useMemo(() => (
+    list
+      ? (materials.recognition[list] || []).map((item, idx) => {
+          const fallback = VLMT_RECOG[list]?.[idx] || {};
+          const entry = normalizeMaterialEntry(item, fallback.w || `${list}-Rekog ${idx + 1}`);
+          return {
+            ...(item && typeof item === "object" ? item : {}),
+            ...entry,
+            t: typeof item?.t === "boolean" ? item.t : !!fallback.t,
+          };
+        })
+      : []
+  ), [list, materials]);
   const [rekogSel, setRekogSel] = useState(() => ({ ...(saved.rekog?.sel || {}) })); // key: index -> boolean
   const rekogHits = useMemo(() => rekogItems.reduce((a, it, i) => a + ((rekogSel[i] && it.t) ? 1 : 0), 0), [rekogItems, rekogSel]);
   const rekogFP = useMemo(() => rekogItems.reduce((a, it, i) => a + ((rekogSel[i] && !it.t) ? 1 : 0), 0), [rekogItems, rekogSel]);
@@ -3320,7 +3574,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange,
                 key={L}
                 onClick={() => {
                   setList(L);
-                  setStep("list");
+                  setStep("score");
                   setDG(1);
                 }}
                 className="px-3 py-2 rounded-xl border"
@@ -3332,59 +3586,38 @@ function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange,
         </Card>
       )}
 
-      {step === "list" && (
-        <Card>
-          <SectionTitle>Vorlesen – Liste VLMT-{list}</SectionTitle>
-          <ul className="grid grid-cols-3 gap-2 text-zinc-700">
-            {words.map((w) => (
-              <li key={w} className="px-3 py-2 rounded-lg bg-zinc-100 border border-zinc-200">
-                {w}
-              </li>
-            ))}
-          </ul>
-          <div className="flex gap-2 mt-4">
-            <button onClick={() => { setStep("score"); }} className="px-3 py-2 rounded-xl bg-zinc-900 text-white">
-              Weiter: Scoring DG{dg}
-            </button>
-            <button onClick={goBackInVlmt} className="px-3 py-2 rounded-xl border">
-              Zurück
-            </button>
-          </div>
-        </Card>
-      )}
-
       {step === "score" && (
         <Card>
           <SectionTitle>DG{dg} – Scoring</SectionTitle>
           <div className="grid grid-cols-3 gap-2">
-            {words.map((w) => {
-              const active = !!sel[w];
-              const p = pers[w] || 0;
+            {words.map((entry) => {
+              const active = !!sel[entry.key];
+              const p = pers[entry.key] || 0;
               return (
                 <button
-                  key={w}
+                  key={entry.key}
                   onClick={() => {
                     setSel((m) => {
-                      const next = { ...m, [w]: !m[w] };
+                      const next = { ...m, [entry.key]: !m[entry.key] };
                       return next;
                     });
-                    setPers((m) => (!sel[w] ? m : { ...m, [w]: 0 }));
+                    setPers((m) => (!sel[entry.key] ? m : { ...m, [entry.key]: 0 }));
                   }}
                   className={cls(
                     "h-12 rounded-xl border bg-white flex items-center justify-between px-3",
                     active && "bg-emerald-50 border-emerald-200"
                   )}
                 >
-                  <span className="text-left pr-2 truncate">{w}</span>
+                  <span className="text-left pr-2 truncate">{entry.label}</span>
                   <span className="flex items-center gap-1">
                     {active && (
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setPers((m) => ({ ...m, [w]: (m[w] || 0) + 1 }));
+                          setPers((m) => ({ ...m, [entry.key]: (m[entry.key] || 0) + 1 }));
                         }}
-                        className="px-2 py-0.5 rounded-md border text-xs bg-white"
+                        className="px-2 py-0.5 rounded-md border text-xs bg-sky-50 border-sky-200 text-sky-800"
                         title="Perseveration +1"
                       >
                         P{p > 0 ? `(${p})` : ""}
@@ -3404,7 +3637,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange,
           />
           <div className="flex gap-2 mt-4">
             <button onClick={nextDG} className="px-3 py-2 rounded-xl bg-zinc-900 text-white">
-              Weiter
+              {dg < 5 ? `Weiter (zu DG${dg + 1})` : "Weiter (zur Interferenzliste)"}
             </button>
             <button onClick={goBackInVlmt} className="px-3 py-2 rounded-xl border">
               Zurück
@@ -3415,18 +3648,15 @@ function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange,
 
       {step === "interf" && (
         <Card>
-          <SectionTitle>Interferenzliste – Vorlesen & Scoring</SectionTitle>
+          <SectionTitle>Interferenzliste – nur Vorlesen</SectionTitle>
           <ul className="grid grid-cols-3 gap-2 text-zinc-700">
-            {interferenzList.map((w) => (
-              <li key={w} className="px-3 py-2 rounded-lg bg-zinc-100 border border-zinc-200">
-                {w}
+            {interferenzList.map((entry) => (
+              <li key={entry.key} className="px-3 py-2 rounded-lg bg-zinc-100 border border-zinc-200">
+                {entry.label}
               </li>
             ))}
           </ul>
           <div className="flex gap-2 mt-4">
-            <button onClick={goBackInVlmt} className="px-3 py-2 rounded-xl border">
-              Zurück
-            </button>
             <button
               onClick={() => {
                 setStep("dg6");
@@ -3434,7 +3664,10 @@ function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange,
               }}
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
             >
-              Weiter zu DG6
+              Weiter (zu DG6)
+            </button>
+            <button onClick={goBackInVlmt} className="px-3 py-2 rounded-xl border">
+              Zurück
             </button>
           </div>
         </Card>
@@ -3445,34 +3678,34 @@ function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange,
           <SectionTitle>DG6 – Abfrage ohne Vorlesen</SectionTitle>
           <p className="text-sm text-zinc-600 mb-2">Scoring identisch zu DG1–5 (ohne erneutes Vorlesen).</p>
           <div className="grid grid-cols-3 gap-2">
-            {words.map((w) => {
-              const active = !!sel[w];
-              const p = pers[w] || 0;
+            {words.map((entry) => {
+              const active = !!sel[entry.key];
+              const p = pers[entry.key] || 0;
               return (
                 <button
-                  key={w}
+                  key={entry.key}
                   onClick={() => {
                     setSel((m) => {
-                      const next = { ...m, [w]: !m[w] };
+                      const next = { ...m, [entry.key]: !m[entry.key] };
                       return next;
                     });
-                    setPers((m) => (!sel[w] ? m : { ...m, [w]: 0 }));
+                    setPers((m) => (!sel[entry.key] ? m : { ...m, [entry.key]: 0 }));
                   }}
                   className={cls(
                     "h-12 rounded-xl border bg-white flex items-center justify-between px-3",
                     active && "bg-emerald-50 border-emerald-200"
                   )}
                 >
-                  <span className="text-left pr-2 truncate">{w}</span>
+                  <span className="text-left pr-2 truncate">{entry.label}</span>
                   <span className="flex items-center gap-1">
                     {active && (
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setPers((m) => ({ ...m, [w]: (m[w] || 0) + 1 }));
+                          setPers((m) => ({ ...m, [entry.key]: (m[entry.key] || 0) + 1 }));
                         }}
-                        className="px-2 py-0.5 rounded-md border text-xs bg-white"
+                        className="px-2 py-0.5 rounded-md border text-xs bg-sky-50 border-sky-200 text-sky-800"
                         title="Perseveration +1"
                       >
                         P{p > 0 ? `(${p})` : ""}
@@ -3524,34 +3757,34 @@ function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange,
         <Card>
           <SectionTitle>DG7 – verzögerter Abruf</SectionTitle>
           <div className="grid grid-cols-3 gap-2">
-            {words.map((w) => {
-              const active = !!sel[w];
-              const p = pers[w] || 0;
+            {words.map((entry) => {
+              const active = !!sel[entry.key];
+              const p = pers[entry.key] || 0;
               return (
                 <button
-                  key={w}
+                  key={entry.key}
                   onClick={() => {
                     setSel((m) => {
-                      const next = { ...m, [w]: !m[w] };
+                      const next = { ...m, [entry.key]: !m[entry.key] };
                       return next;
                     });
-                    setPers((m) => (!sel[w] ? m : { ...m, [w]: 0 }));
+                    setPers((m) => (!sel[entry.key] ? m : { ...m, [entry.key]: 0 }));
                   }}
                   className={cls(
                     "h-12 rounded-xl border bg-white flex items-center justify-between px-3",
                     active && "bg-emerald-50 border-emerald-200"
                   )}
                 >
-                  <span className="text-left pr-2 truncate">{w}</span>
+                  <span className="text-left pr-2 truncate">{entry.label}</span>
                   <span className="flex items-center gap-1">
                     {active && (
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setPers((m) => ({ ...m, [w]: (m[w] || 0) + 1 }));
+                          setPers((m) => ({ ...m, [entry.key]: (m[entry.key] || 0) + 1 }));
                         }}
-                        className="px-2 py-0.5 rounded-md border text-xs bg-white"
+                        className="px-2 py-0.5 rounded-md border text-xs bg-sky-50 border-sky-200 text-sky-800"
                         title="Perseveration +1"
                       >
                         P{p > 0 ? `(${p})` : ""}
@@ -3595,7 +3828,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange,
           <div className="grid grid-cols-2 gap-2 mt-2">
             {rekogItems.map((it, i) => (
               <button
-                key={`${it.w}_${i}`}
+                key={`${it.key}_${i}`}
                 onClick={() => setRekogSel((m) => ({ ...m, [i]: !m[i] }))}
                 className={cls(
                   "flex items-center justify-between border rounded-xl px-3 py-2 bg-white",
@@ -3603,7 +3836,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange,
                 )}
                 title={it.t ? "Originalwort (Treffer bei Auswahl)" : "Lure (Fehler bei Auswahl)"}
               >
-                <span>{it.w}</span>
+                <span>{it.label}</span>
                 {rekogSel[i] && (
                   <span className="text-xs px-2 py-0.5 rounded-lg bg-white border">
                     {it.t ? "Treffer" : "Fehler"}
@@ -3634,6 +3867,142 @@ function VLMTWire({ addGlobalReminder, route, savedState, onDone, onStateChange,
 }
 
 // ---------- DCS-R Wireframe ----------
+function DcsrFigureGallery({ figures, onOpen }) {
+  const [previewUrls, setPreviewUrls] = useState([]);
+
+  useEffect(() => {
+    const urlsToRevoke = [];
+    const next = (Array.isArray(figures) ? figures : []).map((figure) => {
+      const data = figure?.data;
+      if (data instanceof Blob) {
+        const url = URL.createObjectURL(data);
+        urlsToRevoke.push(url);
+        return url;
+      }
+      return data || null;
+    });
+    setPreviewUrls(next);
+    return () => {
+      urlsToRevoke.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [figures]);
+
+  if (!Array.isArray(figures) || figures.length === 0) return null;
+
+  return (
+    <div className="mt-3 space-y-2">
+      <div className="text-sm font-medium text-zinc-700">Gespeicherte Figuren</div>
+      <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
+        {figures.map((figure, figIdx) => {
+          const rating = figure?.rating || null;
+          const src = previewUrls[figIdx];
+          return (
+            <div key={figure?.key || figIdx} className="rounded-xl border bg-white p-2">
+              <button
+                type="button"
+                onClick={() => onOpen && onOpen(figIdx)}
+                className="relative block w-full rounded-lg border bg-zinc-50 p-1 hover:bg-zinc-100"
+                disabled={!src}
+              >
+                <span
+                  className={cls(
+                    "absolute right-1.5 top-1.5 rounded-full border px-2 py-0.5 text-xs font-medium shadow-sm",
+                    rating
+                      ? DCSR_RATINGS.find((item) => item.key === rating)?.className
+                      : "bg-white border-zinc-300 text-zinc-700"
+                  )}
+                >
+                  {rating ? DCSR_RATING_LABELS[rating] : "offen"}
+                </span>
+                {src && (
+                  <img
+                    src={src}
+                    alt={`Gespeicherte DCS-R Figur ${figIdx + 1}`}
+                    className="h-24 w-full object-contain"
+                  />
+                )}
+              </button>
+              <div className="mt-1 text-xs text-zinc-500">Antippen zum Bewerten</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function DcsrFigureOverlay({ figure, onClose, onRate }) {
+  const [src, setSrc] = useState(null);
+
+  useEffect(() => {
+    const data = figure?.data;
+    if (!data) {
+      setSrc(null);
+      return undefined;
+    }
+    if (data instanceof Blob) {
+      const url = URL.createObjectURL(data);
+      setSrc(url);
+      return () => URL.revokeObjectURL(url);
+    }
+    setSrc(data);
+    return undefined;
+  }, [figure]);
+
+  if (!figure) return null;
+  const rating = figure.rating || null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 px-4 py-6 flex items-center justify-center">
+      <div className="w-full max-w-5xl max-h-[92vh] overflow-auto rounded-2xl border bg-white p-4 shadow-xl">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <div className="text-lg font-semibold">DCS-R Figur bewerten</div>
+            <div className="text-sm text-zinc-600">
+              Aktuell: {rating ? DCSR_RATING_LABELS[rating] : "ohne Bewertung"}
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="px-3 py-1.5 rounded-xl border text-sm">
+            Schließen
+          </button>
+        </div>
+        {src && (
+          <img
+            src={src}
+            alt="DCS-R Figur Detailansicht"
+            className="max-h-[62vh] w-full object-contain rounded-xl border bg-zinc-50"
+          />
+        )}
+        <div className="mt-3 flex flex-wrap gap-2">
+          {DCSR_RATINGS.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => onRate && onRate(item.key)}
+              className={cls(
+                "px-3 py-2 rounded-xl border text-sm",
+                rating === item.key ? item.className : "bg-white border-zinc-300"
+              )}
+            >
+              {item.label}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => onRate && onRate(null)}
+            className={cls(
+              "px-3 py-2 rounded-xl border text-sm",
+              rating === null ? "bg-zinc-100 border-zinc-300 text-zinc-800" : "bg-white border-zinc-300"
+            )}
+          >
+            Ohne Bewertung
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateChange, onAbort, onDone }) {
   const saved = savedState || {};
   const [step, setStep] = useState(saved.step || "choose"); // "dg" | "waiting" | "rekog"
@@ -3659,7 +4028,7 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
   const initialGalleryKeys = useMemo(() => {
     if (!Array.isArray(saved.drawingGalleryKeys)) return Array.from({ length: 5 }, () => []);
     return Array.from({ length: 5 }, (_, idx) => (
-      Array.isArray(saved.drawingGalleryKeys[idx]) ? saved.drawingGalleryKeys[idx].slice() : []
+      normalizeDcsrGalleryEntries(saved.drawingGalleryKeys[idx])
     ));
   }, [saved.drawingGalleryKeys]);
   const drawingKeysRef = useRef(initialKeys);
@@ -3669,22 +4038,16 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
   const [drawingGalleries, setDrawingGalleries] = useState(() => Array.from({ length: 5 }, () => []));
   const [rekogResp, setRekogResp] = useState(() => saved.rekog?.responses || { korrekt: 0, falsch: 0, gedreht: 0 });
   const [drawPadResetIndex, setDrawPadResetIndex] = useState(0);
+  const [expandedFigure, setExpandedFigure] = useState(null);
   const totalFirst3 = counts.slice(0, 3).reduce((a, c) => a + c.richtig, 0);
   const ceilingHit = counts.some((c) => c.richtig === 9);
   const figSrc = ver === "V2" ? "/material/DCS-2.png" : "/material/DCS-1.png";
+  const hasCurrentDrawing = !!drawings[dg - 1];
 
   function inc(field) {
     setCounts((xs) => {
       const copy = xs.slice();
       copy[dg - 1] = { ...copy[dg - 1], [field]: copy[dg - 1][field] + 1 };
-      return copy;
-    });
-  }
-
-  function dec(field) {
-    setCounts((xs) => {
-      const copy = xs.slice();
-      copy[dg - 1] = { ...copy[dg - 1], [field]: Math.max(0, copy[dg - 1][field] - 1) };
       return copy;
     });
   }
@@ -3752,8 +4115,15 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
       const loaded = await Promise.all(keys.map((k) => (k ? idbGetDrawing(k) : null)));
       const loadedGalleries = await Promise.all(galleryKeys.map(async (list) => {
         if (!Array.isArray(list) || !list.length) return [];
-        const vals = await Promise.all(list.map((k) => (k ? idbGetDrawing(k) : null)));
-        return vals.filter(Boolean);
+        const entries = normalizeDcsrGalleryEntries(list);
+        const vals = await Promise.all(entries.map((entry) => idbGetDrawing(entry.key)));
+        return entries
+          .map((entry, idx) => {
+            const data = vals[idx];
+            if (!data) return null;
+            return { ...entry, data };
+          })
+          .filter(Boolean);
       }));
       setDrawings((arr) => {
         const next = arr.slice();
@@ -3804,15 +4174,16 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
     }
   }, [dg, drawingNamespace]);
 
-  const handleSaveFigure = useCallback(async (data) => {
+  const handleSaveFigure = useCallback(async (data, rating = null) => {
     if (!data) return;
     const key = `${drawingNamespace}dg${dg}:fig_${crypto && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`}`;
     const list = drawingGalleryKeysRef.current[dg - 1] || [];
-    drawingGalleryKeysRef.current[dg - 1] = [...list, key];
+    const entry = { key, rating: DCSR_RATING_FIELDS[rating] ? rating : null };
+    drawingGalleryKeysRef.current[dg - 1] = [...list, entry];
     setDrawingGalleries((arr) => {
       const next = arr.slice();
       const cur = Array.isArray(next[dg - 1]) ? next[dg - 1] : [];
-      next[dg - 1] = [...cur, data];
+      next[dg - 1] = [...cur, { ...entry, data }];
       return next;
     });
     try {
@@ -3828,87 +4199,69 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
     setDrawPadResetIndex((x) => x + 1);
   }, [handleDrawingChange]);
 
-  const saveFigureAndClear = useCallback(async (data) => {
+  const saveFigureAndClear = useCallback(async (data, rating = null) => {
     if (!data) return;
-    await handleSaveFigure(data);
+    await handleSaveFigure(data, rating);
     await clearCurrentDrawing();
   }, [handleSaveFigure, clearCurrentDrawing]);
-
-  const saveLabeledDrawing = useCallback(async (data, tag) => {
-    if (!data || !tag) return null;
-    const src = data instanceof Blob ? URL.createObjectURL(data) : data;
-    const cleanup = data instanceof Blob ? () => URL.revokeObjectURL(src) : () => {};
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const width = img.naturalWidth || img.width;
-        const height = img.naturalHeight || img.height;
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          cleanup();
-          resolve(null);
-          return;
-        }
-        ctx.drawImage(img, 0, 0, width, height);
-        const size = Math.max(12, Math.floor(Math.min(width, height) * 0.09));
-        ctx.font = `bold ${size}px sans-serif`;
-        ctx.textBaseline = "top";
-        const padding = 4;
-        const text = tag;
-        const metrics = ctx.measureText(text);
-        const boxW = metrics.width + padding * 2;
-        const boxH = size + padding * 2;
-        ctx.fillStyle = "rgba(255,255,255,0.85)";
-        ctx.fillRect(4, 4, boxW, boxH);
-        ctx.strokeStyle = "rgba(0,0,0,0.5)";
-        ctx.lineWidth = Math.max(1, Math.floor(size / 10));
-        ctx.strokeText(text, 4 + padding, 4 + padding);
-        ctx.fillStyle = "#0f172a";
-        ctx.fillText(text, 4 + padding, 4 + padding);
-        canvas.toBlob((blob) => {
-          cleanup();
-          if (!blob) {
-            reject(new Error("Bild mit Label konnte nicht erzeugt werden"));
-            return;
-          }
-          resolve(blob);
-        }, "image/png");
-      };
-      img.onerror = () => {
-        cleanup();
-        reject(new Error("Bild mit Label konnte nicht geladen werden"));
-      };
-      img.src = src;
-    });
-  }, []);
 
   const saveScoredFigure = useCallback(async (label) => {
     const current = drawings[dg - 1];
     if (!current) return;
     try {
-      const labeled = await saveLabeledDrawing(current, label);
-      if (labeled) {
-        await saveFigureAndClear(labeled);
-      }
+      await saveFigureAndClear(current, label);
     } catch (e) {
       console.error("Bewertete Figur speichern fehlgeschlagen", e);
     }
-  }, [dg, drawings, saveLabeledDrawing, saveFigureAndClear]);
+  }, [dg, drawings, saveFigureAndClear]);
 
   const saveUnscoredFigureAndClear = useCallback(async (data) => {
     if (!data) return;
-    const labeled = await saveLabeledDrawing(data, "?");
-    if (!labeled) return;
-    await saveFigureAndClear(labeled);
-  }, [saveFigureAndClear, saveLabeledDrawing]);
+    await saveFigureAndClear(data, null);
+  }, [saveFigureAndClear]);
+
+  const updateFigureRating = useCallback((dgIdx, figIdx, rating) => {
+    const nextRating = DCSR_RATING_FIELDS[rating] ? rating : null;
+    const existing = drawingGalleryKeysRef.current[dgIdx]?.[figIdx];
+    const normalized = normalizeDcsrGalleryEntry(existing);
+    if (!normalized) return;
+    const prevRating = normalized.rating || null;
+    if (prevRating === nextRating) return;
+    drawingGalleryKeysRef.current[dgIdx] = drawingGalleryKeysRef.current[dgIdx].map((entry, idx) => (
+      idx === figIdx ? { ...normalizeDcsrGalleryEntry(entry), rating: nextRating } : normalizeDcsrGalleryEntry(entry)
+    ));
+    setDrawingGalleries((arr) => {
+      const next = arr.slice();
+      const list = Array.isArray(next[dgIdx]) ? next[dgIdx].slice() : [];
+      list[figIdx] = { ...(list[figIdx] || {}), rating: nextRating };
+      next[dgIdx] = list;
+      return next;
+    });
+    setCounts((xs) => {
+      const next = xs.slice();
+      const row = { ...next[dgIdx] };
+      const prevField = DCSR_RATING_FIELDS[prevRating];
+      const nextField = DCSR_RATING_FIELDS[nextRating];
+      if (prevField) row[prevField] = Math.max(0, Number(row[prevField] || 0) - 1);
+      if (nextField) row[nextField] = Number(row[nextField] || 0) + 1;
+      next[dgIdx] = row;
+      return next;
+    });
+    bumpDrawingKeysVersion((v) => v + 1);
+  }, []);
 
   const onScoringPlus = useCallback((field, tag) => {
+    if (!drawings[dg - 1]) return;
     inc(field);
     void saveScoredFigure(tag);
-  }, [saveScoredFigure]);
+  }, [dg, drawings, saveScoredFigure]);
+
+  const adjustRekog = useCallback((key, delta) => {
+    setRekogResp((r) => ({
+      ...r,
+      [key]: Math.max(0, Number(r?.[key] || 0) + delta),
+    }));
+  }, []);
 
   return (
     <section className="py-6">
@@ -3919,16 +4272,16 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
           <p className="mb-3">Wähle Version:</p>
           <div className="flex gap-2">
             {["V1", "V2"].map((v) => (
-              <button
+              <Button
+                variant="secondary"
                 key={v}
                 onClick={() => {
                   setVer(v);
                   setStep("dg");
                 }}
-                className="px-3 py-2 rounded-xl border"
               >
                 {v}
-              </button>
+              </Button>
             ))}
           </div>
         </Card>
@@ -3948,79 +4301,141 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
                 alt={`DCS-R Vorlage Version ${ver}`}
                 className="w-full rounded-xl border"
               />
-              <div className="mt-3 space-y-1">
-                <div className="text-xs text-zinc-600">Skizze der vom Patienten gelegten Figur</div>
-                <DrawPad
-                  key={`dcsr-dg-${dg}-${drawPadResetIndex}`}
-                  width={410}
-                  height={180}
-                  initialData={drawings[dg - 1]}
-                  onChange={handleDrawingChange}
-                  savedFigures={drawingGalleries[dg - 1] || []}
-                  onSaveFigure={saveUnscoredFigureAndClear}
-                />
+              <div className="mt-3 grid gap-4 md:grid-cols-2 md:items-start">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs text-zinc-600">Skizze der vom Patienten gelegten Figur</div>
+                    <div
+                      className={cls(
+                        "rounded-full border px-2 py-0.5 text-xs",
+                        drawings[dg - 1]
+                          ? "border-amber-200 bg-amber-50 text-amber-700"
+                          : "border-zinc-200 bg-zinc-50 text-zinc-500"
+                      )}
+                    >
+                      {drawings[dg - 1] ? "Skizze noch nicht gespeichert" : "Keine aktive Skizze"}
+                    </div>
+                  </div>
+                  <DrawPad
+                    key={`dcsr-dg-${dg}-${drawPadResetIndex}`}
+                    width={640}
+                    height={180}
+                    initialData={drawings[dg - 1]}
+                    onChange={handleDrawingChange}
+                    savedFigures={[]}
+                    onSaveFigure={saveUnscoredFigureAndClear}
+                    showSaveFigureButton={false}
+                  />
+                </div>
+                <div className="space-y-3">
+                  <div className="text-xs text-zinc-600">Scoring</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {DCSR_RATINGS.map((rating) => (
+                      <Counter
+                        key={rating.key}
+                        label={rating.label}
+                        val={counts[dg - 1][rating.field]}
+                        onPlus={() => onScoringPlus(rating.field, rating.key)}
+                        max={rating.field === "richtig" ? 9 : undefined}
+                        disabled={!hasCurrentDrawing}
+                        variant={rating.variant}
+                        className={rating.className}
+                      />
+                    ))}
+                  </div>
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() => saveUnscoredFigureAndClear(drawings[dg - 1])}
+                    disabled={!drawings[dg - 1]}
+                  >
+                    Figur ohne Bewertung speichern
+                  </Button>
+                </div>
               </div>
             </div>
           )}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
-            <Counter label="Richtig" val={counts[dg - 1].richtig} onPlus={() => onScoringPlus("richtig", "R")} onMinus={() => dec("richtig")} max={9} />
-            <Counter label="Falsch" val={counts[dg - 1].falsch} onPlus={() => onScoringPlus("falsch", "F")} onMinus={() => dec("falsch")} />
-            <Counter label="Gedreht" val={counts[dg - 1].gedreht} onPlus={() => onScoringPlus("gedreht", "D")} onMinus={() => dec("gedreht")} />
-            <Counter label="Perseveration" val={counts[dg - 1].perseveration} onPlus={() => onScoringPlus("perseveration", "P")} onMinus={() => dec("perseveration")} />
-          </div>
-
-          {dg <= 3 && totalFirst3 <= 1 && (
-            <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
-              Niedrige Lernleistung in DG1–3 (≤1 richtig).{" "}
-              <button className="ml-2 underline">Testabbruch hervorheben</button>
-            </div>
-          )}
+          <DcsrFigureGallery
+            figures={drawingGalleries[dg - 1] || []}
+            onOpen={(figIdx) => setExpandedFigure({ dgIdx: dg - 1, figIdx })}
+          />
 
           {counts[dg - 1].richtig === 9 && (
             <div className="mt-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm">
               Ceiling erreicht (9/9). Verbleibende DG werden automatisch mit 9 Punkten gefüllt.
               {dg < 5 && (
                 <div className="mt-2">
-                  <button
-                    type="button"
+                  <Button
+                    variant="success"
                     onClick={fillRemainingDgsWithCeiling}
-                    className="px-3 py-2 rounded-xl border border-emerald-300 bg-white text-emerald-900"
                   >
                     Restliche DG mit 9 ausfüllen
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
           )}
 
           <div className="flex gap-2 mt-4">
-            <button
-              type="button"
+            <Button
+              variant="secondary"
               disabled={dg <= 1}
               onClick={() => { if (dg > 1) setDG(dg - 1); }}
-              className={cls("px-3 py-2 rounded-xl border", dg <= 1 && "opacity-40 cursor-not-allowed")}
             >
               {dg > 1 ? `Zurück zu DG${dg - 1}` : "Zurück"}
-            </button>
+            </Button>
             {dg < 5 && !ceilingHit && (
-              <button onClick={() => setDG(dg + 1)} className="px-3 py-2 rounded-xl bg-zinc-900 text-white">
+              <Button variant="primary" onClick={() => setDG(dg + 1)}>
                 Weiter zu DG{dg + 1}
-              </button>
+              </Button>
             )}
             {(dg === 5 || ceilingHit) && (
-              <button
+              <Button
+                variant="primary"
                 onClick={() => {
                   addGlobalReminder("DCS Rekognition", 30, { name: "dcsr", go: "rekog" });
                   setStep("waiting");
                 }}
-                className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
               >
                 30-Min. Reminder für Rekognition
-              </button>
+              </Button>
             )}
           </div>
+          {dg <= 3 && totalFirst3 <= 1 && (
+            <div className="mt-3 flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 sm:flex-row sm:items-center sm:justify-between">
+              <span>Niedrige Lernleistung in DG1–3 (≤1 richtig).</span>
+              <AbortButton
+                defaultReasonType="Abbruchkriterium erreicht"
+                defaultNote={`DCS-R: Niedrige Lernleistung in DG1–3 (≤1 richtig; Summe: ${totalFirst3})`}
+                variant="warning"
+                size="sm"
+                onAbort={(payload) => {
+                  onAbort && onAbort({
+                    ...payload,
+                    dg,
+                    totalFirst3,
+                  });
+                }}
+              >
+                Testabbruch
+              </AbortButton>
+            </div>
+          )}
         </Card>
       )}
+
+      <DcsrFigureOverlay
+        figure={
+          expandedFigure
+            ? drawingGalleries[expandedFigure.dgIdx]?.[expandedFigure.figIdx] || null
+            : null
+        }
+        onClose={() => setExpandedFigure(null)}
+        onRate={(rating) => {
+          if (!expandedFigure) return;
+          updateFigureRating(expandedFigure.dgIdx, expandedFigure.figIdx, rating);
+        }}
+      />
 
       {step === "waiting" && (
         <Card>
@@ -4028,9 +4443,9 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
           <p className="text-sm text-zinc-600">
             Reminder läuft oben rechts. Du kannst andere Tests durchführen und später zurückkehren.
           </p>
-          <button onClick={() => setStep("rekog")} className="mt-4 px-3 py-2 rounded-xl border">
+          <Button variant="primary" className="mt-4" onClick={() => setStep("rekog")}>
             Rekognition jetzt durchführen
-          </button>
+          </Button>
         </Card>
       )}
 
@@ -4038,52 +4453,54 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
         <Card>
           <SectionTitle>Rekognitionsdurchgang</SectionTitle>
           <div className="p-3 rounded-2xl border bg-white mt-2 space-y-3">
-            <div className="flex flex-wrap gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {[
                 { key: "korrekt", label: "korrekt", color: "bg-emerald-50 border-emerald-200" },
                 { key: "falsch", label: "falsch", color: "bg-rose-50 border-rose-200" },
                 { key: "gedreht", label: "gedreht", color: "bg-amber-50 border-amber-200" },
-              ].map((btn) => (
-                <button
-                  key={btn.key}
-                  type="button"
-                  onClick={() =>
-                    setRekogResp((r) => ({
-                      ...r,
-                      [btn.key]: Number(r?.[btn.key] || 0) + 1,
-                    }))
-                  }
-                  className={`px-6 py-3 rounded-xl border text-base ${btn.color}`}
-                >
-                  +1 {btn.label}
-                </button>
+              ].map((item) => (
+                <div key={item.key} className={`rounded-xl border p-3 ${item.color}`}>
+                  <div className="text-sm text-zinc-700">{item.label}</div>
+                  <div className="mt-1 text-3xl font-semibold tabular-nums">{rekogResp[item.key] ?? 0}</div>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => adjustRekog(item.key, 1)}
+                      className="px-4 py-2 rounded-xl border bg-white text-sm"
+                    >
+                      +1
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => adjustRekog(item.key, -1)}
+                      disabled={!rekogResp[item.key]}
+                      className="px-4 py-2 rounded-xl border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      -1
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
-              <CounterCard label="korrekt" value={rekogResp.korrekt ?? 0} onDec={() => setRekogResp((r) => ({ ...r, korrekt: Math.max(0, Number(r?.korrekt || 0) - 1) }))} />
-              <CounterCard label="falsch" value={rekogResp.falsch ?? 0} onDec={() => setRekogResp((r) => ({ ...r, falsch: Math.max(0, Number(r?.falsch || 0) - 1) }))} />
-              <CounterCard label="gedreht" value={rekogResp.gedreht ?? 0} onDec={() => setRekogResp((r) => ({ ...r, gedreht: Math.max(0, Number(r?.gedreht || 0) - 1) }))} />
-            </div>
             <div className="flex gap-2">
-              <button
-                type="button"
-                className="px-3 py-2 rounded-xl border text-sm"
+              <Button
+                variant="secondary"
                 onClick={() => setRekogResp({ korrekt: 0, falsch: 0, gedreht: 0 })}
               >
                 Zurücksetzen
-              </button>
+              </Button>
             </div>
           </div>
           <div className="mt-4">
-            <button
-              className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
+            <Button
+              variant="primary"
               onClick={() => {
                 emitState();
                 if (onDone) onDone();
               }}
             >
               Fertig
-            </button>
+            </Button>
           </div>
         </Card>
       )}
@@ -4091,31 +4508,24 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
   );
 }
 
-function Counter({ label, val, onPlus, onMinus, max }) {
-  const disabled = typeof max === "number" && val >= max;
+function Counter({ label, val, onPlus, max, disabled: disabledProp = false, variant = "secondary", className }) {
+  const disabled = disabledProp || (typeof max === "number" && val >= max);
   return (
-    <div className="p-3 rounded-xl border bg-white flex items-center justify-between">
+    <div className={cls("rounded-xl border p-3", disabledProp ? "bg-zinc-50 text-zinc-500" : className || "bg-white")}>
       <div>
-        <div className="text-sm text-zinc-600">{label}</div>
-        <div className="text-2xl font-semibold">{val}</div>
+        <div className={cls("text-sm", disabledProp ? "text-zinc-600" : "text-current")}>{label}</div>
+        <div className="mt-1 text-2xl font-semibold tabular-nums">{val}</div>
       </div>
-      <div className="flex items-center gap-2">
-        {val > 0 && onMinus && (
-          <button
-            type="button"
-            onClick={onMinus}
-            className="px-3 py-2 rounded-xl border"
-          >
-            -1
-          </button>
-        )}
-        <button
+      <div className="mt-2">
+        <Button
+          type="button"
           disabled={disabled}
           onClick={onPlus}
-          className={cls("px-3 py-2 rounded-xl border", disabled && "opacity-40 cursor-not-allowed")}
+          variant={disabledProp ? "secondary" : variant}
+          className="w-full"
         >
           +1
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -4720,15 +5130,6 @@ function CERADFiguralWire({ sessionData, route, onPersist, onAbort, onDone, onBa
     setCritRecall(buildCriteriaState(base.recall_scores || {}, base.recall_criteria || {}));
   }, [base.draw_note, base.recall_note, base.draw_scores, base.recall_scores, base.draw_criteria, base.recall_criteria]);
 
-  const updateScore = (phase, figKey, val) => {
-    const key = phase === "draw" ? "draw_scores" : "recall_scores";
-    const prev = phase === "draw" ? scoresDraw : scoresRecall;
-    onPersist &&
-      onPersist({
-        [key]: { ...prev, [figKey]: val },
-      });
-  };
-
   const updateNote = (phase, val) => {
     const key = phase === "draw" ? "draw_note" : "recall_note";
     onPersist && onPersist({ [key]: val });
@@ -5143,9 +5544,24 @@ function TMTCombo({ sessionData, onPersist, onAbort, onDone }) {
 }
 
 // ---------- CERAD Verbalgedächtnis Wireframe ----------
-function CERADWordlistWire({ sessionData, route, onPersist, onAbort, onDone, onBackToMenu, onAfterDG3, onAfterRecog }) {
+function CERADWordlistWire({ sessionData, route, testLanguage, onPersist, onAbort, onDone, onBackToMenu, onAfterDG3, onAfterRecog }) {
   const [step, setStep] = useState("dg1"); // "dg1" | "dg2" | "dg3" | "dg4" | "recog"
   const base = sessionData?.cerad_wl || {};
+  const materials = useMemo(() => getCeradWordlistMaterials(testLanguage), [testLanguage]);
+  const ceradWordEntries = useMemo(() => (
+    materials.wordlist.map((item, idx) => normalizeMaterialEntry(item, CERAD_WORDLIST[idx] || `cerad_word_${idx + 1}`))
+  ), [materials]);
+  const ceradRecognitionItems = useMemo(() => (
+    materials.recognitionItems.map((item, idx) => {
+      const fallback = CERAD_WL_RECOG_ITEMS[idx] || {};
+      const entry = normalizeMaterialEntry(item, fallback.word || `cerad_recog_${idx + 1}`);
+      return {
+        ...(item && typeof item === "object" ? item : {}),
+        ...entry,
+        isOrig: typeof item?.isOrig === "boolean" ? item.isOrig : !!fallback.isOrig,
+      };
+    })
+  ), [materials]);
 
   // Route-based entry into DG4
   useEffect(() => {
@@ -5167,7 +5583,7 @@ function CERADWordlistWire({ sessionData, route, onPersist, onAbort, onDone, onB
   const computeHits = (key) => {
     const dg = getDG(key);
     const marks = dg.marks || {};
-    return CERAD_WORDLIST.reduce((acc, w) => acc + (marks[w] ? 1 : 0), 0);
+    return ceradWordEntries.reduce((acc, entry) => acc + (marks[entry.key] ? 1 : 0), 0);
   };
 
   // Wort-Toggle pro DG
@@ -5201,19 +5617,19 @@ function CERADWordlistWire({ sessionData, route, onPersist, onAbort, onDone, onB
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-          {CERAD_WORDLIST.map((w) => {
-            const active = !!dg.marks[w];
+          {ceradWordEntries.map((entry) => {
+            const active = !!dg.marks[entry.key];
             return (
               <button
-                key={w}
+                key={entry.key}
                 type="button"
-                onClick={() => updateDGMarks(key, w)}
+                onClick={() => updateDGMarks(key, entry.key)}
                 className={cls(
                   "h-12 rounded-xl border bg-white flex items-center justify-between px-3",
                   active && "bg-emerald-50 border-emerald-200"
                 )}
               >
-                <span className="text-left truncate pr-2">{w}</span>
+                <span className="text-left truncate pr-2">{entry.label}</span>
               </button>
             );
           })}
@@ -5255,18 +5671,18 @@ function CERADWordlistWire({ sessionData, route, onPersist, onAbort, onDone, onB
     }
   }, [base.recog]);
 
-  const calcRecogCounts = (responses) => {
+  const calcRecogCounts = useCallback((responses) => {
     let correctYes = 0;
     let correctNo = 0;
-    CERAD_WL_RECOG_ITEMS.forEach((item) => {
-      const ans = responses[item.word];
+    ceradRecognitionItems.forEach((item) => {
+      const ans = responses[item.key];
       if (item.isOrig && ans === "ja") correctYes += 1;
       if (!item.isOrig && ans === "nein") correctNo += 1;
     });
     return { correctYes, correctNo };
-  };
+  }, [ceradRecognitionItems]);
 
-  const recogCounts = useMemo(() => calcRecogCounts(recogAns), [recogAns]);
+  const recogCounts = useMemo(() => calcRecogCounts(recogAns), [calcRecogCounts, recogAns]);
 
   const toggleRecog = (word, value) => {
     setRecogAns((prev) => {
@@ -5379,8 +5795,8 @@ function CERADWordlistWire({ sessionData, route, onPersist, onAbort, onDone, onB
               Patient:in antwortet mit JA oder NEIN, ob das Wort zur gelernten Liste gehört.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-              {CERAD_WL_RECOG_ITEMS.map((item) => {
-                const ans = recogAns[item.word] || null;
+              {ceradRecognitionItems.map((item) => {
+                const ans = recogAns[item.key] || null;
                 const isCorrect = (val) => (item.isOrig ? val === "ja" : val === "nein");
                 const btnClass = (val) => {
                   if (ans !== val) return "bg-white border-zinc-300";
@@ -5390,11 +5806,11 @@ function CERADWordlistWire({ sessionData, route, onPersist, onAbort, onDone, onB
                 };
                 return (
                   <div
-                    key={item.word}
+                    key={item.key}
                     className="p-3 rounded-2xl border bg-white flex items-center justify-between gap-3 shadow-sm"
                   >
                     <div>
-                      <div className="font-semibold text-lg tracking-tight">{item.word}</div>
+                      <div className="font-semibold text-lg tracking-tight">{item.label}</div>
                       <div
                         className={cls(
                           "text-xs font-medium inline-flex items-center gap-1 px-2 py-0.5 rounded-full mt-1",
@@ -5409,7 +5825,7 @@ function CERADWordlistWire({ sessionData, route, onPersist, onAbort, onDone, onB
                     <div className="flex gap-1">
                       <button
                         type="button"
-                        onClick={() => toggleRecog(item.word, "ja")}
+                        onClick={() => toggleRecog(item.key, "ja")}
                         className={cls(
                           "px-3 py-1.5 rounded-xl border text-sm",
                           btnClass("ja")
@@ -5419,7 +5835,7 @@ function CERADWordlistWire({ sessionData, route, onPersist, onAbort, onDone, onB
                       </button>
                       <button
                         type="button"
-                        onClick={() => toggleRecog(item.word, "nein")}
+                        onClick={() => toggleRecog(item.key, "nein")}
                         className={cls(
                           "px-3 py-1.5 rounded-xl border text-sm",
                           btnClass("nein")

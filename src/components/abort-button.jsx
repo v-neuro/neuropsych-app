@@ -1,9 +1,17 @@
 import React, { useState } from "react";
+import { Button } from "./ui";
 
-export function AbortButton({ onAbort }) {
+export function AbortButton({
+  onAbort,
+  children = "Testabbruch",
+  defaultReasonType = "",
+  defaultNote = "",
+  variant = "danger",
+  size = "sm",
+}) {
   const [open, setOpen] = useState(false);
-  const [reasonType, setReasonType] = useState("");
-  const [note, setNote] = useState("");
+  const [reasonType, setReasonType] = useState(defaultReasonType);
+  const [note, setNote] = useState(defaultNote);
   const reasons = [
     "Patientenwunsch",
     "Instruktion unklar / nicht verstanden",
@@ -14,12 +22,17 @@ export function AbortButton({ onAbort }) {
   ];
   return (
     <div>
-      <button
-        onClick={() => setOpen(true)}
-        className="px-3 py-1.5 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 text-sm dark:bg-rose-900/40 dark:text-rose-100 dark:border-rose-600"
+      <Button
+        variant={variant}
+        size={size}
+        onClick={() => {
+          setReasonType(defaultReasonType);
+          setNote(defaultNote);
+          setOpen(true);
+        }}
       >
-        Testabbruch
-      </button>
+        {children}
+      </Button>
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
           <div className="w-[520px] max-w-[95vw] p-4 rounded-2xl border bg-white shadow-lg">
@@ -43,17 +56,18 @@ export function AbortButton({ onAbort }) {
               placeholder="z. B. Instruktion unklar, Farbenblindheit …"
             />
             <div className="flex gap-2 justify-end mt-3">
-              <button
+              <Button
+                variant="secondary"
                 onClick={() => {
                   setOpen(false);
-                  setReasonType("");
-                  setNote("");
+                  setReasonType(defaultReasonType);
+                  setNote(defaultNote);
                 }}
-                className="px-3 py-2 rounded-xl border"
               >
                 Abbrechen
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="danger"
                 onClick={() => {
                   onAbort && onAbort({
                     reason: reasonType || "Abbruch",
@@ -61,13 +75,12 @@ export function AbortButton({ onAbort }) {
                     at: Date.now(),
                   });
                   setOpen(false);
-                  setReasonType("");
-                  setNote("");
+                  setReasonType(defaultReasonType);
+                  setNote(defaultNote);
                 }}
-                className="px-3 py-2 rounded-xl bg-rose-600 text-white"
               >
                 Beenden
-              </button>
+              </Button>
             </div>
           </div>
         </div>

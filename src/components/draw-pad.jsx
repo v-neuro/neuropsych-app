@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
+import { Button } from "./ui";
 
 // Touch/Apple Pencil friendly canvas with stroke-level undo
-export function DrawPad({ width = 800, height = 400, initialData, onChange, savedFigures = [], onSaveFigure }) {
+export function DrawPad({ width = 800, height = 400, initialData, onChange, savedFigures = [], onSaveFigure, showSaveFigureButton = true }) {
   const canvasRef = useRef(null);
   const [drawing, setDrawing] = useState(false);
   const [hasInk, setHasInk] = useState(false);
@@ -189,7 +190,7 @@ export function DrawPad({ width = 800, height = 400, initialData, onChange, save
           ))}
         </div>
       )}
-      <div className="flex items-start gap-2">
+      <div className="space-y-2">
         <div
           className="rounded-xl border overflow-hidden bg-white touch-none"
           style={{ width, maxWidth: "100%" }}
@@ -207,23 +208,27 @@ export function DrawPad({ width = 800, height = 400, initialData, onChange, save
             style={{ width: "100%", height }}
           />
         </div>
-        <div className="flex flex-col gap-2">
-          <button
+        <div className="flex flex-wrap gap-2">
+          <Button
             type="button"
             onClick={undo}
             disabled={undoStack.length === 0}
-            className="px-3 py-1.5 rounded-xl border text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            size="sm"
+            variant="secondary"
           >
             Rückgängig
-          </button>
-          <button
-            type="button"
-            onClick={saveFigure}
-            disabled={!hasInk}
-            className="px-3 py-1.5 rounded-xl border text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Figur speichern
-          </button>
+          </Button>
+          {showSaveFigureButton && (
+            <Button
+              type="button"
+              onClick={saveFigure}
+              disabled={!hasInk}
+              size="sm"
+              variant="secondary"
+            >
+              Figur speichern
+            </Button>
+          )}
         </div>
       </div>
     </div>

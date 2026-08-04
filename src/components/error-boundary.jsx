@@ -1,4 +1,5 @@
 import React from "react";
+import { Button } from "./ui";
 
 export class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -31,8 +32,8 @@ export class ErrorBoundary extends React.Component {
               </pre>
             )}
             <div className="flex gap-2 mt-4">
-              <button onClick={this.reset} className="px-3 py-2 rounded-xl bg-zinc-900 text-white">Neu versuchen</button>
-              <button onClick={() => window.location.reload()} className="px-3 py-2 rounded-xl border">Seite neu laden</button>
+              <Button onClick={this.reset} variant="primary">Neu versuchen</Button>
+              <Button onClick={() => window.location.reload()} variant="secondary">Seite neu laden</Button>
             </div>
           </div>
         </div>
