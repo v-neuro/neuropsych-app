@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "./ui";
 
 // Touch/Apple Pencil friendly canvas with stroke-level undo
@@ -13,7 +13,7 @@ export function DrawPad({ width = 800, height = 400, initialData, onChange, save
   const blankSnapshotRef = useRef(null);
   const [galleryPreviewUrls, setGalleryPreviewUrls] = useState([]);
 
-  const drawImageOnCanvas = (src, onDone) => {
+  const drawImageOnCanvas = useCallback((src, onDone) => {
     const canvas = canvasRef.current;
     if (!canvas || !src) return;
     const ctx = ctxRef.current || canvas.getContext("2d");
@@ -28,7 +28,7 @@ export function DrawPad({ width = 800, height = 400, initialData, onChange, save
       if (onDone) onDone();
     };
     img.src = src;
-  };
+  }, [height, width]);
 
   const snapshot = () => {
     const canvas = canvasRef.current;
@@ -80,7 +80,7 @@ export function DrawPad({ width = 800, height = 400, initialData, onChange, save
       setHasInk(!isBlankSnapshot(snap));
     });
     setUndoStack([]);
-  }, [initialData, width, height]);
+  }, [drawImageOnCanvas, initialData, width, height]);
 
   useEffect(() => {
     const urlsToRevoke = [];
@@ -200,10 +200,12 @@ export function DrawPad({ width = 800, height = 400, initialData, onChange, save
             onPointerDown={start}
             onPointerMove={move}
             onPointerUp={end}
+            onPointerCancel={end}
             onPointerLeave={end}
             onTouchStart={start}
             onTouchMove={move}
             onTouchEnd={end}
+            onTouchCancel={end}
             className="block"
             style={{ width: "100%", height }}
           />

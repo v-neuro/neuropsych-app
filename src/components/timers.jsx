@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
+import React, { useCallback, useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
 import { useInterval } from "../lib/utils";
 import { Button } from "./ui";
 
@@ -82,7 +82,7 @@ export const Stopwatch = forwardRef(function Stopwatch({ persisted, onPersist, a
     if (onPersist) onPersist(limitMs); // keep the measured limit value
     if (onAutoAbort) onAutoAbort({ at: now, elapsedMs: limitMs });
   // re-run as elapsed updates to catch threshold crossing
-  }, [autoAbortMs, onAutoAbort, start, state, elapsed]);
+  }, [autoAbortMs, onAutoAbort, onPersist, start, state, elapsed]);
 
   const onStart = () => {
     setStart(Date.now());
@@ -91,22 +91,22 @@ export const Stopwatch = forwardRef(function Stopwatch({ persisted, onPersist, a
     setAborted(false);
     autoAbortFiredRef.current = false;
   };
-  const stopNow = () => {
+  const stopNow = useCallback(() => {
     const final = state === "running" && start !== null ? Date.now() - start : elapsed;
     setElapsed(final);
     setState("stopped");
     setStart(null);
     if (onPersist) onPersist(final);
-  };
+  }, [elapsed, onPersist, start, state]);
   const onStop = () => stopNow();
-  const onReset = () => {
+  const onReset = useCallback(() => {
     setState("idle");
     setStart(null);
     setElapsed(0);
     setAborted(false);
     autoAbortFiredRef.current = false;
     if (onPersist) onPersist(0);
-  };
+  }, [onPersist]);
 
   useImperativeHandle(ref, () => ({
     stop: () => stopNow(),

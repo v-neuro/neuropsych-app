@@ -10,6 +10,8 @@ export function Card({ children, className }) {
 }
 
 function buttonClass({ variant = "secondary", size = "md", className } = {}) {
+  if (size === "bare") return className;
+
   const variants = {
     primary: "bg-zinc-900 text-white border border-zinc-900",
     secondary: "bg-white text-zinc-900 border border-zinc-300 hover:bg-zinc-50",

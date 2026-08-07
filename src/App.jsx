@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { cls, useInterval } from "./lib/utils";
 import { idbGet, idbSet, idbDel, idbSetDrawing, idbGetDrawing, idbDeleteDrawing, idbDeleteDrawingNamespace, idbPruneDrawingsExcept, idbPruneOldSessions } from "./lib/persist";
 import { Button, Card, Header, SectionTitle } from "./components/ui";
@@ -6,6 +6,8 @@ import { DrawPad } from "./components/draw-pad";
 import { Stopwatch, Countdown60 } from "./components/timers";
 import { AbortButton } from "./components/abort-button";
 import { ErrorBoundary } from "./components/error-boundary";
+
+const SESSION_BACKUP_STORAGE_KEY = "npt_session_backup";
 
 // ---------- Preloaded test materials (read-only in UI) ----------
 const VLMT_LISTS = {
@@ -316,6 +318,23 @@ function ImpressumModal({ open, onClose }) {
   );
 }
 
+function SystemUpdateReminder({ open, onClose }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" role="dialog" aria-modal="true" aria-labelledby="system-update-reminder-title">
+      <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-5 shadow-lg">
+        <div id="system-update-reminder-title" className="text-lg font-semibold">iPadOS-Update prüfen</div>
+        <p className="mt-2 text-sm text-zinc-700">
+          Bitte prüfe vor Beginn der Testung, ob ein iPadOS-Update aussteht. Systemupdates sollten nur außerhalb laufender Testungen installiert werden.
+        </p>
+        <div className="mt-4 flex justify-end">
+          <Button type="button" variant="primary" onClick={onClose}>Verstanden</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TestbereicheModal({ open, onClose, onOpenTest }) {
   const [openSections, setOpenSections] = useState({});
   if (!open) return null;
@@ -425,23 +444,16 @@ function TestbereicheModal({ open, onClose, onOpenTest }) {
               key={bereich.titel}
               className="rounded-xl border border-zinc-200 bg-zinc-50"
             >
-              <div
-                className="p-3 cursor-pointer flex items-center justify-between gap-2 border-b border-zinc-200"
+              <Button
+                size="bare"
+                className="w-full p-3 cursor-pointer flex items-center justify-between gap-2 border-b border-zinc-200"
                 onClick={() => toggleSection(bereich.titel)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    toggleSection(bereich.titel);
-                  }
-                }}
               >
-                <h3 className="font-semibold leading-tight">{bereich.titel}</h3>
+                <span className="font-semibold leading-tight">{bereich.titel}</span>
                 <span className="text-xs text-zinc-500">
                   {openSections[bereich.titel] ? "▾" : "▸"}
                 </span>
-              </div>
+              </Button>
               <div
                 className="overflow-hidden transition-all duration-200"
                 style={{ maxHeight: openSections[bereich.titel] ? "2000px" : "0px" }}
@@ -511,13 +523,13 @@ function PasswordPrompt({ onSubmit, error }) {
         />
         Angemeldet bleiben (Gerät merken)
       </label>
-      <button
+      <Button size="bare"
         type="submit"
         className="w-full px-3 py-2 rounded-xl border bg-zinc-900 text-white disabled:opacity-60"
         disabled={submitting}
       >
         {submitting ? "Prüfen..." : "Anmelden"}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -577,7 +589,7 @@ function EpiTrackWire({ sessionData, onImportInv, onPersistTime, onAbort, onSend
             )}
             {s.type === "stopwatch" && ["zahlen_verbinden", "zahlen_buchstaben"].includes(s.id) && (
               <div className="flex flex-wrap gap-2">
-                <button
+                <Button size="bare"
                   type="button"
                   disabled={typeof epiTimes[s.id] !== "number"}
                   onClick={() => {
@@ -593,7 +605,7 @@ function EpiTrackWire({ sessionData, onImportInv, onPersistTime, onAbort, onSend
                   {sent[s.id === "zahlen_verbinden" ? "tmt_a" : "tmt_b"]
                     ? `An TMT-${s.id === "zahlen_verbinden" ? "A" : "B"} gesendet`
                     : `An TMT-${s.id === "zahlen_verbinden" ? "A" : "B"} senden`}
-                </button>
+                </Button>
               </div>
             )}
 
@@ -635,7 +647,7 @@ function EpiTrackWire({ sessionData, onImportInv, onPersistTime, onAbort, onSend
                   {longestFromZahlRev ? ` – aktuell berechnet: ${longestFromZahlRev}` : " – (keine Daten)"}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button
+                  <Button size="bare"
                     type="button"
                     disabled={!longestFromZahlRev}
                     onClick={() => onImportInv && onImportInv(longestFromZahlRev)}
@@ -645,15 +657,15 @@ function EpiTrackWire({ sessionData, onImportInv, onPersistTime, onAbort, onSend
                     )}
                   >
                     aus Zahlenspanne rückwärts übernehmen
-                  </button>
-                  <button
+                  </Button>
+                  <Button size="bare"
                     type="button"
                     onClick={() => onImportInv && onImportInv(0)}
                     className="px-3 py-2 rounded-xl border text-sm"
                     title="Feld leeren/zurücksetzen"
                   >
                     Eingabe leeren
-                  </button>
+                  </Button>
                 </div>
                 <div className="text-xs text-zinc-500">
                   Wert ist frei editierbar oder per Button aus der Zahlenspanne rückwärts übernehmbar.
@@ -1108,12 +1120,16 @@ function StopwatchScreen({ label, persisted, note, onPersist, onPersistNote, onA
       <div className="space-y-3">
         <Stopwatch persisted={persisted} onPersist={onPersist} />
         <div className="flex items-center gap-2">
-          <label className="text-sm text-zinc-700 w-24">Notiz</label>
           <input
             className="flex-1 rounded-xl border p-2"
             value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            onBlur={() => onPersistNote && onPersistNote(comment)}
+            onChange={(e) => {
+              const next = e.target.value;
+              setComment(next);
+              onPersistNote && onPersistNote(next);
+            }}
+            aria-label="Notiz"
+            placeholder="Notiz"
           />
         </div>
       </div>
@@ -1122,7 +1138,7 @@ function StopwatchScreen({ label, persisted, note, onPersist, onPersistNote, onA
 }
 
 const OptBtn = ({ selected, ok, onSelect, children, testid }) => (
-  <button
+  <Button size="bare"
     type="button"
     data-testid={testid}
     onClick={() => { onSelect && onSelect("click"); }}
@@ -1132,7 +1148,7 @@ const OptBtn = ({ selected, ok, onSelect, children, testid }) => (
     )}
   >
     <span>{children}</span>
-  </button>
+  </Button>
 );
 
 function AttemptsRow({ title, seq1, seq2, val, onChange }) {
@@ -1206,14 +1222,14 @@ function ZahlenSpanneScreen({ label, sequences, persisted, extraActionLabel, onS
       <div className="mb-3 flex gap-2">
         <AbortButton onAbort={onAbort} />
         {onBackToSpanMenu && (
-          <button
+          <Button size="bare"
             type="button"
             onClick={onBackToSpanMenu}
             onTouchEnd={(e) => { e.preventDefault(); onBackToSpanMenu && onBackToSpanMenu(); }}
             className="px-3 py-1.5 rounded-xl border text-sm"
           >
             Zur Auswahl
-          </button>
+          </Button>
         )}
       </div>
       <div className="space-y-3">
@@ -1236,7 +1252,7 @@ function ZahlenSpanneScreen({ label, sequences, persisted, extraActionLabel, onS
       </div>
       {extraActionLabel && (
         <div className="mt-4">
-          <button onClick={()=> onExtraAction && onExtraAction(longest)} className="px-3 py-2 rounded-xl border">{extraActionLabel}</button>
+          <Button size="bare" onClick={()=> onExtraAction && onExtraAction(longest)} className="px-3 py-2 rounded-xl border">{extraActionLabel}</Button>
         </div>
       )}
     </section>
@@ -1283,13 +1299,13 @@ function BlockSpanneScreen({ label, sequences, persisted, onStateChange, onAbort
       <div className="mb-3 flex gap-2">
         <AbortButton onAbort={onAbort} />
         {onBackToSpanMenu && (
-          <button
+          <Button size="bare"
             type="button"
             onClick={onBackToSpanMenu}
             className="px-3 py-1.5 rounded-xl border text-sm"
           >
             Zur Auswahl
-          </button>
+          </Button>
         )}
       </div>
       <div className="space-y-3">
@@ -1545,10 +1561,10 @@ function RWTModeMenu({ onSelect }) {
   return (
     <Card>
       <div className="grid md:grid-cols-2 gap-4">
-        <button onClick={() => onSelect("phon_simple")} className="h-28 rounded-2xl border bg-white">Einfache phonematische Wortflüssigkeit</button>
-        <button onClick={() => onSelect("phon_complex")} className="h-28 rounded-2xl border bg-white">Komplexe phonematische Wortflüssigkeit</button>
-        <button onClick={() => onSelect("sem_simple")} className="h-28 rounded-2xl border bg-white">Einfache semantische Wortflüssigkeit</button>
-        <button onClick={() => onSelect("sem_complex")} className="h-28 rounded-2xl border bg-white">Komplexe semantische Wortflüssigkeit</button>
+        <Button size="bare" onClick={() => onSelect("phon_simple")} className="h-28 rounded-2xl border bg-white">Einfache phonematische Wortflüssigkeit</Button>
+        <Button size="bare" onClick={() => onSelect("phon_complex")} className="h-28 rounded-2xl border bg-white">Komplexe phonematische Wortflüssigkeit</Button>
+        <Button size="bare" onClick={() => onSelect("sem_simple")} className="h-28 rounded-2xl border bg-white">Einfache semantische Wortflüssigkeit</Button>
+        <Button size="bare" onClick={() => onSelect("sem_complex")} className="h-28 rounded-2xl border bg-white">Komplexe semantische Wortflüssigkeit</Button>
       </div>
     </Card>
   );
@@ -1586,13 +1602,13 @@ function RWTTestPanel({ meta, modeKey, sessionData, onPersist, onClose }) {
       )}
       <div className="flex items-center justify-center gap-4 mb-3">
         {meta.options.map((o) => (
-          <button
+          <Button size="bare"
             key={o}
             onClick={() => { setOpt(o); persist({ version: o }); }}
             className={cls("px-5 py-2 rounded-xl border text-lg", opt === o ? "bg-zinc-100 border-zinc-300" : "bg-white border-zinc-300")}
           >
             {o}
-          </button>
+          </Button>
         ))}
       </div>
       <div className={cls(
@@ -1605,7 +1621,7 @@ function RWTTestPanel({ meta, modeKey, sessionData, onPersist, onClose }) {
         <div className="space-y-2 md:col-span-1">
           <label className="block text-sm">Summe Wörter</label>
           <div className="flex items-stretch gap-3">
-            <button
+            <Button size="bare"
             type="button"
             onClick={() => setWordCount((v) => v + 1)}
             disabled={!versionSelected}
@@ -1615,7 +1631,7 @@ function RWTTestPanel({ meta, modeKey, sessionData, onPersist, onClose }) {
               )}
             >
               +1 Wort
-            </button>
+            </Button>
             <input
               className={cls(
                 "w-32 rounded-xl border px-3 text-lg h-16",
@@ -1630,10 +1646,10 @@ function RWTTestPanel({ meta, modeKey, sessionData, onPersist, onClose }) {
                   const v = e.target.value;
                   const n = v === "" ? "" : Math.max(0, parseInt(v, 10) || 0);
                   setSum(n);
+                  persist({ sum: n === "" ? null : Number(n) });
                 }}
-                onBlur={() => persist({ sum: sum === "" ? null : Number(sum) })}
             />
-            <button
+            <Button size="bare"
             type="button"
             onClick={() => setWordCount((v) => v - 1)}
             disabled={!versionSelected}
@@ -1643,25 +1659,29 @@ function RWTTestPanel({ meta, modeKey, sessionData, onPersist, onClose }) {
               )}
             >
               -1 Wort
-            </button>
+            </Button>
           </div>
         </div>
       </div>
       <div className="mt-4">
-        <label className="block text-sm">Freihand-Mitschrift</label>
         <textarea
           className={cls(
-            "mt-1 w-full rounded-xl border p-2 h-52",
+            "w-full rounded-xl border p-2 h-52",
             !versionSelected && "cursor-not-allowed bg-zinc-100 opacity-60"
           )}
           value={notes}
+          aria-label="Notiz"
+          placeholder="Notiz"
           disabled={!versionSelected}
-          onChange={(e) => setNotes(e.target.value)}
-          onBlur={() => versionSelected && persist({ notes })}
+          onChange={(e) => {
+            const next = e.target.value;
+            setNotes(next);
+            if (versionSelected) persist({ notes: next });
+          }}
         />
       </div>
       <div className="mt-4 flex justify-end">
-        <button onClick={onClose} className="px-4 py-2.5 rounded-xl border bg-zinc-900 text-white text-sm">Fertig</button>
+        <Button size="bare" onClick={onClose} className="px-4 py-2.5 rounded-xl border bg-zinc-900 text-white text-sm">Fertig</Button>
       </div>
     </Card>
   );
@@ -1781,7 +1801,7 @@ function AceTaskCard({ item, value, raw = {}, onScoreChange, onRawChange }) {
             {item.materials.map((material) => {
               const checked = !!materialMarks[material];
               return (
-                <button
+                <Button size="bare"
                   key={material}
                   type="button"
                   onClick={() => toggleMaterial(material)}
@@ -1792,7 +1812,7 @@ function AceTaskCard({ item, value, raw = {}, onScoreChange, onRawChange }) {
                 >
                   <span>{material}</span>
                   <span>{checked ? "✔️" : "✖️"}</span>
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -1819,7 +1839,8 @@ function AceTaskCard({ item, value, raw = {}, onScoreChange, onRawChange }) {
               className="h-24 w-full rounded-xl border p-2 text-sm"
               value={transcript}
               onChange={(e) => onRawChange({ ...raw, transcript: e.target.value })}
-              placeholder="Mitschrift / Fehler / Wiederholungen …"
+              aria-label="Notiz"
+              placeholder="Notiz"
             />
           </div>
         </div>
@@ -1888,12 +1909,12 @@ function AceWire({ sessionData, onPersist, onAbort }) {
           );
         })}
         <Card>
-          <SectionTitle>Notizen</SectionTitle>
           <textarea
-            className="mt-2 h-28 w-full rounded-xl border p-2"
+            className="h-28 w-full rounded-xl border p-2"
             value={notes}
             onChange={(e) => onPersist && onPersist({ notes: e.target.value })}
-            placeholder="Durchführung, Besonderheiten, Papierzeichnungen, Abbruchgründe …"
+            aria-label="Notiz"
+            placeholder="Notiz"
           />
         </Card>
       </div>
@@ -1916,7 +1937,10 @@ function StroopWire({ sessionData, onPersistTime, onPersistNote, onAbort }) {
   ];
   const maxRows = Math.max(col1.length, col2.length, col3.length);
 
-  const initialFails = sessionData?.stroop_notes?.interferenz_fails || {};
+  const initialFails = useMemo(
+    () => sessionData?.stroop_notes?.interferenz_fails || {},
+    [sessionData?.stroop_notes?.interferenz_fails]
+  );
   const [fails, setFails] = useState(initialFails);
   useEffect(() => {
     setFails(initialFails);
@@ -1952,11 +1976,12 @@ function StroopWire({ sessionData, onPersistTime, onPersistNote, onAbort }) {
               persisted={sessionData?.stroop?.[t.key] ?? null}
               onPersist={(ms) => onPersistTime && onPersistTime(t.key, ms)}
             />
-            <label className="block text-sm">Kommentar / Fehler</label>
             <input
-              className="mt-1 w-full rounded-xl border px-3 py-2"
+              className="w-full rounded-xl border px-3 py-2"
               value={sessionData?.stroop_notes?.[t.key] ?? ""}
               onChange={(e) => onPersistNote && onPersistNote(t.key, e.target.value)}
+              aria-label="Notiz"
+              placeholder="Notiz"
             />
           </div>
         ))}
@@ -1972,11 +1997,12 @@ function StroopWire({ sessionData, onPersistTime, onPersistNote, onAbort }) {
                 onPersist={(ms) => onPersistTime && onPersistTime("interferenz", ms)}
               />
               <div className="mt-2">
-                <label className="block text-sm">Kommentar / Fehler</label>
                 <input
-                  className="mt-1 w-full rounded-xl border px-3 py-2"
+                  className="w-full rounded-xl border px-3 py-2"
                   value={sessionData?.stroop_notes?.interferenz ?? ""}
                   onChange={(e) => onPersistNote && onPersistNote("interferenz", e.target.value)}
+                  aria-label="Notiz"
+                  placeholder="Notiz"
                 />
               </div>
             </div>
@@ -1999,14 +2025,14 @@ function StroopWire({ sessionData, onPersistTime, onPersistNote, onAbort }) {
                     return (
                       <div key={key} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1 bg-white border">
                         <span className="font-mono">{w}</span>
-                        <button
+                        <Button size="bare"
                           type="button"
                           className={`px-2 py-0.5 rounded-md border text-[11px] ${clsBtn}`}
                           onClick={() => toggleFail(key)}
                           title="Fehl-Nennung markieren/korrigieren"
                         >
                           {label}
-                        </button>
+                        </Button>
                       </div>
                     );
                   });
@@ -2014,13 +2040,13 @@ function StroopWire({ sessionData, onPersistTime, onPersistNote, onAbort }) {
               </div>
             </div>
             <div className="flex justify-end">
-              <button
+              <Button size="bare"
                 type="button"
                 onClick={() => interferenzTimerRef.current?.stop?.()}
                 className="px-3 py-2 rounded-xl border bg-white"
               >
                 Timer stoppen
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -2050,7 +2076,7 @@ function GroovedPegboardWire({ sessionData, onPersistPanel, onAbort }) {
         <div className="text-sm text-zinc-700">Dominante Hand:</div>
         <div className="flex gap-2">
           {["rechts", "links"].map((h) => (
-            <button
+            <Button size="bare"
               key={h}
               onClick={() => {
                 setDomHand(h);
@@ -2059,7 +2085,7 @@ function GroovedPegboardWire({ sessionData, onPersistPanel, onAbort }) {
               className={cls("px-3 py-1.5 rounded-xl border text-sm", domHand === h ? "bg-emerald-50 border-emerald-200" : "bg-white")}
             >
               {h}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -2076,18 +2102,41 @@ function GroovedPegboardWire({ sessionData, onPersistPanel, onAbort }) {
               onPersist={(ms) => persistHand(panel.key, { ms })}
             />
             <div>
-              <label className="block text-sm text-zinc-700">Notizen</label>
               <input
-                className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+                className="w-full rounded-xl border px-3 py-2 text-sm"
                 value={gp[panel.key + "_note"] || ""}
                 onChange={(e) => persistHand(panel.key, { note: e.target.value })}
-                placeholder="Notizen"
+                aria-label="Notiz"
+                placeholder="Notiz"
               />
             </div>
           </Card>
         ))}
       </div>
     </section>
+  );
+}
+
+function StatusBadges({ status, centered = false }) {
+  const labels = Array.isArray(status) ? status : [status];
+  return (
+    <div className={cls("mt-1 flex flex-wrap gap-1", centered && "justify-center")}>
+      {labels.map((label) => (
+        <span
+          key={label}
+          className={cls(
+            "inline-block px-2 py-0.5 rounded-full text-xs border",
+            label === "abgebrochen" || label.includes("Subtest")
+              ? "bg-rose-50 text-rose-700 border-rose-200"
+              : label === "fällig"
+                ? "bg-amber-50 text-amber-700 border-amber-200"
+                : "bg-emerald-50 text-emerald-700 border-emerald-200"
+          )}
+        >
+          {label}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -2105,7 +2154,7 @@ function SpannenMenu({ statusMap, onOpen }) {
       </div>
       <Card className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {items.map((i) => (
-          <button
+          <Button size="bare"
             key={i.key}
             onClick={() => onOpen && onOpen(i.key)}
             className="h-20 rounded-2xl border bg-white hover:bg-zinc-50 shadow-sm px-3 text-left flex items-center justify-between"
@@ -2113,20 +2162,11 @@ function SpannenMenu({ statusMap, onOpen }) {
             <div>
               <div className="font-medium">{i.label}</div>
               {statusMap && statusMap[i.key] && (
-                <div
-                  className={cls(
-                    "mt-1 inline-block px-2 py-0.5 rounded-full text-xs border",
-                    statusMap[i.key] === "abgebrochen"
-                      ? "bg-rose-50 text-rose-700 border-rose-200"
-                      : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                  )}
-                >
-                  {statusMap[i.key]}
-                </div>
+                <StatusBadges status={statusMap[i.key]} />
               )}
             </div>
             <span className="text-lg">→</span>
-          </button>
+          </Button>
         ))}
       </Card>
     </section>
@@ -2214,7 +2254,7 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
       <div className="p-3 rounded-2xl border bg-white max-w-md space-y-3">
         <div className="text-sm text-zinc-700">Punkte: <span className="font-semibold">{score}</span> / 5</div>
         <div className="grid gap-2">
-          <button
+          <Button size="bare"
             type="button"
             onClick={() => togglePart("kreis")}
             className={cls(
@@ -2223,8 +2263,8 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
             )}
           >
             Kreis (1 Punkt)
-          </button>
-          <button
+          </Button>
+          <Button size="bare"
             type="button"
             onClick={() => togglePart("nummern1")}
             className={cls(
@@ -2233,8 +2273,8 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
             )}
           >
             Nummern korrekt (1 Punkt)
-          </button>
-          <button
+          </Button>
+          <Button size="bare"
             type="button"
             onClick={() => togglePart("nummern2")}
             className={cls(
@@ -2243,8 +2283,8 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
             )}
           >
             Nummern korrekt (1 Punkt)
-          </button>
-          <button
+          </Button>
+          <Button size="bare"
             type="button"
             onClick={() => togglePart("zeiger1")}
             className={cls(
@@ -2253,8 +2293,8 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
             )}
           >
             Zeiger korrekt (1 Punkt)
-          </button>
-          <button
+          </Button>
+          <Button size="bare"
             type="button"
             onClick={() => togglePart("zeiger2")}
             className={cls(
@@ -2263,14 +2303,18 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
             )}
           >
             Zeiger korrekt (1 Punkt)
-          </button>
+          </Button>
         </div>
-        <label className="block mt-2 text-sm">Kommentar</label>
         <input
-          className="mt-1 w-full rounded-xl border p-2"
+          className="w-full rounded-xl border p-2"
           value={note}
-          onChange={(e) => setNote(e.target.value)}
-          onBlur={() => onPersist && onPersist({ score, note })}
+          onChange={(e) => {
+            const next = e.target.value;
+            setNote(next);
+            onPersist && onPersist({ score, note: next });
+          }}
+          aria-label="Notiz"
+          placeholder="Notiz"
         />
       </div>
     </section>
@@ -2291,13 +2335,13 @@ function CERADMenu({ onOpen }) {
       <Header title="CERAD – Auswahl"/>
       <Card className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {items.map((i) => (
-          <button
+          <Button size="bare"
             key={i.key}
             onClick={() => onOpen && onOpen(i.key)}
             className="px-3 py-2 rounded-xl border text-left hover:bg-zinc-50"
           >
             {i.label}
-          </button>
+          </Button>
         ))}
       </Card>
     </section>
@@ -2336,13 +2380,13 @@ function CERADWFWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu }) 
       <Header title="CERAD – Wortflüssigkeit" />
       {onBackToMenu && (
         <div className="mb-2">
-          <button
+          <Button size="bare"
             type="button"
             onClick={onBackToMenu}
             className="px-3 py-1.5 rounded-xl border text-sm"
           >
             Zur CERAD-Auswahl
-          </button>
+          </Button>
         </div>
       )}
       <div className="mb-3">
@@ -2356,13 +2400,13 @@ function CERADWFWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu }) 
           <div>
             <label className="block text-sm text-zinc-700">Summe Wörter</label>
             <div className="flex items-stretch gap-3 mt-1">
-              <button
+              <Button size="bare"
                 type="button"
                 onClick={() => bumpCount("sem", 1)}
                 className="px-8 py-4 rounded-xl border text-lg bg-zinc-50 h-16"
               >
                 +1 Wort
-              </button>
+              </Button>
               <input
                 className="w-32 rounded-xl border px-3 text-lg h-16"
                 placeholder="0"
@@ -2372,25 +2416,29 @@ function CERADWFWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu }) 
                   const v = e.target.value;
                   const n = v === "" ? "" : Math.max(0, parseInt(v, 10) || 0);
                   setSemCount(n);
+                  persist({ semantic_count: n === "" ? null : Number(n) });
                 }}
-                onBlur={() => persist({ semantic_count: semCount === "" ? null : Number(semCount) })}
               />
-              <button
+              <Button size="bare"
                 type="button"
                 onClick={() => bumpCount("sem", -1)}
                 className="px-8 py-4 rounded-xl border text-lg bg-zinc-50 h-16"
               >
                 -1 Wort
-              </button>
+              </Button>
             </div>
           </div>
           <div>
-            <label className="block text-sm text-zinc-700">Notiz</label>
-            <textarea
-            className="mt-1 w-full rounded-xl border px-3 py-2 h-20"
+              <textarea
+              className="w-full rounded-xl border px-3 py-2 h-20"
               value={semNote}
-              onChange={(e) => setSemNote(e.target.value)}
-              onBlur={() => persist({ semantic_note: semNote })}
+              onChange={(e) => {
+                const next = e.target.value;
+                setSemNote(next);
+                persist({ semantic_note: next });
+              }}
+              aria-label="Notiz"
+              placeholder="Notiz"
             />
           </div>
         </Card>
@@ -2401,13 +2449,13 @@ function CERADWFWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu }) 
           <div>
             <label className="block text-sm text-zinc-700">Summe Wörter</label>
             <div className="flex items-stretch gap-3 mt-1">
-              <button
+              <Button size="bare"
                 type="button"
                 onClick={() => bumpCount("phon", 1)}
                 className="px-8 py-4 rounded-xl border text-lg bg-zinc-50 h-16"
               >
                 +1 Wort
-              </button>
+              </Button>
               <input
                 className="w-32 rounded-xl border px-3 text-lg h-16"
                 placeholder="0"
@@ -2417,25 +2465,29 @@ function CERADWFWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu }) 
                   const v = e.target.value;
                   const n = v === "" ? "" : Math.max(0, parseInt(v, 10) || 0);
                   setPhonCount(n);
+                  persist({ phonemic_count: n === "" ? null : Number(n) });
                 }}
-                onBlur={() => persist({ phonemic_count: phonCount === "" ? null : Number(phonCount) })}
               />
-              <button
+              <Button size="bare"
                 type="button"
                 onClick={() => bumpCount("phon", -1)}
                 className="px-8 py-4 rounded-xl border text-lg bg-zinc-50 h-16"
               >
                 -1 Wort
-              </button>
+              </Button>
             </div>
           </div>
           <div>
-            <label className="block text-sm text-zinc-700">Notiz</label>
             <textarea
-              className="mt-1 w-full rounded-xl border px-3 py-2 h-20"
+              className="w-full rounded-xl border px-3 py-2 h-20"
               value={phonNote}
-              onChange={(e) => setPhonNote(e.target.value)}
-              onBlur={() => persist({ phonemic_note: phonNote })}
+              onChange={(e) => {
+                const next = e.target.value;
+                setPhonNote(next);
+                persist({ phonemic_note: next });
+              }}
+              aria-label="Notiz"
+              placeholder="Notiz"
             />
           </div>
         </Card>
@@ -2443,13 +2495,13 @@ function CERADWFWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu }) 
 
 
       <div className="mt-4">
-        <button
+        <Button size="bare"
           type="button"
           onClick={() => onDone && onDone()}
           className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
         >
           Fertig
-        </button>
+        </Button>
       </div>
     </section>
   );
@@ -2461,11 +2513,40 @@ function CERADWFWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu }) 
 // ---------- App Shell ----------
 export default function App() {
   const authDisabled = import.meta.env?.VITE_DISABLE_AUTH === "true";
+  const [showSystemUpdateReminder, setShowSystemUpdateReminder] = useState(false);
+  const systemUpdateReminderHandledRef = useRef(false);
   const [authOK, setAuthOK] = useState(() => {
     if (typeof window === "undefined") return false;
     if (authDisabled) return true;
     return localStorage.getItem("auth_ok") === "true" || sessionStorage.getItem("auth_temp_ok") === "true";
   });
+
+  useEffect(() => {
+    const handleFirstInteraction = (event) => {
+      if (systemUpdateReminderHandledRef.current) return;
+
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      if (localStorage.getItem("system_update_reminder_shown_on") === today) {
+        systemUpdateReminderHandledRef.current = true;
+        return;
+      }
+      localStorage.setItem("system_update_reminder_shown_on", today);
+
+      systemUpdateReminderHandledRef.current = true;
+      event.preventDefault();
+      event.stopPropagation();
+      setShowSystemUpdateReminder(true);
+    };
+
+    window.addEventListener("pointerdown", handleFirstInteraction, true);
+    window.addEventListener("keydown", handleFirstInteraction, true);
+    return () => {
+      window.removeEventListener("pointerdown", handleFirstInteraction, true);
+      window.removeEventListener("keydown", handleFirstInteraction, true);
+    };
+  }, []);
+
   const [authError, setAuthError] = useState("");
   const [showImpressum, setShowImpressum] = useState(false);
   const [showTestbereiche, setShowTestbereiche] = useState(false);
@@ -2519,15 +2600,26 @@ export default function App() {
   };
 
   const [sessionData, setSessionData] = useState({});
+  const [hydrated, setHydrated] = useState(false);
   const latestStateRef = useRef({ screen, globalTimers, sessionData, sessionUUID });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     latestStateRef.current = { screen, globalTimers, sessionData, sessionUUID };
-  }, [screen, globalTimers, sessionData, sessionUUID]);
+    if (!hydrated) return;
+    localStorage.setItem(SESSION_BACKUP_STORAGE_KEY, JSON.stringify({
+      screen,
+      globalTimers,
+      sessionData,
+      sessionUUID,
+      lastUpdated: Date.now(),
+    }));
+  }, [hydrated, screen, globalTimers, sessionData, sessionUUID]);
 
   const persistNow = useCallback(() => {
     const { screen: s, globalTimers: g, sessionData: sd, sessionUUID: id } = latestStateRef.current;
-    idbSet(id, { screen: s, globalTimers: g, sessionData: sd, lastUpdated: Date.now() }).catch((e) => {
+    const snapshot = { screen: s, globalTimers: g, sessionData: sd, sessionUUID: id, lastUpdated: Date.now() };
+    localStorage.setItem(SESSION_BACKUP_STORAGE_KEY, JSON.stringify(snapshot));
+    idbSet(id, snapshot).catch((e) => {
       console.error("Persistenz speichern fehlgeschlagen", e);
     });
   }, []);
@@ -2542,16 +2634,22 @@ export default function App() {
     (async () => {
       try {
         const saved = await idbGet(sessionUUID);
-        if (saved) {
-          if (saved.screen) setScreen(normalizeScreen(saved.screen));
-          if (saved.globalTimers) setGlobalTimers(saved.globalTimers);
-          setSessionData(saved.sessionData || {});
+        const backupRaw = localStorage.getItem(SESSION_BACKUP_STORAGE_KEY);
+        const backup = backupRaw ? JSON.parse(backupRaw) : null;
+        const validBackup = backup?.sessionUUID === sessionUUID ? backup : null;
+        const latest = validBackup && (!saved || (validBackup.lastUpdated || 0) > (saved.lastUpdated || 0)) ? validBackup : saved;
+        if (latest) {
+          if (latest.screen) setScreen(normalizeScreen(latest.screen));
+          if (latest.globalTimers) setGlobalTimers(latest.globalTimers);
+          setSessionData(latest.sessionData || {});
         }
       } catch (e) {
         console.error("Persistenz laden fehlgeschlagen", e);
+      } finally {
+        setHydrated(true);
       }
     })();
-  }, []);
+  }, [sessionUUID]);
 
   // Prune stale drawing blobs (keep only current session namespace)
   useEffect(() => {
@@ -2559,20 +2657,24 @@ export default function App() {
   }, [sessionUUID]);
   // persist on changes (debounced)
   useEffect(() => {
+    if (!hydrated) return;
     const h = setTimeout(persistNow, 300);
     return () => clearTimeout(h);
-  }, [persistNow, sessionUUID, screen, globalTimers, sessionData]);
+  }, [hydrated, persistNow, sessionUUID, screen, globalTimers, sessionData]);
 
   // flush immediately when the tab is hidden or closed to reduce data loss risk
   useEffect(() => {
+    if (!hydrated) return;
     const flush = () => persistNow();
     window.addEventListener("visibilitychange", flush);
+    window.addEventListener("pagehide", flush);
     window.addEventListener("beforeunload", flush);
     return () => {
       window.removeEventListener("visibilitychange", flush);
+      window.removeEventListener("pagehide", flush);
       window.removeEventListener("beforeunload", flush);
     };
-  }, [persistNow]);
+  }, [hydrated, persistNow]);
 
   // Set once when the first actual test screen is opened.
   useEffect(() => {
@@ -2619,13 +2721,13 @@ export default function App() {
         <p className="text-sm text-zinc-600 mb-3">Bitte Passwort eingeben, um die Tests zu öffnen.</p>
         <PasswordPrompt onSubmit={handleAuth} error={authError} />
       </div>
-      <button
+      <Button size="bare"
         type="button"
         onClick={() => setShowImpressum(true)}
         className="mt-4 text-sm underline underline-offset-4"
       >
         Impressum
-      </button>
+      </Button>
       <ImpressumModal open={showImpressum} onClose={() => setShowImpressum(false)} />
     </div>
   );
@@ -2779,6 +2881,9 @@ export default function App() {
     const m = {};
     const s = sessionData || {};
     const set = (k, l) => { m[k] = l; };
+    const setSubtestAborts = (key, count) => {
+      m[key] = ["erfasst", `${count} ${count === 1 ? "Subtest" : "Subtests"} abgebrochen`];
+    };
 
     // Helper: mark as fällig if a reminder exists that navigates to this screen
     const dueFor = (key) => (globalTimers || []).some((t) => t?.nav?.name === key && !t.endedAt);
@@ -2799,22 +2904,30 @@ export default function App() {
     const spanAborts = [
       s.zahl_fwd_aborted, s.zahl_rev_aborted, s.block_fwd_aborted, s.block_rev_aborted,
     ];
-    if (spanAborts.some(Boolean)) set("spannen_menu", "abgebrochen");
+    const spanAbortCount = spanAborts.filter(Boolean).length;
+    if (spanAbortCount) setSubtestAborts("spannen_menu", spanAbortCount);
     else if (spanStates.some(Boolean)) set("spannen_menu", "erfasst");
 
     // TMT (kombiniert)
     const anyMainTmt = typeof s.tmt_a === 'number' || typeof s.tmt_b === 'number';
-    const anyMainTmtAborted = s.tmt_a_aborted || s.tmt_b_aborted;
-    if (anyMainTmtAborted) set("tmt_ab","abgebrochen"); else if (anyMainTmt) set("tmt_ab","erfasst");
+    const mainTmtAbortCount = [s.tmt_a_aborted, s.tmt_b_aborted].filter(Boolean).length;
+    if (s.tmt_aborted && !s.tmt_aborted.part) set("tmt_ab", "abgebrochen");
+    else if (mainTmtAbortCount || s.tmt_aborted?.part) setSubtestAborts("tmt_ab", mainTmtAbortCount || 1);
+    else if (anyMainTmt) set("tmt_ab", "erfasst");
 
     // Stroop (erfasst wenn mind. eine Zeit gespeichert)
     const stroopTimes = s.stroop || {};
     const anyStroop = Object.keys(stroopTimes).some((k) => typeof stroopTimes[k] === 'number');
-    const anyStroopAborted = !!s.stroop_aborted && Object.values(s.stroop_aborted).some(Boolean);
-    if (anyStroopAborted) set("stroop","abgebrochen"); else if (anyStroop) set("stroop","erfasst");
+    const stroopAbortCount = Object.values(s.stroop_aborted || {}).filter(Boolean).length;
+    if (stroopAbortCount) setSubtestAborts("stroop", stroopAbortCount);
+    else if (anyStroop) set("stroop","erfasst");
 
     // Epi-Track
-    if (s.epi_aborted) set("epi","abgebrochen"); else if (s.epi && (s.epi.times || s.epi.inv_spanne)) set("epi","erfasst");
+    const epiAborts = s.epi_aborted;
+    if (epiAborts?.subtest) setSubtestAborts("epi", 1);
+    else if (epiAborts?.reason || epiAborts?.at) set("epi", "abgebrochen");
+    else if (epiAborts && typeof epiAborts === "object") setSubtestAborts("epi", Object.values(epiAborts).filter(Boolean).length);
+    else if (s.epi && (s.epi.times || s.epi.inv_spanne)) set("epi", "erfasst");
 
     // Grooved Pegboard
     if (s.gp_aborted) set("gp","abgebrochen"); else if (s.gp && (typeof s.gp.dom_ms === 'number' || typeof s.gp.non_ms === 'number')) set("gp","erfasst");
@@ -2846,16 +2959,22 @@ export default function App() {
     if (s.cerad_fig_aborted) set("cerad_fig","abgebrochen"); else if (s.cerad_fig) set("cerad_fig","erfasst");
 
     // CERAD aggregated for main tile
-    const ceradAborted = [
+    const ceradAbortCount = [
       s.cerad_wl_aborted,
       s.cerad_mmst_aborted,
       s.cerad_benennen_aborted,
       s.cerad_wf_aborted,
-      s.cerad_tmt_aborted,
       s.cerad_fig_aborted,
       s.cerad_tmt_a_aborted,
       s.cerad_tmt_b_aborted,
-    ].some(Boolean);
+    ].filter(Boolean).length + (() => {
+      const tmtAborts = s.cerad_tmt_aborted;
+      if (!tmtAborts) return 0;
+      if (tmtAborts.part) return 1;
+      if (tmtAborts.reason || tmtAborts.at) return 1;
+      if (typeof tmtAborts === "object") return Object.values(tmtAborts).filter(Boolean).length;
+      return 1;
+    })();
     const ceradAny =
       !!s.cerad_wl ||
       !!s.cerad_mmst ||
@@ -2866,13 +2985,13 @@ export default function App() {
       !!s.cerad_fig ||
       !!s.cerad_tmt_a ||
       !!s.cerad_tmt_b;
-    if (ceradAborted) set("cerad_menu", "abgebrochen");
+    if (ceradAbortCount) setSubtestAborts("cerad_menu", ceradAbortCount);
     else if (ceradAny) set("cerad_menu", "erfasst");
 
     return m;
   }, [sessionData, globalTimers]);
 
-  if (!authOK) return authScreen;
+  if (!authOK) return <>{authScreen}<SystemUpdateReminder open={showSystemUpdateReminder} onClose={() => setShowSystemUpdateReminder(false)} /></>;
 
   return (
     <ErrorBoundary onReset={() => setScreen({ name: "menu" })}>
@@ -3114,7 +3233,17 @@ export default function App() {
                 [key]: ms,
               }))
             }
-            onAbort={(payload)=> setSessionData((s)=>({ ...s, epi_aborted: payload }))}
+            onAbort={(payload) =>
+              setSessionData((s) => ({
+                ...s,
+                epi_aborted: payload.subtest
+                  ? {
+                      ...((s.epi_aborted && !s.epi_aborted.subtest) ? s.epi_aborted : {}),
+                      [payload.subtest]: payload,
+                    }
+                  : payload,
+              }))
+            }
           />
         )}
         {screen.name === "gp" && (
@@ -3248,7 +3377,12 @@ export default function App() {
             onAbort={(payload) =>
               setSessionData((s) => ({
                 ...s,
-                cerad_tmt_aborted: payload,
+                cerad_tmt_aborted: payload.part
+                  ? {
+                      ...((s.cerad_tmt_aborted && !s.cerad_tmt_aborted.part) ? s.cerad_tmt_aborted : {}),
+                      [payload.part]: payload,
+                    }
+                  : payload,
               }))
             }
             onDone={() => setScreen({ name: "cerad_menu" })}
@@ -3328,13 +3462,13 @@ export default function App() {
             Testungsaufbau für verschiedene Fragestellungen
           </Button>
         </div>
-        <button
+        <Button size="bare"
           type="button"
           onClick={() => setShowImpressum(true)}
           className="text-sm underline underline-offset-4"
         >
           Impressum
-        </button>
+        </Button>
       </div>
       <ImpressumModal open={showImpressum} onClose={() => setShowImpressum(false)} />
       <TestbereicheModal
@@ -3342,6 +3476,7 @@ export default function App() {
         onClose={() => setShowTestbereiche(false)}
         onOpenTest={(name) => setScreen({ name })}
       />
+      <SystemUpdateReminder open={showSystemUpdateReminder} onClose={() => setShowSystemUpdateReminder(false)} />
     </div>
     </ErrorBoundary>
   );
@@ -3561,9 +3696,7 @@ function GlobalTimers({ timers, onClear, onOpen }) {
 }
 
 function ReminderPill({ timer, onClear, onOpen }) {
-  const initialNowRef = useRef(null);
-  if (initialNowRef.current === null) initialNowRef.current = Date.now();
-  const [now, setNow] = useState(initialNowRef.current);
+  const [now, setNow] = useState(Date.now);
   useInterval(() => setNow(Date.now()), 250);
   const remaining = Math.max(0, (timer.startTs + (timer.durationMs ?? 0)) - now);
   const mm = Math.floor(remaining / 60000);
@@ -3579,13 +3712,13 @@ function ReminderPill({ timer, onClear, onOpen }) {
       <span className="font-medium">{timer.label}</span>
       <span>{done ? "fällig" : `${mm}:${ss.toString().padStart(2, "0")}`}</span>
       {timer.nav && (
-        <button onClick={onOpen} className="px-2 py-0.5 rounded-lg bg-white border text-xs">
+        <Button size="bare" onClick={onOpen} className="px-2 py-0.5 rounded-lg bg-white border text-xs">
           Öffnen
-        </button>
+        </Button>
       )}
-      <button onClick={onClear} className="px-2 py-0.5 rounded-lg bg-white border text-xs">
+      <Button size="bare" onClick={onClear} className="px-2 py-0.5 rounded-lg bg-white border text-xs">
         Entfernen
-      </button>
+      </Button>
     </div>
   );
 }
@@ -3609,7 +3742,7 @@ function TileMenu({ onOpen, onOpenCERAD, statusMap, disabled }) {
       <h1 className="text-2xl font-semibold mb-4">Neue Session – Tests auswählen</h1>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {tiles.map((t) => (
-          <button
+          <Button size="bare"
             key={t.label}
             onClick={() => (t.key === "cerad_menu" ? onOpenCERAD() : onOpen(t.key))}
             disabled={disabled}
@@ -3621,21 +3754,10 @@ function TileMenu({ onOpen, onOpenCERAD, statusMap, disabled }) {
             <div className="text-center">
               <div className="text-lg font-medium">{t.label}</div>
                 {statusMap && statusMap[t.key] && (
-                  <div
-                    className={cls(
-                      "mt-1 inline-block px-2 py-0.5 rounded-full text-xs border",
-                      statusMap[t.key] === "abgebrochen"
-                        ? "bg-rose-50 text-rose-700 border-rose-200"
-                        : statusMap[t.key] === "fällig"
-                          ? "bg-amber-50 text-amber-700 border-amber-200"
-                          : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    )}
-                  >
-                    {statusMap[t.key]}
-                  </div>
+                  <StatusBadges status={statusMap[t.key]} centered />
                 )}
             </div>
-          </button>
+          </Button>
         ))}
       </div>
     </div>
@@ -3843,7 +3965,7 @@ function DemoCapture({ demographics, saved, onSave }) {
           </div>
         </div>
         <div className="flex justify-end">
-          <button
+          <Button size="bare"
             type="button"
             onClick={() => {
               const dissertation = local.education_training_code === "promotion"
@@ -3867,7 +3989,7 @@ function DemoCapture({ demographics, saved, onSave }) {
             className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
           >
             Speichern
-          </button>
+          </Button>
         </div>
       </Card>
     </div>
@@ -3889,7 +4011,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
   const [list, setList] = useState(saved.list || null); // "A"|"B"|"C"|"D"
   useEffect(() => {
     if (route && route.name === "vlmt" && route.go === "dg7") {
-      if (!list && route.list) setList(route.list);
+      setList((currentList) => currentList || route.list || null);
       setStep("dg7");
     }
   }, [route]);
@@ -3938,12 +4060,12 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
     });
   };
 
-  const loadFrom = (index) => {
+  const loadFrom = useCallback((index) => {
     const r = results[index] || { sel: {}, pers: {}, intrusions: "" };
     setSel(r.sel || {});
     setPers(r.pers || {});
     setIntrusions(r.intrusions || "");
-  };
+  }, [results]);
 
   function nextDG() {
     // commit DG1..5 index (dg-1)
@@ -4009,7 +4131,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
     if (step === "score") loadFrom(dg - 1);
     if (step === "dg6") loadFrom(5);
     if (step === "dg7") loadFrom(6);
-  }, [step, dg]);
+  }, [step, dg, loadFrom]);
 
   const emitState = useCallback(() => {
     const nextResults = results.slice();
@@ -4038,7 +4160,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
           <p className="mb-3">Wähle Wortliste:</p>
           <div className="flex gap-2">
             {["A", "B", "C", "D"].map((L) => (
-              <button
+              <Button size="bare"
                 key={L}
                 onClick={() => {
                   setList(L);
@@ -4048,7 +4170,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
                 className="px-3 py-2 rounded-xl border"
               >
                 VLMT-{L}
-              </button>
+              </Button>
             ))}
           </div>
         </Card>
@@ -4062,7 +4184,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
               const active = !!sel[entry.key];
               const p = pers[entry.key] || 0;
               return (
-                <button
+                <Button size="bare"
                   key={entry.key}
                   onClick={() => {
                     setSel((m) => {
@@ -4072,14 +4194,14 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
                     setPers((m) => (!sel[entry.key] ? m : { ...m, [entry.key]: 0 }));
                   }}
                   className={cls(
-                    "h-12 rounded-xl border bg-white flex items-center justify-between px-3",
-                    active && "bg-emerald-50 border-emerald-200"
+                    "h-12 rounded-xl border flex items-center justify-between px-3",
+                    active ? "bg-emerald-50 border-emerald-200" : "bg-white"
                   )}
                 >
                   <span className="text-left pr-2 truncate">{entry.label}</span>
                   <span className="flex items-center gap-1">
                     {active && (
-                      <button
+                      <Button size="bare"
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -4089,27 +4211,27 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
                         title="Perseveration +1"
                       >
                         P{p > 0 ? `(${p})` : ""}
-                      </button>
+                      </Button>
                     )}
                   </span>
-                </button>
+                </Button>
               );
             })}
           </div>
-          <label className="block mt-3 text-sm">Intrusionen / FP</label>
           <textarea
             value={intrusions}
             onChange={(e) => setIntrusions(e.target.value)}
-            className="w-full mt-1 rounded-xl border p-2 h-20"
-            placeholder="frei…"
+            className="w-full mt-3 rounded-xl border p-2 h-20"
+            aria-label="Notiz"
+            placeholder="Notiz"
           />
           <div className="flex gap-2 mt-4">
-            <button onClick={nextDG} className="px-3 py-2 rounded-xl bg-zinc-900 text-white">
+            <Button size="bare" onClick={nextDG} className="px-3 py-2 rounded-xl bg-zinc-900 text-white">
               {dg < 5 ? `Weiter (zu DG${dg + 1})` : "Weiter (zur Interferenzliste)"}
-            </button>
-            <button onClick={goBackInVlmt} className="px-3 py-2 rounded-xl border">
+            </Button>
+            <Button size="bare" onClick={goBackInVlmt} className="px-3 py-2 rounded-xl border">
               Zurück
-            </button>
+            </Button>
           </div>
         </Card>
       )}
@@ -4125,7 +4247,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
             ))}
           </ul>
           <div className="flex gap-2 mt-4">
-            <button
+            <Button size="bare"
               onClick={() => {
                 setStep("dg6");
                 resetScoring();
@@ -4133,10 +4255,10 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
             >
               Weiter (zu DG6)
-            </button>
-            <button onClick={goBackInVlmt} className="px-3 py-2 rounded-xl border">
+            </Button>
+            <Button size="bare" onClick={goBackInVlmt} className="px-3 py-2 rounded-xl border">
               Zurück
-            </button>
+            </Button>
           </div>
         </Card>
       )}
@@ -4150,7 +4272,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
               const active = !!sel[entry.key];
               const p = pers[entry.key] || 0;
               return (
-                <button
+                <Button size="bare"
                   key={entry.key}
                   onClick={() => {
                     setSel((m) => {
@@ -4160,14 +4282,14 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
                     setPers((m) => (!sel[entry.key] ? m : { ...m, [entry.key]: 0 }));
                   }}
                   className={cls(
-                    "h-12 rounded-xl border bg-white flex items-center justify-between px-3",
-                    active && "bg-emerald-50 border-emerald-200"
+                    "h-12 rounded-xl border flex items-center justify-between px-3",
+                    active ? "bg-emerald-50 border-emerald-200" : "bg-white"
                   )}
                 >
                   <span className="text-left pr-2 truncate">{entry.label}</span>
                   <span className="flex items-center gap-1">
                     {active && (
-                      <button
+                      <Button size="bare"
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -4177,28 +4299,28 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
                         title="Perseveration +1"
                       >
                         P{p > 0 ? `(${p})` : ""}
-                      </button>
+                      </Button>
                     )}
                   </span>
-                </button>
+                </Button>
               );
             })}
           </div>
-          <label className="block mt-3 text-sm">Intrusionen / FP</label>
           <textarea
             value={intrusions}
             onChange={(e) => setIntrusions(e.target.value)}
-            className="w-full mt-1 rounded-xl border p-2 h-20"
-            placeholder="frei…"
+            className="w-full mt-3 rounded-xl border p-2 h-20"
+            aria-label="Notiz"
+            placeholder="Notiz"
           />
           <div className="flex gap-2 mt-4">
-            <button
+            <Button size="bare"
               onClick={() => { commitCurrent(5); addGlobalReminder("VLMT DG7", 30, { name: "vlmt", go: "dg7", list }); setStep("waiting"); }}
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
             >
               30-Min. Reminder starten
-            </button>
-            <button onClick={goBackInVlmt} className="px-3 py-2 rounded-xl border">Zurück</button>
+            </Button>
+            <Button size="bare" onClick={goBackInVlmt} className="px-3 py-2 rounded-xl border">Zurück</Button>
           </div>
         </Card>
       )}
@@ -4211,12 +4333,12 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
             zurückkehren.
           </p>
           <div className="flex gap-2 mt-4">
-            <button onClick={goBackInVlmt} className="px-3 py-2 rounded-xl border">
+            <Button size="bare" onClick={goBackInVlmt} className="px-3 py-2 rounded-xl border">
               Zurück
-            </button>
-            <button onClick={() => setStep("dg7")} className="px-3 py-2 rounded-xl border bg-zinc-900 text-white">
+            </Button>
+            <Button size="bare" onClick={() => setStep("dg7")} className="px-3 py-2 rounded-xl border bg-zinc-900 text-white">
               DG7 jetzt durchführen
-            </button>
+            </Button>
           </div>
         </Card>
       )}
@@ -4229,7 +4351,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
               const active = !!sel[entry.key];
               const p = pers[entry.key] || 0;
               return (
-                <button
+                <Button size="bare"
                   key={entry.key}
                   onClick={() => {
                     setSel((m) => {
@@ -4239,14 +4361,14 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
                     setPers((m) => (!sel[entry.key] ? m : { ...m, [entry.key]: 0 }));
                   }}
                   className={cls(
-                    "h-12 rounded-xl border bg-white flex items-center justify-between px-3",
-                    active && "bg-emerald-50 border-emerald-200"
+                    "h-12 rounded-xl border flex items-center justify-between px-3",
+                    active ? "bg-emerald-50 border-emerald-200" : "bg-white"
                   )}
                 >
                   <span className="text-left pr-2 truncate">{entry.label}</span>
                   <span className="flex items-center gap-1">
                     {active && (
-                      <button
+                      <Button size="bare"
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -4256,30 +4378,30 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
                         title="Perseveration +1"
                       >
                         P{p > 0 ? `(${p})` : ""}
-                      </button>
+                      </Button>
                     )}
                   </span>
-                </button>
+                </Button>
               );
             })}
           </div>
-          <label className="block mt-3 text-sm">Intrusionen / FP</label>
           <textarea
             value={intrusions}
             onChange={(e) => setIntrusions(e.target.value)}
-            className="w-full mt-1 rounded-xl border p-2 h-20"
-            placeholder="frei…"
+            className="w-full mt-3 rounded-xl border p-2 h-20"
+            aria-label="Notiz"
+            placeholder="Notiz"
           />
           <div className="flex gap-2 mt-4">
-            <button onClick={goBackInVlmt} className="px-3 py-2 rounded-xl border">
+            <Button size="bare" onClick={goBackInVlmt} className="px-3 py-2 rounded-xl border">
               Zurück
-            </button>
-            <button
+            </Button>
+            <Button size="bare"
               onClick={() => { commitCurrent(6); setStep("rekog"); }}
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
             >
               Weiter: Wiedererkennen
-            </button>
+            </Button>
           </div>
         </Card>
       )}
@@ -4295,12 +4417,12 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
           <p className="text-sm text-zinc-600">Markiere die Wörter, die der Patient als "gesehen" benennt. Treffer zählen nur für Originalwörter der gewählten Liste, ansonsten Fehler.</p>
           <div className="grid grid-cols-2 gap-2 mt-2">
             {rekogItems.map((it, i) => (
-              <button
+              <Button size="bare"
                 key={`${it.key}_${i}`}
                 onClick={() => setRekogSel((m) => ({ ...m, [i]: !m[i] }))}
                 className={cls(
-                  "flex items-center justify-between border rounded-xl px-3 py-2 bg-white",
-                  rekogSel[i] && (it.t ? "bg-emerald-50 border-emerald-200" : "bg-rose-50 border-rose-200")
+                  "flex items-center justify-between border rounded-xl px-3 py-2",
+                  rekogSel[i] ? (it.t ? "bg-emerald-50 border-emerald-200" : "bg-rose-50 border-rose-200") : "bg-white"
                 )}
                 title={it.t ? "Originalwort (Treffer bei Auswahl)" : "Lure (Fehler bei Auswahl)"}
               >
@@ -4310,14 +4432,14 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
                     {it.t ? "Treffer" : "Fehler"}
                   </span>
                 )}
-              </button>
+              </Button>
             ))}
           </div>
           <div className="mt-4 text-sm text-zinc-700">
             Treffer: <span className="font-medium">{rekogHits}</span> · Fehler: <span className="font-medium">{rekogFP}</span>
           </div>
           <div className="mt-4">
-            <button
+            <Button size="bare"
               onClick={() => {
                 emitState();
                 if (onDone) onDone();
@@ -4325,7 +4447,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
             >
               Fertig
-            </button>
+            </Button>
           </div>
         </Card>
       )}
@@ -4366,7 +4488,7 @@ function DcsrFigureGallery({ figures, onOpen }) {
           const src = previewUrls[figIdx];
           return (
             <div key={figure?.key || figIdx} className="rounded-xl border bg-white p-2">
-              <button
+              <Button size="bare"
                 type="button"
                 onClick={() => onOpen && onOpen(figIdx)}
                 className="relative block w-full rounded-lg border bg-zinc-50 p-1 hover:bg-zinc-100"
@@ -4389,7 +4511,7 @@ function DcsrFigureGallery({ figures, onOpen }) {
                     className="h-24 w-full object-contain"
                   />
                 )}
-              </button>
+              </Button>
               <div className="mt-1 text-xs text-zinc-500">Antippen zum Bewerten</div>
             </div>
           );
@@ -4430,9 +4552,9 @@ function DcsrFigureOverlay({ figure, onClose, onRate }) {
               Aktuell: {rating ? DCSR_RATING_LABELS[rating] : "ohne Bewertung"}
             </div>
           </div>
-          <button type="button" onClick={onClose} className="px-3 py-1.5 rounded-xl border text-sm">
+          <Button size="bare" type="button" onClick={onClose} className="px-3 py-1.5 rounded-xl border text-sm">
             Schließen
-          </button>
+          </Button>
         </div>
         {src && (
           <img
@@ -4443,7 +4565,7 @@ function DcsrFigureOverlay({ figure, onClose, onRate }) {
         )}
         <div className="mt-3 flex flex-wrap gap-2">
           {DCSR_RATINGS.map((item) => (
-            <button
+            <Button size="bare"
               key={item.key}
               type="button"
               onClick={() => onRate && onRate(item.key)}
@@ -4453,9 +4575,9 @@ function DcsrFigureOverlay({ figure, onClose, onRate }) {
               )}
             >
               {item.label}
-            </button>
+            </Button>
           ))}
-          <button
+          <Button size="bare"
             type="button"
             onClick={() => onRate && onRate(null)}
             className={cls(
@@ -4464,7 +4586,7 @@ function DcsrFigureOverlay({ figure, onClose, onRate }) {
             )}
           >
             Ohne Bewertung
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -4501,7 +4623,7 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
   }, [saved.drawingGalleryKeys]);
   const drawingKeysRef = useRef(initialKeys);
   const drawingGalleryKeysRef = useRef(initialGalleryKeys);
-  const [drawingKeysVersion, bumpDrawingKeysVersion] = useState(0); // used to trigger effect when keys mutate
+  const [drawingKeysVersion, bumpDrawingKeysVersion] = useState(0);
   const [drawings, setDrawings] = useState(() => Array.from({ length: 5 }, () => null));
   const [drawingGalleries, setDrawingGalleries] = useState(() => Array.from({ length: 5 }, () => []));
   const [rekogResp, setRekogResp] = useState(() => saved.rekog?.responses || { korrekt: 0, falsch: 0, gedreht: 0 });
@@ -4512,13 +4634,13 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
   const figSrc = ver === "V2" ? "/material/DCS-2.png" : "/material/DCS-1.png";
   const hasCurrentDrawing = !!drawings[dg - 1];
 
-  function inc(field) {
+  const inc = useCallback((field) => {
     setCounts((xs) => {
       const copy = xs.slice();
       copy[dg - 1] = { ...copy[dg - 1], [field]: copy[dg - 1][field] + 1 };
       return copy;
     });
-  }
+  }, [dg]);
 
   function fillRemainingDgsWithCeiling() {
     setCounts((xs) => {
@@ -4618,11 +4740,11 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
       drawingGalleryKeys: drawingGalleryKeysRef.current,
       rekog: { responses: rekogResp },
     });
-  }, [onStateChange, step, ver, dg, counts, rekogResp, drawingKeysVersion]);
+  }, [onStateChange, step, ver, dg, counts, rekogResp]);
 
   useEffect(() => {
     emitState();
-  }, [emitState]);
+  }, [emitState, drawingKeysVersion]);
 
   const handleDrawingChange = useCallback(async (data) => {
     const hadKey = !!drawingKeysRef.current[dg - 1];
@@ -4654,9 +4776,9 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
       next[dg - 1] = [...cur, { ...entry, data }];
       return next;
     });
+    bumpDrawingKeysVersion((v) => v + 1);
     try {
       await idbSetDrawing(key, data);
-      bumpDrawingKeysVersion((v) => v + 1);
     } catch (e) {
       console.error("Galerie-Figur speichern fehlgeschlagen", e);
     }
@@ -4722,7 +4844,7 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
     if (!drawings[dg - 1]) return;
     inc(field);
     void saveScoredFigure(tag);
-  }, [dg, drawings, saveScoredFigure]);
+  }, [dg, drawings, inc, saveScoredFigure]);
 
   const adjustRekog = useCallback((key, delta) => {
     setRekogResp((r) => ({
@@ -4938,21 +5060,21 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
                   <div className="text-sm text-zinc-700">{item.label}</div>
                   <div className="mt-1 text-3xl font-semibold tabular-nums">{rekogResp[item.key] ?? 0}</div>
                   <div className="mt-3 flex gap-2">
-                    <button
+                    <Button size="bare"
                       type="button"
                       onClick={() => adjustRekog(item.key, 1)}
                       className="min-h-12 min-w-16 px-5 py-3 rounded-xl border bg-white text-base font-medium"
                     >
                       +1
-                    </button>
-                    <button
+                    </Button>
+                    <Button size="bare"
                       type="button"
                       onClick={() => adjustRekog(item.key, -1)}
                       disabled={!rekogResp[item.key]}
                       className="min-h-12 min-w-16 px-5 py-3 rounded-xl border bg-white text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       -1
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -5058,7 +5180,7 @@ function computeMmstTotal(items) {
 // UI-Toggle: 0/1-Scorer
 function MmstToggle({ value, onChange, label }) {
   return (
-    <button
+    <Button size="bare"
       onClick={() => onChange(value ? 0 : 1)}
       className={cls(
         "px-3 py-2 rounded-xl border flex justify-between",
@@ -5067,7 +5189,7 @@ function MmstToggle({ value, onChange, label }) {
     >
       <span>{label}</span>
       {value ? <span>✔️</span> : <span>✖️</span>}
-    </button>
+    </Button>
   );
 }
 
@@ -5077,19 +5199,19 @@ function MmstCounter({ value, onChange, max = 5, label }) {
     <div className="p-3 rounded-xl border bg-white flex items-center justify-between">
       <div>{label}</div>
       <div className="flex gap-2 items-center">
-        <button
+        <Button size="bare"
           onClick={() => onChange(Math.max(0, value - 1))}
           className="px-3 py-1.5 rounded-xl border"
         >
           −
-        </button>
+        </Button>
         <div className="font-bold w-6 text-center">{value}</div>
-        <button
+        <Button size="bare"
           onClick={() => onChange(Math.min(max, value + 1))}
           className="px-3 py-1.5 rounded-xl border"
         >
           +
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -5123,13 +5245,13 @@ function MMSTWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu }) {
       <Header title="CERAD – MMST" />
       {onBackToMenu && (
         <div className="mb-2">
-          <button
+          <Button size="bare"
             type="button"
             onClick={onBackToMenu}
             className="px-3 py-1.5 rounded-xl border text-sm"
           >
             Zur CERAD-Auswahl
-          </button>
+          </Button>
         </div>
       )}
 
@@ -5144,12 +5266,12 @@ function MMSTWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu }) {
             <div className="text-3xl font-semibold tabular-nums">{total} / 30</div>
           </div>
           <div className="flex-1 min-w-[220px]">
-            <label className="block text-sm">Allgemeine Notiz (MMST)</label>
             <input
-              className="mt-1 w-full rounded-xl border p-2"
+              className="w-full rounded-xl border p-2"
               value={note}
               onChange={(e) => updateNote(e.target.value)}
-              placeholder="z. B. Besonderheiten, Verständnisprobleme …"
+              aria-label="Notiz"
+              placeholder="Notiz"
             />
           </div>
         </div>
@@ -5203,19 +5325,19 @@ function MMSTWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu }) {
           <div className="flex items-center justify-between gap-4">
             <div className="text-sm text-zinc-600">{MMST_STRUCTURE.buchstabieren.label}</div>
             <div className="flex items-center gap-2">
-              <button
+              <Button size="bare"
                 onClick={() => updateBuchstabieren(Math.max(0, Number(items.buchstabieren ?? 0) - 1))}
                 className="px-3 py-1.5 rounded-xl border"
               >
                 −
-              </button>
+              </Button>
               <div className="text-2xl font-semibold w-10 text-center">{Number(items.buchstabieren ?? 0)}</div>
-              <button
+              <Button size="bare"
                 onClick={() => updateBuchstabieren(Math.min(MMST_STRUCTURE.buchstabieren.max, Number(items.buchstabieren ?? 0) + 1))}
                 className="px-3 py-1.5 rounded-xl border"
               >
                 +1
-              </button>
+              </Button>
             </div>
           </div>
           <div>
@@ -5223,7 +5345,8 @@ function MMSTWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu }) {
               className="mt-1 w-full rounded-xl border p-2"
               value={mmst.buchstabieren_note || ""}
               onChange={(e) => onPersist && onPersist({ buchstabieren_note: e.target.value })}
-              placeholder="SIERP"
+              aria-label="Notiz"
+              placeholder="Notiz"
             />
           </div>
         </div>
@@ -5319,13 +5442,13 @@ function MMSTWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu }) {
         ))}
       </Card>
       <div className="mt-4">
-        <button
+        <Button size="bare"
           type="button"
           onClick={() => onDone && onDone()}
           className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
         >
           Fertig
-        </button>
+        </Button>
       </div>
     </section>
   );
@@ -5396,13 +5519,13 @@ function BenennenWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu })
 
       {onBackToMenu && (
         <div className="mb-2">
-          <button
+          <Button size="bare"
             type="button"
             onClick={onBackToMenu}
             className="px-3 py-1.5 rounded-xl border text-sm"
           >
             Zur CERAD-Auswahl
-          </button>
+          </Button>
         </div>
       )}
 
@@ -5427,7 +5550,7 @@ function BenennenWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu })
               <div className="flex items-center justify-between gap-2">
                 <div className="font-medium text-sm">{it.label}</div>
                 <div className="flex gap-1 text-xs">
-                  <button
+                  <Button size="bare"
                     type="button"
                     onClick={() => handleToggle(idx, true)}
                     className={cls(
@@ -5438,8 +5561,8 @@ function BenennenWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu })
                     )}
                   >
                     Richtig
-                  </button>
-                  <button
+                  </Button>
+                  <Button size="bare"
                     type="button"
                     onClick={() => handleToggle(idx, false)}
                     className={cls(
@@ -5450,11 +5573,10 @@ function BenennenWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu })
                     )}
                   >
                     Falsch
-                  </button>
+                  </Button>
                 </div>
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-zinc-600">Notiz</label>
+              <div>
                 <input
                   className="w-full rounded-xl border p-2 text-sm"
                   value={it.note}
@@ -5463,12 +5585,8 @@ function BenennenWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu })
                       prev.map((p, i) => (i === idx ? { ...p, note: e.target.value } : p))
                     )
                   }
-                  onBlur={() => {
-                    const next = items.map((p, i) => (i === idx ? { ...p, note: it.note } : p));
-                    const newTotal = next.reduce((acc, n) => acc + (n.correct === true ? 1 : 0), 0);
-                    onPersist && onPersist({ items: next, total: newTotal });
-                  }}
-                  placeholder="Falschbenennung..."
+                  aria-label="Notiz"
+                  placeholder="Notiz"
                 />
               </div>
             </div>
@@ -5478,13 +5596,13 @@ function BenennenWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu })
 
       {onDone && (
         <div className="mt-4">
-          <button
+          <Button size="bare"
             type="button"
             onClick={onDone}
             className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
           >
             Weiter
-          </button>
+          </Button>
         </div>
       )}
     </section>
@@ -5647,7 +5765,7 @@ function CERADFiguralWire({ sessionData, route, onPersist, onAbort, onDone, onBa
           {fig.criteria.map((c, idx) => {
             const active = toggles[idx];
             return (
-              <button
+              <Button size="bare"
                 key={idx}
                 type="button"
                 onClick={() => toggleCriterion(idx)}
@@ -5657,7 +5775,7 @@ function CERADFiguralWire({ sessionData, route, onPersist, onAbort, onDone, onBa
                 )}
               >
                 {c}
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -5672,13 +5790,13 @@ function CERADFiguralWire({ sessionData, route, onPersist, onAbort, onDone, onBa
       />
       {onBackToMenu && (
         <div className="mb-2">
-          <button
+          <Button size="bare"
             type="button"
             onClick={onBackToMenu}
             className="px-3 py-1.5 rounded-xl border text-sm"
           >
             Zur CERAD-Auswahl
-          </button>
+          </Button>
         </div>
       )}
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -5692,16 +5810,20 @@ function CERADFiguralWire({ sessionData, route, onPersist, onAbort, onDone, onBa
             {CERAD_FIGS.map((f) => renderFigCard("draw", f))}
           </div>
           <div className="mt-3">
-            <label className="block text-sm text-zinc-700">Notiz (Abzeichnen)</label>
             <textarea
-              className="mt-1 w-full rounded-xl border px-3 py-2 h-20"
+              className="w-full rounded-xl border px-3 py-2 h-20"
               value={noteDraw}
-              onChange={(e) => setNoteDraw(e.target.value)}
-              onBlur={() => updateNote("draw", noteDraw)}
+              onChange={(e) => {
+                const next = e.target.value;
+                setNoteDraw(next);
+                updateNote("draw", next);
+              }}
+              aria-label="Notiz"
+              placeholder="Notiz"
             />
           </div>
           <div className="mt-4 flex gap-2">
-            <button
+            <Button size="bare"
               type="button"
               onClick={() => {
                 onPersist && onPersist({ recall_pending: true });
@@ -5711,14 +5833,14 @@ function CERADFiguralWire({ sessionData, route, onPersist, onAbort, onDone, onBa
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
             >
               Erinnerung für Abruf setzen
-            </button>
-            <button
+            </Button>
+            <Button size="bare"
               type="button"
               onClick={() => setStep("recall")}
               className="px-3 py-2 rounded-xl border"
             >
               Direkt zum Abruf
-            </button>
+            </Button>
           </div>
         </>
       )}
@@ -5730,16 +5852,20 @@ function CERADFiguralWire({ sessionData, route, onPersist, onAbort, onDone, onBa
             {CERAD_FIGS.map((f) => renderFigCard("recall", f))}
           </div>
           <div className="mt-3">
-            <label className="block text-sm text-zinc-700">Notiz (Erinnern)</label>
             <textarea
-              className="mt-1 w-full rounded-xl border px-3 py-2 h-20"
+              className="w-full rounded-xl border px-3 py-2 h-20"
               value={noteRecall}
-              onChange={(e) => setNoteRecall(e.target.value)}
-              onBlur={() => updateNote("recall", noteRecall)}
+              onChange={(e) => {
+                const next = e.target.value;
+                setNoteRecall(next);
+                updateNote("recall", next);
+              }}
+              aria-label="Notiz"
+              placeholder="Notiz"
             />
           </div>
           <div className="mt-4">
-            <button
+            <Button size="bare"
               type="button"
               onClick={() => {
                 onPersist && onPersist({ recall_pending: false });
@@ -5749,7 +5875,7 @@ function CERADFiguralWire({ sessionData, route, onPersist, onAbort, onDone, onBa
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
             >
               Fertig
-            </button>
+            </Button>
           </div>
         </>
       )}
@@ -5782,16 +5908,20 @@ function CERADTmtScreen({ label, persisted, note, onPersist, onPersistNote, onAb
           onAutoAbort={handleAutoAbort}
         />
         <div className="flex items-center gap-2">
-          <label className="text-sm text-zinc-700 w-24">Notiz</label>
           <input
             className="flex-1 rounded-xl border p-2"
             value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            onBlur={() => onPersistNote && onPersistNote(comment)}
+            onChange={(e) => {
+              const next = e.target.value;
+              setComment(next);
+              onPersistNote && onPersistNote(next);
+            }}
+            aria-label="Notiz"
+            placeholder="Notiz"
           />
         </div>
         <div className="pt-1">
-          <button
+          <Button size="bare"
             type="button"
             onClick={() => {
               stopwatchRef.current?.stop?.();
@@ -5800,7 +5930,7 @@ function CERADTmtScreen({ label, persisted, note, onPersist, onPersistNote, onAb
             className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
           >
             Fertig
-          </button>
+          </Button>
         </div>
       </div>
     </section>
@@ -5830,7 +5960,7 @@ function CERADTmtCombo({ sessionData, onPersist, onAbort, onDone, onBackToMenu }
       <Header title="CERAD – TMT A/B" />
       {onBackToMenu && (
         <div className="mb-2">
-          <button
+          <Button size="bare"
             type="button"
             onClick={() => {
               stopBothTimers();
@@ -5839,7 +5969,7 @@ function CERADTmtCombo({ sessionData, onPersist, onAbort, onDone, onBackToMenu }
             className="px-3 py-1.5 rounded-xl border text-sm"
           >
             Zur CERAD-Auswahl
-          </button>
+          </Button>
         </div>
       )}
       <div className="mb-3">
@@ -5862,16 +5992,20 @@ function CERADTmtCombo({ sessionData, onPersist, onAbort, onDone, onBackToMenu }
             }}
           />
           <div className="flex items-center gap-2">
-            <label className="text-sm text-zinc-700 w-24">Notiz</label>
             <input
               className="flex-1 rounded-xl border p-2"
               value={noteA}
-              onChange={(e) => setNoteA(e.target.value)}
-              onBlur={() => onPersist && onPersist({ note_a: noteA })}
+              onChange={(e) => {
+                const next = e.target.value;
+                setNoteA(next);
+                onPersist && onPersist({ note_a: next });
+              }}
+              aria-label="Notiz"
+              placeholder="Notiz"
             />
           </div>
           <div className="pt-1">
-            <button
+            <Button size="bare"
               type="button"
               onClick={() => {
                 stopBothTimers();
@@ -5880,7 +6014,7 @@ function CERADTmtCombo({ sessionData, onPersist, onAbort, onDone, onBackToMenu }
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
             >
               Weiter zu TMT-B
-            </button>
+            </Button>
           </div>
         </Card>
       )}
@@ -5901,16 +6035,20 @@ function CERADTmtCombo({ sessionData, onPersist, onAbort, onDone, onBackToMenu }
             }}
           />
           <div className="flex items-center gap-2">
-            <label className="text-sm text-zinc-700 w-24">Notiz</label>
             <input
               className="flex-1 rounded-xl border p-2"
               value={noteB}
-              onChange={(e) => setNoteB(e.target.value)}
-              onBlur={() => onPersist && onPersist({ note_b: noteB })}
+              onChange={(e) => {
+                const next = e.target.value;
+                setNoteB(next);
+                onPersist && onPersist({ note_b: next });
+              }}
+              aria-label="Notiz"
+              placeholder="Notiz"
             />
           </div>
           <div className="pt-1">
-            <button
+            <Button size="bare"
               type="button"
               onClick={() => {
                 stopBothTimers();
@@ -5919,7 +6057,7 @@ function CERADTmtCombo({ sessionData, onPersist, onAbort, onDone, onBackToMenu }
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
             >
               Fertig (weiter)
-            </button>
+            </Button>
           </div>
         </Card>
       )}
@@ -5965,16 +6103,19 @@ function TMTCombo({ sessionData, onPersist, onAbort, onDone }) {
             onAutoAbort={(info) => {
               const payload = { reason: "Automatischer Abbruch", limit_ms: 180_000, at: info?.at || Date.now(), part: "A" };
               persist({ tmt_a: 180_000, tmt_a_aborted: payload });
-              onAbort && onAbort(payload);
             }}
           />
           <Card className="space-y-1">
-            <label className="text-sm text-zinc-700">Notiz</label>
             <input
               className="w-full rounded-xl border p-2"
               value={noteA}
-              onChange={(e) => setNoteA(e.target.value)}
-              onBlur={() => persist({ tmt_a_note: noteA })}
+              onChange={(e) => {
+                const next = e.target.value;
+                setNoteA(next);
+                persist({ tmt_a_note: next });
+              }}
+              aria-label="Notiz"
+              placeholder="Notiz"
             />
           </Card>
         </Card>
@@ -5991,22 +6132,25 @@ function TMTCombo({ sessionData, onPersist, onAbort, onDone }) {
             onAutoAbort={(info) => {
               const payload = { reason: "Automatischer Abbruch", limit_ms: 300_000, at: info?.at || Date.now(), part: "B" };
               persist({ tmt_b: 300_000, tmt_b_aborted: payload });
-              onAbort && onAbort(payload);
             }}
           />
           <Card className="space-y-1">
-            <label className="text-sm text-zinc-700">Notiz</label>
             <input
               className="w-full rounded-xl border p-2"
               value={noteB}
-              onChange={(e) => setNoteB(e.target.value)}
-              onBlur={() => persist({ tmt_b_note: noteB })}
+              onChange={(e) => {
+                const next = e.target.value;
+                setNoteB(next);
+                persist({ tmt_b_note: next });
+              }}
+              aria-label="Notiz"
+              placeholder="Notiz"
             />
           </Card>
         </Card>
       </div>
       <div className="mt-4">
-        <button
+        <Button size="bare"
           type="button"
           onClick={() => {
             stopBothTimers();
@@ -6015,7 +6159,7 @@ function TMTCombo({ sessionData, onPersist, onAbort, onDone }) {
           className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
         >
           Fertig
-        </button>
+        </Button>
       </div>
     </section>
   );
@@ -6098,17 +6242,17 @@ function CERADWordlistWire({ sessionData, route, testLanguage, onPersist, onAbor
           {ceradWordEntries.map((entry) => {
             const active = !!dg.marks[entry.key];
             return (
-              <button
+              <Button size="bare"
                 key={entry.key}
                 type="button"
                 onClick={() => updateDGMarks(key, entry.key)}
                 className={cls(
-                  "h-12 rounded-xl border bg-white flex items-center justify-between px-3",
-                  active && "bg-emerald-50 border-emerald-200"
+                  "h-12 rounded-xl border flex items-center justify-between px-3",
+                  active ? "bg-emerald-50 border-emerald-200" : "bg-white"
                 )}
               >
                 <span className="text-left truncate pr-2">{entry.label}</span>
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -6116,21 +6260,21 @@ function CERADWordlistWire({ sessionData, route, testLanguage, onPersist, onAbor
         <div className="mt-4 flex items-center gap-3">
           <div className="text-sm">Intrusionen (Anzahl):</div>
           <div className="flex items-center gap-2">
-            <button
+            <Button size="bare"
               type="button"
               onClick={() => updateDGIntrusions(key, -1)}
               className="px-3 py-1.5 rounded-xl border"
             >
               −
-            </button>
+            </Button>
             <div className="w-10 text-center font-mono tabular-nums">{intr}</div>
-            <button
+            <Button size="bare"
               type="button"
               onClick={() => updateDGIntrusions(key, 1)}
               className="px-3 py-1.5 rounded-xl border"
             >
               +
-            </button>
+            </Button>
           </div>
         </div>
       </Card>
@@ -6187,13 +6331,13 @@ function CERADWordlistWire({ sessionData, route, testLanguage, onPersist, onAbor
 
       {onBackToMenu && (
         <div className="mb-2">
-          <button
+          <Button size="bare"
             type="button"
             onClick={onBackToMenu}
             className="px-3 py-1.5 rounded-xl border text-sm"
           >
             Zur CERAD-Auswahl
-          </button>
+          </Button>
         </div>
       )}
 
@@ -6207,12 +6351,12 @@ function CERADWordlistWire({ sessionData, route, testLanguage, onPersist, onAbor
         <>
           {renderDGCard("dg1", "DG1 – Sofortabruf 1")}
           <div className="mt-3 flex gap-2">
-            <button
+            <Button size="bare"
               onClick={() => setStep("dg2")}
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
             >
               Weiter: DG2
-            </button>
+            </Button>
           </div>
         </>
       )}
@@ -6221,12 +6365,12 @@ function CERADWordlistWire({ sessionData, route, testLanguage, onPersist, onAbor
         <>
           {renderDGCard("dg2", "DG2 – Sofortabruf 2")}
           <div className="mt-3 flex gap-2">
-            <button
+            <Button size="bare"
               onClick={() => setStep("dg3")}
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
             >
               Weiter: DG3
-            </button>
+            </Button>
           </div>
         </>
       )}
@@ -6235,7 +6379,7 @@ function CERADWordlistWire({ sessionData, route, testLanguage, onPersist, onAbor
         <>
           {renderDGCard("dg3", "DG3 – Sofortabruf 3")}
           <div className="mt-4">
-            <button
+            <Button size="bare"
               type="button"
               onClick={() => {
                 onPersist && onPersist({ recall_pending: true });
@@ -6245,7 +6389,7 @@ function CERADWordlistWire({ sessionData, route, testLanguage, onPersist, onAbor
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
             >
               Erinnerung setzen & weiter zu Figuren
-            </button>
+            </Button>
           </div>
         </>
       )}
@@ -6255,12 +6399,12 @@ function CERADWordlistWire({ sessionData, route, testLanguage, onPersist, onAbor
         <>
           {renderDGCard("dg4", "DG4 – verzögerter Abruf")}
           <div className="mt-3 flex gap-2">
-            <button
+            <Button size="bare"
               onClick={() => setStep("recog")}
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
             >
               Weiter: Wiedererkennen
-            </button>
+            </Button>
           </div>
         </>
       )}
@@ -6301,7 +6445,7 @@ function CERADWordlistWire({ sessionData, route, testLanguage, onPersist, onAbor
                       </div>
                     </div>
                     <div className="flex gap-1">
-                      <button
+                      <Button size="bare"
                         type="button"
                         onClick={() => toggleRecog(item.key, "ja")}
                         className={cls(
@@ -6310,8 +6454,8 @@ function CERADWordlistWire({ sessionData, route, testLanguage, onPersist, onAbor
                         )}
                       >
                         JA
-                      </button>
-                      <button
+                      </Button>
+                      <Button size="bare"
                         type="button"
                         onClick={() => toggleRecog(item.key, "nein")}
                         className={cls(
@@ -6320,7 +6464,7 @@ function CERADWordlistWire({ sessionData, route, testLanguage, onPersist, onAbor
                         )}
                       >
                         NEIN
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 );
@@ -6332,7 +6476,7 @@ function CERADWordlistWire({ sessionData, route, testLanguage, onPersist, onAbor
               <span className="font-medium">{recogCounts.correctNo}</span>
             </div>
             <div className="mt-4">
-              <button
+              <Button size="bare"
                 type="button"
                 onClick={() => {
                   if (onAfterRecog) onAfterRecog();
@@ -6341,7 +6485,7 @@ function CERADWordlistWire({ sessionData, route, testLanguage, onPersist, onAbor
                 className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
               >
                 Fertig
-              </button>
+              </Button>
             </div>
           </Card>
         </>

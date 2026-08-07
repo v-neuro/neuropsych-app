@@ -8,7 +8,11 @@ html, body, #root { height: 100%; }
   -moz-osx-font-smoothing: grayscale;
 }
 
-button {
+button,
+[role="button"] {
+  min-width: 44px;
+  min-height: 44px;
+  zoom: 1.2;
   transition: transform 80ms ease, filter 80ms ease, box-shadow 80ms ease;
 }
 

@@ -48,12 +48,12 @@ export function AbortButton({
                 <option key={r} value={r}>{r}</option>
               ))}
             </select>
-            <label className="block text-sm mt-3">Notiz (optional)</label>
             <textarea
               value={note}
               onChange={(e)=>setNote(e.target.value)}
-              className="mt-1 w-full h-24 rounded-xl border p-2"
-              placeholder="z. B. Instruktion unklar, Farbenblindheit …"
+              className="mt-3 w-full h-24 rounded-xl border p-2"
+              aria-label="Notiz"
+              placeholder="Notiz"
             />
             <div className="flex gap-2 justify-end mt-3">
               <Button
