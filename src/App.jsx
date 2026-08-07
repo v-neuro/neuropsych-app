@@ -4150,6 +4150,37 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
     emitState();
   }, [emitState]);
 
+  const renderScoringWord = (entry) => {
+    const active = !!sel[entry.key];
+    const p = pers[entry.key] || 0;
+    return (
+      <div key={entry.key} className="flex min-w-0 gap-2">
+        <Button size="bare"
+          onClick={() => {
+            setSel((m) => ({ ...m, [entry.key]: !m[entry.key] }));
+            setPers((m) => (!sel[entry.key] ? m : { ...m, [entry.key]: 0 }));
+          }}
+          className={cls(
+            "h-12 min-w-0 flex-1 rounded-xl border px-3 text-left",
+            active ? "bg-emerald-50 border-emerald-200" : "bg-white"
+          )}
+        >
+          <span className="block truncate">{entry.label}</span>
+        </Button>
+        {active && (
+          <Button size="bare"
+            type="button"
+            onClick={() => setPers((m) => ({ ...m, [entry.key]: (m[entry.key] || 0) + 1 }))}
+            className="h-12 shrink-0 rounded-xl border border-sky-200 bg-sky-50 px-2 text-xs text-sky-800"
+            title="Perseveration +1"
+          >
+            P{p > 0 ? `(${p})` : ""}
+          </Button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <section className="py-6">
       <Header title="VLMT" />
@@ -4180,43 +4211,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
         <Card>
           <SectionTitle>DG{dg} – Scoring</SectionTitle>
           <div className="grid grid-cols-3 gap-2">
-            {words.map((entry) => {
-              const active = !!sel[entry.key];
-              const p = pers[entry.key] || 0;
-              return (
-                <Button size="bare"
-                  key={entry.key}
-                  onClick={() => {
-                    setSel((m) => {
-                      const next = { ...m, [entry.key]: !m[entry.key] };
-                      return next;
-                    });
-                    setPers((m) => (!sel[entry.key] ? m : { ...m, [entry.key]: 0 }));
-                  }}
-                  className={cls(
-                    "h-12 rounded-xl border flex items-center justify-between px-3",
-                    active ? "bg-emerald-50 border-emerald-200" : "bg-white"
-                  )}
-                >
-                  <span className="text-left pr-2 truncate">{entry.label}</span>
-                  <span className="flex items-center gap-1">
-                    {active && (
-                      <Button size="bare"
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPers((m) => ({ ...m, [entry.key]: (m[entry.key] || 0) + 1 }));
-                        }}
-                        className="px-2 py-0.5 rounded-md border text-xs bg-sky-50 border-sky-200 text-sky-800"
-                        title="Perseveration +1"
-                      >
-                        P{p > 0 ? `(${p})` : ""}
-                      </Button>
-                    )}
-                  </span>
-                </Button>
-              );
-            })}
+            {words.map(renderScoringWord)}
           </div>
           <textarea
             value={intrusions}
@@ -4268,43 +4263,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
           <SectionTitle>DG6 – Abfrage ohne Vorlesen</SectionTitle>
           <p className="text-sm text-zinc-600 mb-2">Scoring identisch zu DG1–5 (ohne erneutes Vorlesen).</p>
           <div className="grid grid-cols-3 gap-2">
-            {words.map((entry) => {
-              const active = !!sel[entry.key];
-              const p = pers[entry.key] || 0;
-              return (
-                <Button size="bare"
-                  key={entry.key}
-                  onClick={() => {
-                    setSel((m) => {
-                      const next = { ...m, [entry.key]: !m[entry.key] };
-                      return next;
-                    });
-                    setPers((m) => (!sel[entry.key] ? m : { ...m, [entry.key]: 0 }));
-                  }}
-                  className={cls(
-                    "h-12 rounded-xl border flex items-center justify-between px-3",
-                    active ? "bg-emerald-50 border-emerald-200" : "bg-white"
-                  )}
-                >
-                  <span className="text-left pr-2 truncate">{entry.label}</span>
-                  <span className="flex items-center gap-1">
-                    {active && (
-                      <Button size="bare"
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPers((m) => ({ ...m, [entry.key]: (m[entry.key] || 0) + 1 }));
-                        }}
-                        className="px-2 py-0.5 rounded-md border text-xs bg-sky-50 border-sky-200 text-sky-800"
-                        title="Perseveration +1"
-                      >
-                        P{p > 0 ? `(${p})` : ""}
-                      </Button>
-                    )}
-                  </span>
-                </Button>
-              );
-            })}
+            {words.map(renderScoringWord)}
           </div>
           <textarea
             value={intrusions}
@@ -4347,43 +4306,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
         <Card>
           <SectionTitle>DG7 – verzögerter Abruf</SectionTitle>
           <div className="grid grid-cols-3 gap-2">
-            {words.map((entry) => {
-              const active = !!sel[entry.key];
-              const p = pers[entry.key] || 0;
-              return (
-                <Button size="bare"
-                  key={entry.key}
-                  onClick={() => {
-                    setSel((m) => {
-                      const next = { ...m, [entry.key]: !m[entry.key] };
-                      return next;
-                    });
-                    setPers((m) => (!sel[entry.key] ? m : { ...m, [entry.key]: 0 }));
-                  }}
-                  className={cls(
-                    "h-12 rounded-xl border flex items-center justify-between px-3",
-                    active ? "bg-emerald-50 border-emerald-200" : "bg-white"
-                  )}
-                >
-                  <span className="text-left pr-2 truncate">{entry.label}</span>
-                  <span className="flex items-center gap-1">
-                    {active && (
-                      <Button size="bare"
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPers((m) => ({ ...m, [entry.key]: (m[entry.key] || 0) + 1 }));
-                        }}
-                        className="px-2 py-0.5 rounded-md border text-xs bg-sky-50 border-sky-200 text-sky-800"
-                        title="Perseveration +1"
-                      >
-                        P{p > 0 ? `(${p})` : ""}
-                      </Button>
-                    )}
-                  </span>
-                </Button>
-              );
-            })}
+            {words.map(renderScoringWord)}
           </div>
           <textarea
             value={intrusions}
