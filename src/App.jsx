@@ -895,9 +895,10 @@ async function buildExportRow(sessionData, sessionUUID, opts = {}) {
     row.stroop_interferenz_errors = null;
     row.stroop_interferenz_corrected = null;
   }
-  row.stroop_notes_woerter = s.stroop_notes?.woerter || "";
-  row.stroop_notes_farbstriche = s.stroop_notes?.farbstriche || "";
-  row.stroop_notes_interferenz = s.stroop_notes?.interferenz || "";
+  const stroopGeneralNote = s.stroop_notes?.general || "";
+  row.stroop_notes_woerter = stroopGeneralNote || s.stroop_notes?.woerter || "";
+  row.stroop_notes_farbstriche = stroopGeneralNote || s.stroop_notes?.farbstriche || "";
+  row.stroop_notes_interferenz = stroopGeneralNote || s.stroop_notes?.interferenz || "";
 
   // Grooved Pegboard
   const gp = s.gp || {};
@@ -1941,6 +1942,11 @@ function StroopWire({ sessionData, onPersistTime, onPersistNote, onAbort }) {
     () => sessionData?.stroop_notes?.interferenz_fails || {},
     [sessionData?.stroop_notes?.interferenz_fails]
   );
+  const generalNote = sessionData?.stroop_notes?.general
+    ?? sessionData?.stroop_notes?.woerter
+    ?? sessionData?.stroop_notes?.farbstriche
+    ?? sessionData?.stroop_notes?.interferenz
+    ?? "";
   const [fails, setFails] = useState(initialFails);
   useEffect(() => {
     setFails(initialFails);
@@ -1976,13 +1982,6 @@ function StroopWire({ sessionData, onPersistTime, onPersistNote, onAbort }) {
               persisted={sessionData?.stroop?.[t.key] ?? null}
               onPersist={(ms) => onPersistTime && onPersistTime(t.key, ms)}
             />
-            <input
-              className="w-full rounded-xl border px-3 py-2"
-              value={sessionData?.stroop_notes?.[t.key] ?? ""}
-              onChange={(e) => onPersistNote && onPersistNote(t.key, e.target.value)}
-              aria-label="Notiz"
-              placeholder="Notiz"
-            />
           </div>
         ))}
       </div>
@@ -1996,18 +1995,9 @@ function StroopWire({ sessionData, onPersistTime, onPersistNote, onAbort }) {
                 persisted={sessionData?.stroop?.interferenz ?? null}
                 onPersist={(ms) => onPersistTime && onPersistTime("interferenz", ms)}
               />
-              <div className="mt-2">
-                <input
-                  className="w-full rounded-xl border px-3 py-2"
-                  value={sessionData?.stroop_notes?.interferenz ?? ""}
-                  onChange={(e) => onPersistNote && onPersistNote("interferenz", e.target.value)}
-                  aria-label="Notiz"
-                  placeholder="Notiz"
-                />
-              </div>
             </div>
             <div className="rounded-xl border bg-zinc-50 p-2 text-xs text-zinc-700">
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-x-8 gap-y-2">
                 {Array.from({ length: maxRows }).map((_, idx) => {
                   const words = [col1[idx], col2[idx], col3[idx]];
                   return words.map((w, colIdx) => {
@@ -2023,11 +2013,11 @@ function StroopWire({ sessionData, onPersistTime, onPersistNote, onAbort }) {
                           ? "bg-amber-50 border-amber-200 text-amber-700"
                           : "bg-white";
                     return (
-                      <div key={key} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1 bg-white border">
-                        <span className="font-mono">{w}</span>
+                      <div key={key} className="grid grid-cols-[4rem_44px] items-center gap-2 px-1 py-1">
+                        <span className="font-mono text-right">{w}</span>
                         <Button size="bare"
                           type="button"
-                          className={`px-2 py-0.5 rounded-md border text-[11px] ${clsBtn}`}
+                          className={`shrink-0 px-2 py-0.5 rounded-md border text-[11px] ${clsBtn}`}
                           onClick={() => toggleFail(key)}
                           title="Fehl-Nennung markieren/korrigieren"
                         >
@@ -2051,6 +2041,13 @@ function StroopWire({ sessionData, onPersistTime, onPersistNote, onAbort }) {
           </div>
         </div>
       </div>
+      <textarea
+        className="mt-3 h-20 w-full rounded-xl border p-2"
+        value={generalNote}
+        onChange={(e) => onPersistNote && onPersistNote("general", e.target.value)}
+        aria-label="Notiz"
+        placeholder="Notiz"
+      />
     </section>
   );
 }
@@ -4210,7 +4207,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
       {step === "score" && (
         <Card>
           <SectionTitle>DG{dg} – Scoring</SectionTitle>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-x-2 gap-y-8">
             {words.map(renderScoringWord)}
           </div>
           <textarea
@@ -4234,7 +4231,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
       {step === "interf" && (
         <Card>
           <SectionTitle>Interferenzliste – nur Vorlesen</SectionTitle>
-          <ul className="grid grid-cols-3 gap-2 text-zinc-700">
+          <ul className="grid grid-cols-3 gap-x-2 gap-y-8 text-zinc-700">
             {interferenzList.map((entry) => (
               <li key={entry.key} className="px-3 py-2 rounded-lg bg-zinc-100 border border-zinc-200">
                 {entry.label}
@@ -4262,7 +4259,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
         <Card>
           <SectionTitle>DG6 – Abfrage ohne Vorlesen</SectionTitle>
           <p className="text-sm text-zinc-600 mb-2">Scoring identisch zu DG1–5 (ohne erneutes Vorlesen).</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-x-2 gap-y-8">
             {words.map(renderScoringWord)}
           </div>
           <textarea
@@ -4305,7 +4302,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
       {step === "dg7" && (
         <Card>
           <SectionTitle>DG7 – verzögerter Abruf</SectionTitle>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-x-2 gap-y-8">
             {words.map(renderScoringWord)}
           </div>
           <textarea
@@ -5467,12 +5464,12 @@ function BenennenWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu })
 
       <Card>
         <SectionTitle>Einzelitems (1 Punkt pro korrekt benanntem Bild)</SectionTitle>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+        <div className="mt-2 grid grid-cols-2 gap-3">
           {items.map((it, idx) => (
             <div key={it.id} className="p-3 rounded-2xl border bg-white flex flex-col gap-2">
-              <div className="flex items-center justify-between gap-2">
-                <div className="font-medium text-sm">{it.label}</div>
-                <div className="flex gap-1 text-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="min-w-28 flex-1 font-medium text-sm">{it.label}</div>
+                <div className="flex shrink-0 gap-1 text-xs">
                   <Button size="bare"
                     type="button"
                     onClick={() => handleToggle(idx, true)}
@@ -5914,9 +5911,9 @@ function CERADTmtCombo({ sessionData, onPersist, onAbort, onDone, onBackToMenu }
               onAbort && onAbort({ reason: "Automatischer Abbruch", limit_ms: 180_000, at: info?.at || Date.now(), part: "A" });
             }}
           />
-          <div className="flex items-center gap-2">
+          <div className="flex w-full max-w-md items-center gap-2">
             <input
-              className="flex-1 rounded-xl border p-2"
+              className="w-full rounded-xl border p-2"
               value={noteA}
               onChange={(e) => {
                 const next = e.target.value;
@@ -5957,9 +5954,9 @@ function CERADTmtCombo({ sessionData, onPersist, onAbort, onDone, onBackToMenu }
               onAbort && onAbort({ reason: "Automatischer Abbruch", limit_ms: 300_000, at: info?.at || Date.now(), part: "B" });
             }}
           />
-          <div className="flex items-center gap-2">
+          <div className="flex w-full max-w-md items-center gap-2">
             <input
-              className="flex-1 rounded-xl border p-2"
+              className="w-full rounded-xl border p-2"
               value={noteB}
               onChange={(e) => {
                 const next = e.target.value;
@@ -6339,7 +6336,7 @@ function CERADWordlistWire({ sessionData, route, testLanguage, onPersist, onAbor
             <p className="text-sm text-zinc-600 mb-2">
               Patient:in antwortet mit JA oder NEIN, ob das Wort zur gelernten Liste gehört.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+            <div className="mt-3 grid grid-cols-2 gap-3">
               {ceradRecognitionItems.map((item) => {
                 const ans = recogAns[item.key] || null;
                 const isCorrect = (val) => (item.isOrig ? val === "ja" : val === "nein");
