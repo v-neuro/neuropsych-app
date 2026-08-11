@@ -78,8 +78,8 @@ export function DrawPad({ width = 800, height = 400, initialData, onChange, save
     drawImageOnCanvas(src, () => {
       const snap = snapshot();
       setHasInk(!isBlankSnapshot(snap));
+      setUndoStack([]);
     });
-    setUndoStack([]);
   }, [drawImageOnCanvas, initialData, width, height]);
 
   useEffect(() => {
@@ -92,8 +92,9 @@ export function DrawPad({ width = 800, height = 400, initialData, onChange, save
       }
       return val;
     }).filter(Boolean);
-    setGalleryPreviewUrls(next);
+    const frameId = requestAnimationFrame(() => setGalleryPreviewUrls(next));
     return () => {
+      cancelAnimationFrame(frameId);
       urlsToRevoke.forEach((url) => URL.revokeObjectURL(url));
     };
   }, [savedFigures]);

@@ -3,7 +3,7 @@ import { cls } from "../lib/utils";
 
 export function Card({ children, className }) {
   return (
-    <div className={cls("rounded-2xl border border-zinc-200 bg-white shadow-sm p-4", className)}>
+    <div className={cls("rounded-2xl border border-indigo-100/90 bg-white/90 p-4 shadow-[0_8px_30px_rgba(30,64,175,0.08)] backdrop-blur-sm", className)}>
       {children}
     </div>
   );
@@ -13,13 +13,13 @@ function buttonClass({ variant = "secondary", size = "md", className } = {}) {
   if (size === "bare") return className;
 
   const variants = {
-    primary: "bg-zinc-900 text-white border border-zinc-900",
-    secondary: "bg-white text-zinc-900 border border-zinc-300 hover:bg-zinc-50",
-    subtle: "bg-zinc-50 text-zinc-900 border border-zinc-300 hover:bg-zinc-100",
-    warning: "bg-amber-50 text-amber-700 border border-amber-200",
-    danger: "bg-rose-50 text-rose-700 border border-rose-200",
-    success: "bg-emerald-50 text-emerald-800 border border-emerald-200",
-    info: "bg-sky-50 text-sky-800 border border-sky-200",
+    primary: "bg-indigo-700 text-white border border-indigo-700 shadow-sm shadow-indigo-200 hover:bg-indigo-800 hover:border-indigo-800",
+    secondary: "bg-white/90 text-indigo-950 border border-indigo-100 shadow-sm hover:bg-indigo-50 hover:border-indigo-200",
+    subtle: "bg-indigo-50 text-indigo-900 border border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200",
+    warning: "bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 hover:border-amber-300",
+    danger: "bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100 hover:border-rose-300",
+    success: "bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300",
+    info: "bg-sky-50 text-sky-900 border border-sky-200 hover:bg-sky-100 hover:border-sky-300",
   };
   const sizes = {
     sm: "px-3 py-1.5 text-sm",
@@ -46,8 +46,8 @@ export function Header({ title, subtitle, right }) {
   return (
     <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-center md:gap-3">
       <div>
-        <div className="text-2xl font-semibold">{title}</div>
-        {subtitle && <div className="text-sm text-zinc-600">{subtitle}</div>}
+        <div className="text-2xl font-semibold tracking-tight text-slate-900">{title}</div>
+        {subtitle && <div className="text-sm text-slate-600">{subtitle}</div>}
       </div>
       {right && <div className="md:ml-auto">{right}</div>}
     </div>
@@ -55,5 +55,5 @@ export function Header({ title, subtitle, right }) {
 }
 
 export function SectionTitle({ children }) {
-  return <div className="text-sm font-semibold uppercase tracking-wide text-zinc-500">{children}</div>;
+  return <div className="text-sm font-semibold uppercase tracking-[0.12em] text-indigo-600">{children}</div>;
 }

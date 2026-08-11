@@ -4,15 +4,115 @@
 /* optional, aber hübsch */
 html, body, #root { height: 100%; }
 :root {
+  color: #172554;
+  background: #eef5ff;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background:
+    radial-gradient(circle at 6% 4%, rgba(45, 212, 191, 0.18), transparent 25rem),
+    radial-gradient(circle at 94% 9%, rgba(129, 140, 248, 0.16), transparent 28rem),
+    linear-gradient(150deg, #f5f9ff 0%, #f8fbff 45%, #f3f7ff 100%);
+}
+
+html[data-theme="legacy"] {
+  color: #18181b;
+  background: #fafafa;
+}
+
+html[data-theme="legacy"] body {
+  background: #fafafa;
+}
+
+html[data-theme="legacy"] .theme-modern-only,
+html[data-theme="legacy"] .tile-accent {
+  display: none;
+}
+
+html[data-theme="legacy"] #topbar-root {
+  border-color: #e4e4e7;
+  background-color: rgba(255, 255, 255, 0.9);
+  box-shadow: none;
+}
+
+html[data-theme="legacy"] .tile-btn {
+  background-color: #fff !important;
+  border-color: #e4e4e7 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+html[data-theme="legacy"] :not(button).rounded-xl.border.bg-white,
+html[data-theme="legacy"] :not(button).rounded-2xl.border.bg-white,
+html[data-theme="legacy"] :not(button).rounded-3xl.border.bg-white,
+html[data-theme="legacy"] [class*="bg-white/90"] {
+  background-color: #fff !important;
+  border-color: #e4e4e7 !important;
+  backdrop-filter: none;
+}
+
+html[data-theme="legacy"] input,
+html[data-theme="legacy"] select,
+html[data-theme="legacy"] textarea {
+  border-color: #d4d4d8 !important;
+  background-color: #fff !important;
+}
+
+html[data-theme="legacy"] input:focus,
+html[data-theme="legacy"] select:focus,
+html[data-theme="legacy"] textarea:focus {
+  border-color: #71717a !important;
+  box-shadow: 0 0 0 3px rgba(113, 113, 122, 0.14) !important;
+}
+
+html[data-theme="legacy"] button.bg-zinc-900,
+html[data-theme="legacy"] button.bg-indigo-700 {
+  background-color: #18181b;
+  border-color: #18181b;
+}
+
+html[data-theme="legacy"] button.bg-zinc-900:hover,
+html[data-theme="legacy"] button.bg-indigo-700:hover {
+  background-color: #27272a;
+  border-color: #27272a;
+}
+
+/* Bestehende Inhaltskarten behalten ihre Abgrenzung, lassen den Hintergrund aber sanft durchscheinen. */
+:not(button).rounded-xl.border.bg-white,
+:not(button).rounded-2xl.border.bg-white,
+:not(button).rounded-3xl.border.bg-white {
+  background-color: rgba(255, 255, 255, 0.84);
+  border-color: rgba(199, 210, 254, 0.88);
+  backdrop-filter: blur(8px);
+}
+
+::selection {
+  background: #c7d2fe;
+  color: #1e1b4b;
+}
+
+input,
+select,
+textarea {
+  border-color: #c7d2fe !important;
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  box-shadow: 0 1px 2px rgba(30, 41, 59, 0.04);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.16) !important;
+  outline: none;
 }
 
 button,
 [role="button"] {
   min-width: 44px;
   min-height: 44px;
-  transition: transform 80ms ease, filter 80ms ease, box-shadow 80ms ease;
+  transition: transform 120ms ease, filter 120ms ease, box-shadow 120ms ease, background-color 120ms ease, border-color 120ms ease;
 }
 
 button:enabled:active {
@@ -24,4 +124,25 @@ button.bg-zinc-900:enabled:active,
 button.bg-zinc-900:hover:active {
   filter: none;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28), 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+/* Ältere, bewusst klassenlose Aktionsbuttons bleiben Teil derselben Primärfarbe. */
+button.bg-zinc-900 {
+  background-color: #4338ca;
+  border-color: #4338ca;
+}
+
+button.bg-zinc-900:hover {
+  background-color: #3730a3;
+  border-color: #3730a3;
+}
+
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline: 3px solid rgba(99, 102, 241, 0.42);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; }
 }

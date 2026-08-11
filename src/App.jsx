@@ -387,6 +387,7 @@ function TestbereicheModal({ open, onClose, onOpenTest }) {
       titel: "THS-Indikationsprüfung",
       items: [
         { name: "Strukturierte Anamnese einschl. Screening-Fragen Depression/Ängste", testRoute: null },
+        { name: "ACE-III", testRoute: null },
         { name: "PHQ-9 und GAD-7", testRoute: null },
       ],
     },
@@ -684,6 +685,8 @@ const normalizeScreen = (value) => {
   if (value && typeof value === "object" && typeof value.name === "string") return value;
   return { name: "menu" };
 };
+
+const DCSR_MAX_CORRECT_PER_TRIAL = 9;
 
 const DCSR_RATINGS = [
   { key: "R", field: "richtig", label: "Richtig", variant: "success", className: "bg-emerald-50 border-emerald-200 text-emerald-800" },
@@ -1196,15 +1199,6 @@ function ZahlenSpanneScreen({ label, sequences, persisted, extraActionLabel, onS
     onStateChange && onStateChange({ label, rows: pairs, vals });
   }, [onStateChange, label, pairs, vals]);
 
-  useEffect(() => {
-    setVals((prev) => {
-      if (!Array.isArray(prev) || prev.length !== pairs.length) {
-        return pairs.map((_, i) => prev?.[i] ?? { v1: null, v2: null });
-      }
-      return prev;
-    });
-  }, [pairs]);
-
   const longest = useMemo(() => {
     let max = 0;
     pairs.forEach((pair, idx) => {
@@ -1272,15 +1266,6 @@ function BlockSpanneScreen({ label, sequences, persisted, onStateChange, onAbort
   useEffect(() => {
     onStateChange && onStateChange({ label, rows: pairs, vals });
   }, [onStateChange, label, pairs, vals]);
-
-  useEffect(() => {
-    setVals((prev) => {
-      if (!Array.isArray(prev) || prev.length !== pairs.length) {
-        return pairs.map((_, i) => prev?.[i] ?? { v1: null, v2: null });
-      }
-      return prev;
-    });
-  }, [pairs]);
 
   const longest = useMemo(() => {
     let max = 0;
@@ -1579,9 +1564,12 @@ function RWTTestPanel({ meta, modeKey, sessionData, onPersist, onClose }) {
 
   useEffect(() => {
     const p = (sessionData?.rwt || {})[modeKey] || {};
-    setOpt(p.version || "");
-    setNotes(p.notes || "");
-    setSum(typeof p.sum === "number" ? p.sum : (p.sum || ""));
+    const frameId = requestAnimationFrame(() => {
+      setOpt(p.version || "");
+      setNotes(p.notes || "");
+      setSum(typeof p.sum === "number" ? p.sum : (p.sum || ""));
+    });
+    return () => cancelAnimationFrame(frameId);
   }, [modeKey, sessionData]);
 
   const persist = (patch) => onPersist && onPersist(modeKey, patch);
@@ -2056,7 +2044,8 @@ function GroovedPegboardWire({ sessionData, onPersistPanel, onAbort }) {
   const gp = sessionData?.gp || {};
   const [domHand, setDomHand] = useState(gp.dom_hand || "rechts"); // "links"|"rechts"
   useEffect(() => {
-    setDomHand(gp.dom_hand || "rechts");
+    const frameId = requestAnimationFrame(() => setDomHand(gp.dom_hand || "rechts"));
+    return () => cancelAnimationFrame(frameId);
   }, [gp.dom_hand]);
 
   const persistHand = (handKey, patch) => {
@@ -2225,12 +2214,15 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
   const [note, setNote] = useState(data.note || "");
   useEffect(() => {
     const nextParts = normalizeParts(data.parts) || derivePartsFromScore(data.score);
-    setParts(nextParts);
     const nextScore = typeof data.score === "number"
       ? data.score
       : scoreFromParts(nextParts);
-    setScore(nextScore);
-    setNote(data.note || "");
+    const frameId = requestAnimationFrame(() => {
+      setParts(nextParts);
+      setScore(nextScore);
+      setNote(data.note || "");
+    });
+    return () => cancelAnimationFrame(frameId);
   }, [data.score, data.note, data.parts]);
 
   const togglePart = (key) => {
@@ -2353,10 +2345,13 @@ function CERADWFWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu }) 
   const [phonNote, setPhonNote] = useState(base.phonemic_note || "");
 
   useEffect(() => {
-    setSemCount(base.semantic_count ?? "");
-    setSemNote(base.semantic_note || "");
-    setPhonCount(base.phonemic_count ?? "");
-    setPhonNote(base.phonemic_note || "");
+    const frameId = requestAnimationFrame(() => {
+      setSemCount(base.semantic_count ?? "");
+      setSemNote(base.semantic_note || "");
+      setPhonCount(base.phonemic_count ?? "");
+      setPhonNote(base.phonemic_note || "");
+    });
+    return () => cancelAnimationFrame(frameId);
   }, [base.semantic_count, base.semantic_note, base.phonemic_count, base.phonemic_note]);
 
   const persist = (patch) => onPersist && onPersist(patch);
@@ -2510,6 +2505,9 @@ function CERADWFWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu }) 
 // ---------- App Shell ----------
 export default function App() {
   const authDisabled = import.meta.env?.VITE_DISABLE_AUTH === "true";
+  const [designTheme, setDesignTheme] = useState(() => (
+    localStorage.getItem("npt_design_theme") === "legacy" ? "legacy" : "modern"
+  ));
   const [showSystemUpdateReminder, setShowSystemUpdateReminder] = useState(false);
   const systemUpdateReminderHandledRef = useRef(false);
   const [authOK, setAuthOK] = useState(() => {
@@ -2517,6 +2515,11 @@ export default function App() {
     if (authDisabled) return true;
     return localStorage.getItem("auth_ok") === "true" || sessionStorage.getItem("auth_temp_ok") === "true";
   });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = designTheme;
+    localStorage.setItem("npt_design_theme", designTheme);
+  }, [designTheme]);
 
   useEffect(() => {
     const handleFirstInteraction = (event) => {
@@ -2712,9 +2715,10 @@ export default function App() {
   };
 
   const authScreen = (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-zinc-50 text-zinc-900">
-      <div className="w-full max-w-md p-5 rounded-2xl border border-zinc-200 bg-white shadow-sm">
-        <div className="mb-3 text-lg font-semibold">Zugang</div>
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 text-slate-900">
+      <div className="w-full max-w-md p-6 rounded-3xl border border-indigo-100 bg-white/90 shadow-[0_16px_45px_rgba(30,64,175,0.13)] backdrop-blur-sm">
+        <div className="theme-modern-only mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">Digitale Neuropsychologie</div>
+        <div className="mb-3 text-xl font-semibold">Zugang</div>
         <p className="text-sm text-zinc-600 mb-3">Bitte Passwort eingeben, um die Tests zu öffnen.</p>
         <PasswordPrompt onSubmit={handleAuth} error={authError} />
       </div>
@@ -2992,7 +2996,7 @@ export default function App() {
 
   return (
     <ErrorBoundary onReset={() => setScreen({ name: "menu" })}>
-      <div className="min-h-screen font-sans antialiased bg-zinc-50 text-zinc-900">
+      <div className="min-h-screen font-sans antialiased text-slate-900">
         <TopBar
           onBackToMenu={() => setScreen({ name: "menu" })}
           globalTimers={globalTimers}
@@ -3458,6 +3462,28 @@ export default function App() {
           >
             Testungsaufbau für verschiedene Fragestellungen
           </Button>
+          <label className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-indigo-100 bg-white/90 px-3 text-sm shadow-sm cursor-pointer select-none">
+            <span className={cls("font-medium", designTheme === "legacy" ? "text-zinc-900" : "text-zinc-500")}>
+              Ruhiger Modus
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              className="peer sr-only"
+              checked={designTheme === "modern"}
+              onChange={() => setDesignTheme((theme) => (theme === "modern" ? "legacy" : "modern"))}
+              aria-label="Zwischen ruhigem und farbenfrohem Design umschalten"
+            />
+            <span className="relative h-6 w-11 rounded-full bg-zinc-300 transition-colors peer-checked:bg-indigo-600 peer-focus-visible:ring-3 peer-focus-visible:ring-indigo-300">
+              <span className={cls(
+                "absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
+                designTheme === "modern" && "translate-x-5"
+              )} />
+            </span>
+            <span className={cls("font-medium", designTheme === "modern" ? "text-indigo-700" : "text-zinc-500")}>
+              Party-Modus
+            </span>
+          </label>
         </div>
         <Button size="bare"
           type="button"
@@ -3504,8 +3530,8 @@ function TopBar({
   onExportPdf,
 }) {
   return (
-    <div id="topbar-root" className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-zinc-200">
-      <div className="max-w-5xl mx-auto px-4 py-2 flex items-center gap-3 text-zinc-900">
+    <div id="topbar-root" className="sticky top-0 z-30 border-b border-indigo-100 bg-white/80 shadow-[0_4px_18px_rgba(30,64,175,0.06)] backdrop-blur-xl">
+      <div className="max-w-5xl mx-auto px-4 py-2 flex items-center gap-3 text-slate-900">
         <Button
           variant="primary"
           size="sm"
@@ -3575,8 +3601,10 @@ function DebugOverlay() {
     const tb = document.getElementById("topbar-root");
     if (tb) {
       const r = tb.getBoundingClientRect();
-      setTopbarRect({ x: r.left, y: r.top, w: r.width, h: r.height, b: r.bottom });
+      const frameId = requestAnimationFrame(() => setTopbarRect({ x: r.left, y: r.top, w: r.width, h: r.height, b: r.bottom }));
+      return () => cancelAnimationFrame(frameId);
     }
+    return undefined;
   }, []);
 
   useEffect(() => {
@@ -3723,20 +3751,22 @@ function ReminderPill({ timer, onClear, onOpen }) {
 // ---------- Tile Menu ----------
 function TileMenu({ onOpen, onOpenCERAD, statusMap, disabled }) {
   const tiles = [
-    { key: "vlmt", label: "VLMT" },
-    { key: "dcsr", label: "DCS-R" },
-    { key: "epi", label: "Epi-Track" },
-    { key: "tmt_ab", label: "TMT A und B" },
-    { key: "spannen_menu", label: "Zahlen- und Blockspanne" },
-    { key: "rwt", label: "Wortflüssigkeit (RWT)" },
-    { key: "stroop", label: "Stroop" },
-    { key: "gp", label: "Grooved Pegboard" },
-    { key: "cerad_menu", label: "CERAD plus" },
-    { key: "uhr", label: "Uhrentest" },
+    { key: "vlmt", label: "VLMT", accent: "border-teal-200 bg-teal-50/80 hover:bg-teal-100/80", dot: "bg-teal-500" },
+    { key: "dcsr", label: "DCS-R", accent: "border-sky-200 bg-sky-50/80 hover:bg-sky-100/80", dot: "bg-sky-500" },
+    { key: "epi", label: "Epi-Track", accent: "border-violet-200 bg-violet-50/80 hover:bg-violet-100/80", dot: "bg-violet-500" },
+    { key: "tmt_ab", label: "TMT A und B", accent: "border-indigo-200 bg-indigo-50/80 hover:bg-indigo-100/80", dot: "bg-indigo-500" },
+    { key: "spannen_menu", label: "Zahlen- und Blockspanne", accent: "border-cyan-200 bg-cyan-50/80 hover:bg-cyan-100/80", dot: "bg-cyan-500" },
+    { key: "rwt", label: "Wortflüssigkeit (RWT)", accent: "border-fuchsia-200 bg-fuchsia-50/80 hover:bg-fuchsia-100/80", dot: "bg-fuchsia-500" },
+    { key: "stroop", label: "Stroop", accent: "border-amber-200 bg-amber-50/80 hover:bg-amber-100/80", dot: "bg-amber-500" },
+    { key: "gp", label: "Grooved Pegboard", accent: "border-orange-200 bg-orange-50/80 hover:bg-orange-100/80", dot: "bg-orange-500" },
+    { key: "cerad_menu", label: "CERAD plus", accent: "border-rose-200 bg-rose-50/80 hover:bg-rose-100/80", dot: "bg-rose-500" },
+    { key: "uhr", label: "Uhrentest", accent: "border-emerald-200 bg-emerald-50/80 hover:bg-emerald-100/80", dot: "bg-emerald-500" },
   ];
   return (
     <div className="py-6">
-      <h1 className="text-2xl font-semibold mb-4">Neue Session – Tests auswählen</h1>
+      <div className="mb-4">
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Neue Session – Tests auswählen</h1>
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {tiles.map((t) => (
           <Button size="bare"
@@ -3744,10 +3774,11 @@ function TileMenu({ onOpen, onOpenCERAD, statusMap, disabled }) {
             onClick={() => (t.key === "cerad_menu" ? onOpenCERAD() : onOpen(t.key))}
             disabled={disabled}
             className={cls(
-              "tile-btn h-24 rounded-2xl border border-zinc-200 bg-white active:scale-[0.99] transition shadow-sm flex items-center justify-center text-center px-3 text-zinc-900",
-              disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-zinc-50"
+              "tile-btn relative h-24 overflow-hidden rounded-2xl border active:scale-[0.99] transition shadow-[0_5px_16px_rgba(30,64,175,0.07)] flex items-center justify-center text-center px-3 text-slate-900",
+              disabled ? "border-slate-200 bg-white opacity-50 cursor-not-allowed" : t.accent
             )}
           >
+            <span className={cls("tile-accent absolute left-0 top-0 h-full w-1", t.dot)} aria-hidden="true" />
             <div className="text-center">
               <div className="text-lg font-medium">{t.label}</div>
                 {statusMap && statusMap[t.key] && (
@@ -3814,7 +3845,7 @@ function DemoCapture({ demographics, saved, onSave }) {
   });
 
   useEffect(() => {
-    setLocal({
+    const frameId = requestAnimationFrame(() => setLocal({
       patient_initials: (patient_initials || "").toUpperCase(),
       patient_age: patient_age || "",
       patient_gender,
@@ -3825,7 +3856,8 @@ function DemoCapture({ demographics, saved, onSave }) {
       education_training_code,
       education_training_label: education_training_label || trainingCodeToLabel(education_training_code),
       education_dissertation_years,
-    });
+    }));
+    return () => cancelAnimationFrame(frameId);
   }, [patient_initials, patient_age, patient_gender, test_language, examiner_initials, education_school_years, education_school_label, education_training_code, education_training_label, education_dissertation_years]);
 
   const schoolYears = Number(local.education_school_years) || 0;
@@ -4008,9 +4040,13 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
   const [list, setList] = useState(saved.list || null); // "A"|"B"|"C"|"D"
   useEffect(() => {
     if (route && route.name === "vlmt" && route.go === "dg7") {
-      setList((currentList) => currentList || route.list || null);
-      setStep("dg7");
+      const frameId = requestAnimationFrame(() => {
+        setList((currentList) => currentList || route.list || null);
+        setStep("dg7");
+      });
+      return () => cancelAnimationFrame(frameId);
     }
+    return undefined;
   }, [route]);
 
   const materials = useMemo(() => getVlmtMaterials(testLanguage), [testLanguage]);
@@ -4125,9 +4161,12 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
   const rekogFP = useMemo(() => rekogItems.reduce((a, it, i) => a + ((rekogSel[i] && !it.t) ? 1 : 0), 0), [rekogItems, rekogSel]);
 
   useEffect(() => {
-    if (step === "score") loadFrom(dg - 1);
-    if (step === "dg6") loadFrom(5);
-    if (step === "dg7") loadFrom(6);
+    const frameId = requestAnimationFrame(() => {
+      if (step === "score") loadFrom(dg - 1);
+      if (step === "dg6") loadFrom(5);
+      if (step === "dg7") loadFrom(6);
+    });
+    return () => cancelAnimationFrame(frameId);
   }, [step, dg, loadFrom]);
 
   const emitState = useCallback(() => {
@@ -4391,8 +4430,9 @@ function DcsrFigureGallery({ figures, onOpen }) {
       }
       return data || null;
     });
-    setPreviewUrls(next);
+    const frameId = requestAnimationFrame(() => setPreviewUrls(next));
     return () => {
+      cancelAnimationFrame(frameId);
       urlsToRevoke.forEach((url) => URL.revokeObjectURL(url));
     };
   }, [figures]);
@@ -4447,16 +4487,19 @@ function DcsrFigureOverlay({ figure, onClose, onRate }) {
   useEffect(() => {
     const data = figure?.data;
     if (!data) {
-      setSrc(null);
-      return undefined;
+      const frameId = requestAnimationFrame(() => setSrc(null));
+      return () => cancelAnimationFrame(frameId);
     }
     if (data instanceof Blob) {
       const url = URL.createObjectURL(data);
-      setSrc(url);
-      return () => URL.revokeObjectURL(url);
+      const frameId = requestAnimationFrame(() => setSrc(url));
+      return () => {
+        cancelAnimationFrame(frameId);
+        URL.revokeObjectURL(url);
+      };
     }
-    setSrc(data);
-    return undefined;
+    const frameId = requestAnimationFrame(() => setSrc(data));
+    return () => cancelAnimationFrame(frameId);
   }, [figure]);
 
   if (!figure) return null;
@@ -4520,11 +4563,11 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
   const [dg, setDG] = useState(saved.dg || 1);
   const [counts, setCounts] = useState(() =>
     Array.from({ length: 5 }, (_, i) => ({
-      richtig: 0,
       falsch: 0,
       gedreht: 0,
       perseveration: 0,
       ...(saved.counts?.[i] || {}),
+      richtig: Math.min(DCSR_MAX_CORRECT_PER_TRIAL, Number(saved.counts?.[i]?.richtig) || 0),
     }))
   );
   const drawingNamespace = useMemo(() => `${sessionUUID}:dcsr:`, [sessionUUID]);
@@ -4550,14 +4593,20 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
   const [drawPadResetIndex, setDrawPadResetIndex] = useState(0);
   const [expandedFigure, setExpandedFigure] = useState(null);
   const totalFirst3 = counts.slice(0, 3).reduce((a, c) => a + c.richtig, 0);
-  const ceilingHit = counts.some((c) => c.richtig === 9);
+  const ceilingHit = counts.some((c) => c.richtig >= DCSR_MAX_CORRECT_PER_TRIAL);
   const figSrc = ver === "V2" ? "/material/DCS-2.png" : "/material/DCS-1.png";
   const hasCurrentDrawing = !!drawings[dg - 1];
 
   const inc = useCallback((field) => {
     setCounts((xs) => {
       const copy = xs.slice();
-      copy[dg - 1] = { ...copy[dg - 1], [field]: copy[dg - 1][field] + 1 };
+      const current = Number(copy[dg - 1][field] || 0);
+      copy[dg - 1] = {
+        ...copy[dg - 1],
+        [field]: field === "richtig"
+          ? Math.min(DCSR_MAX_CORRECT_PER_TRIAL, current + 1)
+          : current + 1,
+      };
       return copy;
     });
   }, [dg]);
@@ -4567,7 +4616,7 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
       const copy = xs.slice();
       for (let i = dg; i < 5; i += 1) {
         copy[i] = {
-          richtig: 9,
+          richtig: DCSR_MAX_CORRECT_PER_TRIAL,
           falsch: 0,
           gedreht: 0,
           perseveration: 0,
@@ -4753,7 +4802,11 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
       const prevField = DCSR_RATING_FIELDS[prevRating];
       const nextField = DCSR_RATING_FIELDS[nextRating];
       if (prevField) row[prevField] = Math.max(0, Number(row[prevField] || 0) - 1);
-      if (nextField) row[nextField] = Number(row[nextField] || 0) + 1;
+      if (nextField) {
+        row[nextField] = nextField === "richtig"
+          ? Math.min(DCSR_MAX_CORRECT_PER_TRIAL, Number(row[nextField] || 0) + 1)
+          : Number(row[nextField] || 0) + 1;
+      }
       next[dgIdx] = row;
       return next;
     });
@@ -4846,7 +4899,6 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
                         label={rating.label}
                         val={counts[dg - 1][rating.field]}
                         onPlus={() => onScoringPlus(rating.field, rating.key)}
-                        max={rating.field === "richtig" ? 9 : undefined}
                         disabled={!hasCurrentDrawing}
                         variant={rating.variant}
                         className={rating.className}
@@ -4870,9 +4922,9 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
             onOpen={(figIdx) => setExpandedFigure({ dgIdx: dg - 1, figIdx })}
           />
 
-          {counts[dg - 1].richtig === 9 && (
+          {counts[dg - 1].richtig >= DCSR_MAX_CORRECT_PER_TRIAL && (
             <div className="mt-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm">
-              Ceiling erreicht (9/9). Verbleibende DG werden automatisch mit 9 Punkten gefüllt.
+              Ceiling erreicht ({DCSR_MAX_CORRECT_PER_TRIAL}/{DCSR_MAX_CORRECT_PER_TRIAL}). Verbleibende DG werden automatisch mit {DCSR_MAX_CORRECT_PER_TRIAL} Punkten gefüllt.
               {dg < 5 && (
                 <div className="mt-2">
                   <Button
@@ -5614,7 +5666,9 @@ function CERADFiguralWire({ sessionData, route, onPersist, onAbort, onDone, onBa
   const base = sessionData?.cerad_fig || {};
 
   useEffect(() => {
-    if (route?.go === "recall") setStep("recall");
+    if (route?.go !== "recall") return undefined;
+    const frameId = requestAnimationFrame(() => setStep("recall"));
+    return () => cancelAnimationFrame(frameId);
   }, [route]);
 
   const scoresDraw = base.draw_scores || {};
@@ -5640,10 +5694,13 @@ function CERADFiguralWire({ sessionData, route, onPersist, onAbort, onDone, onBa
   const [critRecall, setCritRecall] = useState(() => buildCriteriaState(scoresRecall, critRecallPersisted));
 
   useEffect(() => {
-    setNoteDraw(base.draw_note || "");
-    setNoteRecall(base.recall_note || "");
-    setCritDraw(buildCriteriaState(base.draw_scores || {}, base.draw_criteria || {}));
-    setCritRecall(buildCriteriaState(base.recall_scores || {}, base.recall_criteria || {}));
+    const frameId = requestAnimationFrame(() => {
+      setNoteDraw(base.draw_note || "");
+      setNoteRecall(base.recall_note || "");
+      setCritDraw(buildCriteriaState(base.draw_scores || {}, base.draw_criteria || {}));
+      setCritRecall(buildCriteriaState(base.recall_scores || {}, base.recall_criteria || {}));
+    });
+    return () => cancelAnimationFrame(frameId);
   }, [base.draw_note, base.recall_note, base.draw_scores, base.recall_scores, base.draw_criteria, base.recall_criteria]);
 
   const updateNote = (phase, val) => {
@@ -5866,8 +5923,11 @@ function CERADTmtCombo({ sessionData, onPersist, onAbort, onDone, onBackToMenu }
   const stopBRef = useRef(null);
 
   useEffect(() => {
-    setNoteA(data.note_a || "");
-    setNoteB(data.note_b || "");
+    const frameId = requestAnimationFrame(() => {
+      setNoteA(data.note_a || "");
+      setNoteB(data.note_b || "");
+    });
+    return () => cancelAnimationFrame(frameId);
   }, [data.note_a, data.note_b]);
 
   const stopBothTimers = () => {
@@ -5994,8 +6054,11 @@ function TMTCombo({ sessionData, onPersist, onAbort, onDone }) {
   const tBRef = useRef(null);
 
   useEffect(() => {
-    setNoteA(sessionData?.tmt_a_note ?? "");
-    setNoteB(sessionData?.tmt_b_note ?? "");
+    const frameId = requestAnimationFrame(() => {
+      setNoteA(sessionData?.tmt_a_note ?? "");
+      setNoteB(sessionData?.tmt_b_note ?? "");
+    });
+    return () => cancelAnimationFrame(frameId);
   }, [sessionData?.tmt_a_note, sessionData?.tmt_b_note]);
 
   const persist = (patch) => onPersist && onPersist(patch);
@@ -6107,9 +6170,9 @@ function CERADWordlistWire({ sessionData, route, testLanguage, onPersist, onAbor
 
   // Route-based entry into DG4
   useEffect(() => {
-    if (route?.go === "dg4") {
-      setStep("dg4");
-    }
+    if (route?.go !== "dg4") return undefined;
+    const frameId = requestAnimationFrame(() => setStep("dg4"));
+    return () => cancelAnimationFrame(frameId);
   }, [route]);
 
   // DG-Daten aus sessionData holen oder Defaults
@@ -6208,9 +6271,9 @@ function CERADWordlistWire({ sessionData, route, testLanguage, onPersist, onAbor
   });
 
   useEffect(() => {
-    if (base.recog && base.recog.responses) {
-      setRecogAns(base.recog.responses);
-    }
+    if (!base.recog?.responses) return undefined;
+    const frameId = requestAnimationFrame(() => setRecogAns(base.recog.responses));
+    return () => cancelAnimationFrame(frameId);
   }, [base.recog]);
 
   const calcRecogCounts = useCallback((responses) => {

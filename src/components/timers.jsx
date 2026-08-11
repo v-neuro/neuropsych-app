@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
+import React, { useCallback, useRef, useState, useImperativeHandle, forwardRef } from "react";
 import { useInterval } from "../lib/utils";
 import { Button } from "./ui";
 
@@ -31,58 +31,37 @@ function ResetTimerConfirm({ open, onCancel, onConfirm }) {
   );
 }
 
-export const Stopwatch = forwardRef(function Stopwatch({ persisted, onPersist, autoAbortMs, onAutoAbort }, ref) {
-  const [state, setState] = useState("idle"); // "idle" | "running" | "stopped" | "aborted"
+export const Stopwatch = forwardRef(function Stopwatch({ persisted, ...props }, ref) {
+  const persistedKey = typeof persisted === "number" && persisted >= 0 ? persisted : "empty";
+  return <StopwatchState key={persistedKey} ref={ref} persisted={persisted} {...props} />;
+});
+
+const StopwatchState = forwardRef(function StopwatchState({ persisted, onPersist, autoAbortMs, onAutoAbort }, ref) {
+  const initialElapsed = typeof persisted === "number" && persisted >= 0 ? persisted : 0;
+  const [state, setState] = useState(initialElapsed > 0 ? "stopped" : "idle"); // "idle" | "running" | "stopped" | "aborted"
   const [start, setStart] = useState(null);
-  const [elapsed, setElapsed] = useState(0);
+  const [elapsed, setElapsed] = useState(initialElapsed);
   const [aborted, setAborted] = useState(false);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
-  const lastPersistedRef = useRef(undefined);
   const autoAbortFiredRef = useRef(false);
 
-  useEffect(() => {
-    // hydrate on first render or when persisted changes (but don't override while running)
-    if (persisted === lastPersistedRef.current && lastPersistedRef.current !== undefined) return;
-    lastPersistedRef.current = persisted;
-    // Only hydrate from persisted when not running, to avoid interrupting a fresh start
-    if (state === "running") return;
-    if (typeof persisted === "number" && persisted >= 0 && persisted !== elapsed) {
-      setElapsed(persisted);
-      setState(persisted > 0 ? "stopped" : "idle");
-      setAborted(false);
-      autoAbortFiredRef.current = false;
-      setStart(null);
-    } else if (persisted === null || persisted === undefined) {
-      setElapsed(0);
-      setState("idle");
-      setAborted(false);
-      autoAbortFiredRef.current = false;
-      setStart(null);
-    }
-  }, [persisted, elapsed, state]);
-
   useInterval(() => {
-    if (state === "running" && start !== null) setElapsed(Date.now() - start);
-  }, 50);
-
-  // Auto-abort when a limit is provided and reached
-  useEffect(() => {
-    if (!autoAbortMs) return;
     if (state !== "running" || start === null) return;
-    if (autoAbortFiredRef.current) return;
-    if (Date.now() - start < autoAbortMs) return;
 
-    autoAbortFiredRef.current = true;
     const now = Date.now();
-    const limitMs = autoAbortMs;
-    setElapsed(limitMs);
-    setState("aborted");
-    setStart(null);
-    setAborted(true);
-    if (onPersist) onPersist(limitMs); // keep the measured limit value
-    if (onAutoAbort) onAutoAbort({ at: now, elapsedMs: limitMs });
-  // re-run as elapsed updates to catch threshold crossing
-  }, [autoAbortMs, onAutoAbort, onPersist, start, state, elapsed]);
+    const nextElapsed = now - start;
+    if (autoAbortMs && !autoAbortFiredRef.current && nextElapsed >= autoAbortMs) {
+      autoAbortFiredRef.current = true;
+      setElapsed(autoAbortMs);
+      setState("aborted");
+      setStart(null);
+      setAborted(true);
+      onPersist?.(autoAbortMs);
+      onAutoAbort?.({ at: now, elapsedMs: autoAbortMs });
+      return;
+    }
+    setElapsed(nextElapsed);
+  }, 50);
 
   const onStart = () => {
     setStart(Date.now());
