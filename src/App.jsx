@@ -103,6 +103,142 @@ const normalizeTestLanguage = (language) => (
   TEST_LANGUAGE_OPTIONS.some((option) => option.code === language) ? language : "de"
 );
 
+const QUESTIONNAIRE_RESPONSE_OPTIONS = [
+  { value: 0, label: "Überhaupt nicht" },
+  { value: 1, label: "An einzelnen Tagen" },
+  { value: 2, label: "An mehr als der Hälfte der Tage" },
+  { value: 3, label: "Beinahe jeden Tag" },
+];
+
+const GDS_RESPONSE_OPTIONS = [
+  { value: "yes", label: "Ja" },
+  { value: "no", label: "Nein" },
+];
+
+const QUESTIONNAIRE_DEFINITIONS = {
+  phq9: {
+    title: "PHQ-9",
+    fullTitle: "Gesundheitsfragebogen für Patienten (PHQ-9)",
+    max: 27,
+    prompt: "Wie oft fühlten Sie sich im Verlauf der letzten 2 Wochen durch die folgenden Beschwerden beeinträchtigt?",
+    attribution: "Deutsche Version: © Prof. Dr. Bernd Löwe, 2015, Universitätsklinikum Hamburg-Eppendorf",
+    items: [
+      { key: "a", text: "Wenig Interesse oder Freude an Ihren Tätigkeiten" },
+      { key: "b", text: "Niedergeschlagenheit, Schwermut oder Hoffnungslosigkeit" },
+      { key: "c", text: "Schwierigkeiten ein- oder durchzuschlafen oder vermehrter Schlaf" },
+      { key: "d", text: "Müdigkeit oder Gefühl, keine Energie zu haben" },
+      { key: "e", text: "Verminderter Appetit oder übermäßiges Bedürfnis zu essen" },
+      { key: "f", text: "Schlechte Meinung von sich selbst; Gefühl, ein Versager zu sein oder die Familie enttäuscht zu haben" },
+      { key: "g", text: "Schwierigkeiten, sich auf etwas zu konzentrieren, z. B. beim Zeitunglesen oder Fernsehen" },
+      { key: "h", text: "Waren Ihre Bewegungen oder Ihre Sprache so verlangsamt, dass es auch anderen auffallen würde? Oder waren Sie im Gegenteil „zappelig“ oder ruhelos und hatten dadurch einen stärkeren Bewegungsdrang als sonst?" },
+      { key: "i", text: "Gedanken, dass Sie lieber tot wären oder sich Leid zufügen möchten" },
+    ],
+  },
+  gad7: {
+    title: "GAD-7",
+    fullTitle: "Gesundheitsfragebogen für Patienten (GAD-7)",
+    max: 21,
+    prompt: "Wie oft fühlten Sie sich im Verlauf der letzten 2 Wochen durch die folgenden Beschwerden beeinträchtigt?",
+    attribution: "Deutsche Version: © Prof. Dr. Bernd Löwe, 2015, Universitätsklinikum Hamburg-Eppendorf",
+    items: [
+      { key: "a", text: "Nervosität, Ängstlichkeit oder Anspannung" },
+      { key: "b", text: "Nicht in der Lage sein, Sorgen zu stoppen oder zu kontrollieren" },
+      { key: "c", text: "Übermäßige Sorgen bezüglich verschiedener Angelegenheiten" },
+      { key: "d", text: "Schwierigkeiten zu entspannen" },
+      { key: "e", text: "Rastlosigkeit, so dass Stillsitzen schwer fällt" },
+      { key: "f", text: "Schnelle Verärgerung oder Gereiztheit" },
+      { key: "g", text: "Gefühl der Angst, so als würde etwas Schlimmes passieren" },
+    ],
+  },
+  gds: {
+    title: "GDS",
+    fullTitle: "GDS (Geriatrische Depressions-Skala)",
+    max: 30,
+    prompt: "Bitte jede Frage mit Ja oder Nein beantworten.",
+    responseOptions: GDS_RESPONSE_OPTIONS,
+    scoringMode: "keyed-binary",
+    items: [
+      { key: "1", text: "Sind Sie mit Ihrem Leben im Grunde zufrieden?", scoredAnswer: "no" },
+      { key: "2", text: "Haben Sie viele Ihrer Aktivitäten und Interessen aufgegeben?", scoredAnswer: "yes" },
+      { key: "3", text: "Glauben Sie, dass Ihr Leben sinnlos ist?", scoredAnswer: "yes" },
+      { key: "4", text: "Langweilen Sie sich oft?", scoredAnswer: "yes" },
+      { key: "5", text: "Blicken Sie voller Hoffnung in die Zukunft?", scoredAnswer: "no" },
+      { key: "6", text: "Werden Sie durch Gedanken beunruhigt, die Ihnen nicht aus dem Kopf gehen wollen?", scoredAnswer: "yes" },
+      { key: "7", text: "Sind Sie die meiste Zeit über guter Stimmung?", scoredAnswer: "no" },
+      { key: "8", text: "Fürchten Sie, dass Ihnen etwas Schlechtes zustoßen könnte?", scoredAnswer: "yes" },
+      { key: "9", text: "Fühlen Sie sich die meiste Zeit über glücklich?", scoredAnswer: "no" },
+      { key: "10", text: "Fühlen Sie sich oft hilflos?", scoredAnswer: "yes" },
+      { key: "11", text: "Werden Sie oft ruhelos oder nervös?", scoredAnswer: "yes" },
+      { key: "12", text: "Bleiben Sie lieber zu Hause, anstatt auszugehen und neue Dinge zu erleben?", scoredAnswer: "yes" },
+      { key: "13", text: "Machen Sie sich öfter Sorgen um die Zukunft?", scoredAnswer: "yes" },
+      { key: "14", text: "Glauben Sie, dass Sie mit dem Gedächtnis mehr Schwierigkeiten haben als die meisten anderen?", scoredAnswer: "yes" },
+      { key: "15", text: "Finden Sie es wunderbar, jetzt zu leben?", scoredAnswer: "no" },
+      { key: "16", text: "Sind Sie oft niedergeschlagen und traurig?", scoredAnswer: "yes" },
+      { key: "17", text: "Fühlen Sie sich unter den jetzigen Umständen als ziemlich wertlos?", scoredAnswer: "yes" },
+      { key: "18", text: "Beunruhigt Sie die Vergangenheit sehr?", scoredAnswer: "yes" },
+      { key: "19", text: "Finden Sie das Leben sehr aufregend?", scoredAnswer: "no" },
+      { key: "20", text: "Fällt es Ihnen schwer, neue Aufgaben in Angriff zu nehmen?", scoredAnswer: "yes" },
+      { key: "21", text: "Fühlen Sie sich energiegeladen?", scoredAnswer: "no" },
+      { key: "22", text: "Halten Sie Ihre Situation für hoffnungslos?", scoredAnswer: "yes" },
+      { key: "23", text: "Glauben Sie, dass es den meisten Menschen besser geht als Ihnen?", scoredAnswer: "yes" },
+      { key: "24", text: "Ärgern Sie sich häufig über Kleinigkeiten?", scoredAnswer: "yes" },
+      { key: "25", text: "Ist Ihnen häufig zum Weinen zumute?", scoredAnswer: "yes" },
+      { key: "26", text: "Fällt es Ihnen schwer, sich zu konzentrieren?", scoredAnswer: "yes" },
+      { key: "27", text: "Genießen Sie das morgendliche Aufstehen?", scoredAnswer: "no" },
+      { key: "28", text: "Gehen Sie geselligen Veranstaltungen lieber aus dem Weg?", scoredAnswer: "yes" },
+      { key: "29", text: "Können Sie sich leicht entscheiden?", scoredAnswer: "no" },
+      { key: "30", text: "Sind Sie geistig so rege wie früher?", scoredAnswer: "no" },
+    ],
+  },
+};
+
+function getQuestionnaireResponse(data, definition, itemKey) {
+  const value = data?.responses?.[itemKey];
+  const options = definition.responseOptions || QUESTIONNAIRE_RESPONSE_OPTIONS;
+  return options.some((option) => option.value === value) ? value : null;
+}
+
+function getQuestionnaireAnsweredCount(data, definition) {
+  return definition.items.reduce(
+    (count, item) => count + Number(getQuestionnaireResponse(data, definition, item.key) !== null),
+    0
+  );
+}
+
+function getQuestionnaireTotal(data, definition) {
+  return definition.items.reduce(
+    (sum, item) => {
+      const response = getQuestionnaireResponse(data, definition, item.key);
+      if (response === null) return sum;
+      if (definition.scoringMode === "keyed-binary") {
+        return sum + Number(response === item.scoredAnswer);
+      }
+      return sum + response;
+    },
+    0
+  );
+}
+
+function isQuestionnaireManual(data) {
+  if (data?.entry_mode === "manual") return true;
+  if (data?.entry_mode === "items") return false;
+  return Object.keys(data?.responses || {}).length === 0;
+}
+
+function getQuestionnaireManualTotal(data, definition) {
+  const value = data?.manual_total;
+  const max = definition.max;
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= max
+    ? value
+    : null;
+}
+
+function getQuestionnaireEffectiveTotal(data, definition) {
+  return isQuestionnaireManual(data)
+    ? getQuestionnaireManualTotal(data, definition)
+    : getQuestionnaireTotal(data, definition);
+}
+
 function normalizeMaterialEntry(item, fallbackKey) {
   if (item && typeof item === "object") {
     return {
@@ -358,7 +494,7 @@ function TestbereicheModal({ open, onClose, onOpenTest }) {
         { name: "Zahlenspanne vorwärts und rückwärts", testRoute: "spannen_menu" },
         { name: "Blockspanne vorwärts und rückwärts", testRoute: "spannen_menu" },
         { name: "Wortflüssigkeit phonematisch (P, G-R) und semantisch (Tier, Sportarten + Früchte)", testRoute: "rwt" },
-        { name: "PHQ-9 und GAD-7", testRoute: null },
+        { name: "PHQ-9 und GAD-7", testRoute: "frageboegen_menu" },
         { name: "QOLIE-31", testRoute: null },
       ],
     },
@@ -367,7 +503,7 @@ function TestbereicheModal({ open, onClose, onOpenTest }) {
       items: [
         { name: "Strukturierte Anamnese einschl. psychiatrischer Screeningfragen", testRoute: null },
         { name: "EpiTrack (TMT A & B, Interferenz, Zahlenspanne rückwärts, Labyrinth, Wortflüssigkeit phonematisch)", testRoute: "epi" },
-        { name: "PHQ-9 und GAD-7", testRoute: null },
+        { name: "PHQ-9 und GAD-7", testRoute: "frageboegen_menu" },
       ],
     },
     {
@@ -380,21 +516,23 @@ function TestbereicheModal({ open, onClose, onOpenTest }) {
         { name: "Zahlenspanne vorwärts und rückwärts", testRoute: "spannen_menu" },
         { name: "Stroop (Farbwörter lesen, Farben benennen, Farb-Wort Interferenz)", testRoute: "stroop" },
         { name: "Wortflüssigkeit phonematisch (P, G-R) und semantisch (Tier, Sportarten + Früchte)", testRoute: "rwt" },
-        { name: "PHQ-9 und GAD-7", testRoute: null },
+        { name: "PHQ-9 und GAD-7", testRoute: "frageboegen_menu" },
       ],
     },
     {
       titel: "THS-Indikationsprüfung",
       items: [
         { name: "Strukturierte Anamnese einschl. Screening-Fragen Depression/Ängste", testRoute: null },
-        { name: "ACE-III", testRoute: null },
-        { name: "PHQ-9 und GAD-7", testRoute: null },
+        { name: "ACE-III", testRoute: "ace" },
+        { name: "PHQ-9 und GAD-7", testRoute: "frageboegen_menu" },
       ],
     },
     {
       titel: "Kognitiver Status/Orientierende Testung",
       items: [
         { name: "Strukturierte Anamnese einschl. psychiatrischer Screeningfragen und Abfrage der Orientierung", testRoute: null },
+        { name: "ACE-III", testRoute: "ace" },
+        { name: "MoCA", testRoute: "moca" },
       ],
     },
     {
@@ -404,8 +542,8 @@ function TestbereicheModal({ open, onClose, onOpenTest }) {
         { name: "Strukturierte Anamnese einschl. Screening-Fragen Depression/Ängste", testRoute: null },
         { name: "EpiTrack (TMT A & B, Interferenz, Zahlenspanne rückwärts,  Labyrinth,    Wortflüssigkeit phonematisch)", testRoute: "epi" },
         { name: "Grooved Pegboard", testRoute: "gp" },
-        { name: "MoCA", testRoute: null },
-        { name: "PHQ-9 und GAD-7", testRoute: null },
+        { name: "MoCA", testRoute: "moca" },
+        { name: "PHQ-9 und GAD-7", testRoute: "frageboegen_menu" },
       ],
     },
     {
@@ -415,8 +553,8 @@ function TestbereicheModal({ open, onClose, onOpenTest }) {
         { name: "CERAD+", testRoute: "cerad_menu" },
         { name: "Zahlenspanne vorwärts und rückwärts", testRoute: "spannen_menu" },
         { name: "Uhrentest", testRoute: "uhr" },
-        { name: "PHQ-9 und GAD-7", testRoute: null },
-        { name: "GDS", testRoute: null },
+        { name: "PHQ-9 und GAD-7", testRoute: "frageboegen_menu" },
+        { name: "GDS", testRoute: "gds" },
       ],
     },
   ];
@@ -450,7 +588,7 @@ function TestbereicheModal({ open, onClose, onOpenTest }) {
                 className="w-full p-3 cursor-pointer flex items-center justify-between gap-2 border-b border-zinc-200"
                 onClick={() => toggleSection(bereich.titel)}
               >
-                <span className="font-semibold leading-tight">{bereich.titel}</span>
+                <span className="text-left font-semibold leading-tight">{bereich.titel}</span>
                 <span className="text-xs text-zinc-500">
                   {openSections[bereich.titel] ? "▾" : "▸"}
                 </span>
@@ -1092,11 +1230,11 @@ async function buildExportRow(sessionData, sessionUUID, opts = {}) {
   // ACE-III — bewusst ganz am Ende angehängt, um bestehende CSV-Spaltenreihenfolge stabil zu halten
   const ace = s.ace || {};
   const aceScores = ace.scores || {};
-  const hasAce = Object.keys(aceScores).length > 0 || !!ace.notes || !!s.ace_aborted;
+  const hasAce = Object.keys(aceScores).length > 0 || Object.keys(ace.raw || {}).length > 0 || !!ace.notes || !!s.ace_aborted;
   ACE_SECTIONS.forEach((section) => {
     row[`ace_${section.key}_score`] = hasAce ? getAceSectionScore(ace, section) : null;
     section.items.forEach((item) => {
-      row[`ace_${section.key}_${item.key}`] = hasAce ? (aceScores[item.key] ?? null) : null;
+      row[`ace_${section.key}_${item.key}`] = hasAce ? getAceItemScore(ace, item) : null;
     });
   });
   row.ace_total = hasAce ? getAceTotal(ace) : null;
@@ -1106,6 +1244,59 @@ async function buildExportRow(sessionData, sessionUUID, opts = {}) {
   row.ace_fluency_letter_transcript = ace.raw?.letter_fluency?.transcript || "";
   row.ace_fluency_animal_raw = ace.raw?.animal_fluency?.count ?? "";
   row.ace_fluency_animal_transcript = ace.raw?.animal_fluency?.transcript || "";
+
+  // MoCA — ebenfalls nur anhängen, damit alle bestehenden Exportspalten unverändert bleiben
+  const moca = s.moca || {};
+  const mocaScores = moca.scores || {};
+  const hasMoca = Object.keys(mocaScores).length > 0 || Object.keys(moca.raw || {}).length > 0 || !!moca.notes || !!s.moca_aborted;
+  const mocaLanguage = normalizeTestLanguage(moca.language || s.demographics?.test_language);
+  const mocaVariant = getMocaVariant(mocaLanguage, moca.version);
+  row.moca_version = hasMoca ? mocaVariant.exportVersion : "";
+  MOCA_SECTIONS.forEach((section) => {
+    row[`moca_${section.key}_score`] = hasMoca ? getMocaSectionScore(moca, section) : null;
+    section.items.forEach((item) => {
+      row[`moca_${section.key}_${item.key}`] = hasMoca ? getMocaItemScore(moca, item) : null;
+    });
+  });
+  row.moca_raw_total = hasMoca ? getMocaRawTotal(moca) : null;
+  // Aus Kompatibilitätsgründen bleiben die beiden bereits angehängten Spalten leer.
+  // Eine Bildungskorrektur wird für den MoCA in dieser App nicht berechnet.
+  row.moca_education_years = "";
+  row.moca_education_correction = "";
+  row.moca_total = hasMoca ? getMocaTotal(moca) : null;
+  row.moca_learning_trial_1 = hasMoca ? countMocaMarks(moca.raw?.learning?.runs?.[0]?.marks) : null;
+  row.moca_learning_trial_2 = hasMoca ? countMocaMarks(moca.raw?.learning?.runs?.[1]?.marks) : null;
+  row.moca_vigilance_errors = moca.raw?.vigilance?.errors ?? "";
+  row.moca_fluency_raw = moca.raw?.letter_fluency?.count ?? "";
+  row.moca_fluency_transcript = moca.raw?.letter_fluency?.transcript || "";
+  row.moca_delayed_recall_cues = moca.raw?.delayed_recall?.cues
+    ? JSON.stringify(moca.raw.delayed_recall.cues)
+    : "";
+  row.moca_notes = moca.notes || "";
+  row.moca_aborted = s.moca_aborted ? 1 : 0;
+
+  // Fragebögen — am Ende angehängt, damit die bestehende Exportstruktur stabil bleibt
+  Object.entries(QUESTIONNAIRE_DEFINITIONS).forEach(([key, definition]) => {
+    const data = s[key] || {};
+    const manualMode = isQuestionnaireManual(data);
+    const manualTotal = getQuestionnaireManualTotal(data, definition);
+    const answeredCount = getQuestionnaireAnsweredCount(data, definition);
+    const hasQuestionnaire = data.entry_mode === "manual" || manualTotal !== null || answeredCount > 0 || !!data.notes || !!s[`${key}_aborted`];
+    row[`${key}_entry_mode`] = hasQuestionnaire ? (manualMode ? "manual" : "items") : "";
+    definition.items.forEach((item) => {
+      row[`${key}_item_${item.key}`] = hasQuestionnaire && !manualMode
+        ? getQuestionnaireResponse(data, definition, item.key)
+        : null;
+    });
+    row[`${key}_answered_count`] = hasQuestionnaire && !manualMode ? answeredCount : null;
+    row[`${key}_manual_total`] = hasQuestionnaire && manualMode ? manualTotal : null;
+    row[`${key}_completed`] = hasQuestionnaire
+      ? Number(manualMode ? manualTotal !== null : answeredCount === definition.items.length)
+      : null;
+    row[`${key}_total`] = hasQuestionnaire ? getQuestionnaireEffectiveTotal(data, definition) : null;
+    row[`${key}_notes`] = data.notes || "";
+    row[`${key}_aborted`] = s[`${key}_aborted`] ? 1 : 0;
+  });
 
   return row;
 }
@@ -1155,7 +1346,7 @@ const OptBtn = ({ selected, ok, onSelect, children, testid }) => (
   </Button>
 );
 
-function AttemptsRow({ title, seq1, seq2, val, onChange }) {
+function AttemptsRow({ title, seq1, seq2, val, onChange, stacked = false }) {
   const v = val && typeof val === "object" ? val : { v1: null, v2: null };
   const setPick = (k, value) => {
     onChange({ ...v, [k]: value });
@@ -1177,9 +1368,9 @@ function AttemptsRow({ title, seq1, seq2, val, onChange }) {
   return (
     <div className="relative z-0 rounded-2xl border border-zinc-200 bg-white px-4 py-3">
       <div className="sr-only">{title}</div>
-      <div className="flex items-center justify-between gap-6">
+      <div className={cls(stacked ? "flex flex-col gap-3" : "flex items-center justify-between gap-6")}>
         {renderSegment("v1", seq1)}
-        <div className="w-px self-stretch bg-zinc-300/70" />
+        <div className={cls(stacked ? "h-px w-full bg-zinc-300/70" : "w-px self-stretch bg-zinc-300/70")} />
         {renderSegment("v2", seq2)}
       </div>
     </div>
@@ -1323,97 +1514,177 @@ const RWT_MODES = {
   sem_complex: { title: "Komplexe semantische Wortflüssigkeit", options: ["Sport - Obst", "Blumen - Kleidung"] },
 };
 
-const ACE_NAME_AND_ADDRESS = ["Peter Müller", "Dorf Straße 73", "Wolfsburg", "Niedersachsen"];
-const ACE_NAME_ADDRESS_SCORE_ITEMS = ["Peter", "Müller", "Dorf", "Straße", "73", "Wolfsburg", "Niedersachsen"];
+const ACE_VERSION_OPTIONS = ["A", "B", "C"];
+const ACE_VERSION_MATERIALS = {
+  A: {
+    words: ["Zitrone", "Schlüssel", "Ball"],
+    nameAddress: ["Peter Müller", "Dorf Straße 73", "Wolfsburg", "Niedersachsen"],
+    addressScoreItems: ["Peter", "Müller", "Dorf", "Straße", "73", "Wolfsburg", "Niedersachsen"],
+    recognitionChoices: [
+      { key: "name", label: "Name", recallItems: ["Peter", "Müller"], options: ["Hans Müller", "Peter Müller", "Peter Schmidt"], correct: "Peter Müller" },
+      { key: "number", label: "Hausnummer", recallItems: ["73"], options: ["37", "73", "76"], correct: "73" },
+      { key: "street", label: "Straße", recallItems: ["Dorf", "Straße"], options: ["Dorf Gasse", "Land Straße", "Dorf Straße"], correct: "Dorf Straße" },
+      { key: "city", label: "Ort", recallItems: ["Wolfsburg"], options: ["Kassel", "Wolfsburg", "Braunschweig"], correct: "Wolfsburg" },
+      { key: "state", label: "Bundesland", recallItems: ["Niedersachsen"], options: ["Niedersachsen", "Sachsen-Anhalt", "Baden-Württemberg"], correct: "Niedersachsen" },
+    ],
+  },
+  B: {
+    words: ["Apfel", "Münze", "Stuhl"],
+    nameAddress: ["Karin Schmidt", "Lindenallee 59", "Freiburg", "Baden-Württemberg"],
+    addressScoreItems: ["Karin", "Schmidt", "Linden", "Allee", "59", "Freiburg", "Baden-Württemberg"],
+    recognitionChoices: [
+      { key: "name", label: "Name", recallItems: ["Karin", "Schmidt"], options: ["Karin Schmidt", "Sarah Müller", "Karin Schuster"], correct: "Karin Schmidt" },
+      { key: "number", label: "Hausnummer", recallItems: ["59"], options: ["39", "52", "59"], correct: "59" },
+      { key: "street", label: "Straße", recallItems: ["Linden", "Allee"], options: ["Lindenallee", "Gartenallee", "Lindenstraße"], correct: "Lindenallee" },
+      { key: "city", label: "Ort", recallItems: ["Freiburg"], options: ["Freiburg", "Stuttgart", "Frankfurt"], correct: "Freiburg" },
+      { key: "state", label: "Bundesland", recallItems: ["Baden-Württemberg"], options: ["Niedersachsen", "Sachsen-Anhalt", "Baden-Württemberg"], correct: "Baden-Württemberg" },
+    ],
+  },
+  C: {
+    words: ["Schuh", "Fahne", "Baum"],
+    nameAddress: ["Robert Meier", "Marktstraße 24", "München", "Bayern"],
+    addressScoreItems: ["Robert", "Meier", "Markt", "Straße", "24", "München", "Bayern"],
+    recognitionChoices: [
+      { key: "name", label: "Name", recallItems: ["Robert", "Meier"], options: ["Robert Schmidt", "Robert Meier", "Rolf Meier"], correct: "Robert Meier" },
+      { key: "number", label: "Hausnummer", recallItems: ["24"], options: ["42", "28", "24"], correct: "24" },
+      { key: "street", label: "Straße", recallItems: ["Markt", "Straße"], options: ["Marktstraße", "Hauptstraße", "Marktplatz"], correct: "Marktstraße" },
+      { key: "city", label: "Ort", recallItems: ["München"], options: ["München", "Bremen", "Dortmund"], correct: "München" },
+      { key: "state", label: "Bundesland", recallItems: ["Bayern"], options: ["Rheinland-Pfalz", "Bayern", "Sachsen"], correct: "Bayern" },
+    ],
+  },
+};
+const ACE_NAME_ADDRESS_PART_LABELS = [
+  "Vorname",
+  "Nachname",
+  "Straßenname – Teil 1",
+  "Straßenname – Teil 2",
+  "Hausnummer",
+  "Ort",
+  "Region/Bundesland",
+];
 const ACE_RETROGRADE_QUESTIONS = [
   "Name des/der amtierenden Bundeskanzlers/in",
   "Name des/der amtierenden Bundespräsidenten/in",
   "Name des/der amtierenden Präsidenten/in der USA",
   "Name des US-amerikanischen Präsidenten, der in den 1960ern ermordet wurde",
 ];
-const ACE_RECOGNITION_CHOICES = [
-  ["Hans Müller", "Peter Müller", "Peter Schmidt"],
-  ["37", "73", "76"],
-  ["Dorf Gasse", "Land Straße", "Dorf Straße"],
-  ["Kassel", "Wolfsburg", "Braunschweig"],
-  ["Niedersachsen", "Sachsen-Anhalt", "Baden-Württemberg"],
-];
-const ACE_DOT_COUNTS = [8, 10, 6, 9];
+const ACE_FIGURE_SCORING = {
+  infinity: [
+    "Zwei Unendlichkeitssymbole sind vorhanden, überschneiden sich und sehen nicht wie einfache Kreise aus",
+  ],
+  cube: [
+    "Allgemeine dreidimensionale Würfelform ist erhalten",
+    "Alle 12 Linien sind vorhanden",
+  ],
+};
+
+const ACE_GUIDELINE_SCORE_OPTIONS = {
+  sentence_writing: [
+    {
+      score: 0,
+      label: "Kein Satz oder nur ein Satz mit Grammatik- und/oder Rechtschreibfehlern",
+    },
+    {
+      score: 1,
+      label: "Ein fehlerfreier vollständiger Satz oder zwei vollständige Sätze mit Grammatik- und/oder Rechtschreibfehlern",
+    },
+    {
+      score: 2,
+      label: "Zwei grammatikalisch und orthografisch korrekte vollständige Sätze",
+    },
+  ],
+};
+
+const ACE_LANGUAGE_NEUTRAL_MATERIAL_PREFIXES = {
+  registration: "Wort",
+  retrograde_memory: "Frage",
+  recall_words: "Wort",
+  recall_name_address: "Adressbestandteil",
+  comprehension: "Anweisung",
+  repetition_words: "Wort",
+  repetition_sentences: "Satz",
+  naming: "Bild",
+  semantic_association: "Aufgabe",
+  reading: "Wort",
+};
+
+function getTestLanguageLabel(language) {
+  const normalized = normalizeTestLanguage(language);
+  return TEST_LANGUAGE_OPTIONS.find((option) => option.code === normalized)?.label || "Deutsch";
+}
+
+function normalizeAceVersion(version) {
+  return ACE_VERSION_OPTIONS.includes(version) ? version : "A";
+}
+
+function getAceVersionMaterials(version) {
+  return ACE_VERSION_MATERIALS[normalizeAceVersion(version)];
+}
+
+function getAceItemMaterials(item, aceVersion) {
+  const versionMaterials = getAceVersionMaterials(aceVersion);
+  if (item.key === "registration" || item.key === "recall_words") return versionMaterials.words;
+  if (item.key === "anterograde_memory" || item.key === "recall_name_address") return versionMaterials.addressScoreItems;
+  return Array.isArray(item.materials) ? item.materials : [];
+}
+
+function getAceMaterialEntries(item, testLanguage, aceVersion) {
+  const materials = getAceItemMaterials(item, aceVersion);
+  const normalizedLanguage = normalizeTestLanguage(testLanguage);
+  if (item.key === "serial_subtraction") {
+    return materials.map((material, index) => ({
+      key: material,
+      label: `${index + 1}. Subtraktion korrekt · Sollwert bei fehlerfreier Reihe: ${material}`,
+    }));
+  }
+  if (normalizedLanguage === "de") {
+    return materials.map((material) => ({ key: material, label: material }));
+  }
+
+  if (item.key === "letter_fluency" || item.key === "animal_fluency") {
+    return materials.map((material) => ({
+      key: material,
+      label: "Vorgabe gemäß gedruckter Sprachversion",
+    }));
+  }
+
+  if (item.key === "recall_name_address") {
+    return materials.map((material, index) => ({
+      key: material,
+      label: ACE_NAME_ADDRESS_PART_LABELS[index] || `Adressbestandteil ${index + 1}`,
+    }));
+  }
+
+  const prefix = ACE_LANGUAGE_NEUTRAL_MATERIAL_PREFIXES[item.key];
+  if (!prefix) return materials.map((material) => ({ key: material, label: material }));
+  return materials.map((material, index) => ({ key: material, label: `${prefix} ${index + 1}` }));
+}
 
 function AceMaterialHeading({ children }) {
   return <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{children}</div>;
 }
 
-function AceInfinityFigure() {
-  return (
-    <svg viewBox="0 0 360 150" className="mx-auto w-full max-w-md" role="img" aria-label="Unendlichkeitssymbol">
-      <path d="M20 75 C70 -5 110 -5 180 75 C250 155 290 155 340 75 C290 -5 250 -5 180 75 C110 155 70 155 20 75Z" fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function AceCubeFigure() {
-  return (
-    <svg viewBox="0 0 250 190" className="mx-auto w-full max-w-xs" role="img" aria-label="Drahtwürfel">
-      <g fill="none" stroke="currentColor" strokeWidth="6" strokeLinejoin="round">
-        <path d="M42 62 L128 28 L208 59 L120 94 Z M42 62 V150 L120 180 L208 146 V59 M120 94 V180 M128 28 V118" />
-      </g>
-    </svg>
-  );
-}
-
-function AceDotsFigure({ index }) {
-  const layouts = [
-    [[16,16],[80,28],[48,54],[19,70],[79,72],[42,100],[66,122],[90,116]],
-    [[14,56],[26,34],[43,71],[57,48],[73,26],[88,40],[62,95],[76,116],[91,131],[43,118]],
-    [[27,26],[72,26],[32,58],[50,53],[48,78],[18,118]],
-    [[18,19],[72,26],[48,49],[15,64],[79,64],[86,79],[25,96],[49,100],[91,130]],
-  ];
-  return (
-    <div className="aspect-square rounded-xl border-2 border-zinc-800 bg-white p-3">
-      <svg viewBox="0 0 110 145" className="h-full w-full" aria-label={`Punktmenge ${index + 1}`}>
-        {layouts[index].map(([cx, cy], dotIndex) => <circle key={dotIndex} cx={cx} cy={cy} r="5.5" fill="currentColor" />)}
-      </svg>
-    </div>
-  );
-}
-
-function AceLetterFigure({ letter, className = "" }) {
-  return (
-    <div className={cls("relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl border bg-white", className)} aria-label="Fragmentierter Buchstabe">
-      <span className="select-none text-[clamp(6rem,18vw,11rem)] font-black leading-none tracking-tight">{letter}</span>
-      <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_0%,transparent_28%,white_28%,white_36%,transparent_36%,transparent_53%,white_53%,white_62%,transparent_62%,transparent_76%,white_76%,white_85%,transparent_85%)]" />
-    </div>
-  );
-}
-
-function AceMaterial({ item }) {
+function AceMaterial({ item, testLanguage }) {
   const type = item.materialType;
   if (!type) return null;
+  const usePrintedLanguageVersion = normalizeTestLanguage(testLanguage) !== "de";
 
-  if (type === "name-address") return (
-    <div className="rounded-xl border bg-zinc-50 p-3">
-      <AceMaterialHeading>Vorlesen und dreimal wiederholen lassen</AceMaterialHeading>
-      <div className="mt-2 text-xl font-semibold leading-relaxed">{ACE_NAME_AND_ADDRESS.map((line) => <div key={line}>{line}</div>)}</div>
-    </div>
-  );
+  if (type === "name-address") return null;
   if (type === "retrograde") return null;
-  if (type === "recognition") return (
-    <div className="rounded-xl border bg-zinc-50 p-3">
-      <AceMaterialHeading>Bei nicht erinnertem Item Auswahlhilfe anbieten</AceMaterialHeading>
-      <div className="mt-2 grid gap-2 md:grid-cols-2">{ACE_RECOGNITION_CHOICES.map((choices, index) => <div key={choices.join()} className="rounded-lg border bg-white p-2 text-sm"><span className="mr-2 font-semibold">{index + 1}.</span>{choices.join(" · ")}</div>)}</div>
-    </div>
-  );
-  if (type === "comprehension") return <div className="rounded-xl border bg-zinc-50 p-3 text-sm">Stift und Blatt Papier vor jeder Aufgabe erneut vor die Patientin bzw. den Patienten legen. Jede korrekt ausgeführte Anweisung wird unten einzeln bewertet.</div>;
+  if (type === "recognition") return null;
+  if (usePrintedLanguageVersion && (type === "comprehension" || type === "writing")) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+        Anweisung aus der gedruckten ACE-III-Version in {getTestLanguageLabel(testLanguage)} verwenden.
+      </div>
+    );
+  }
+  if (type === "comprehension") return <div className="rounded-xl border bg-zinc-50 p-3 text-sm"><span className="font-semibold">Probe:</span> „Heben Sie den Stift auf und dann das Blatt Papier.“ Bei korrekter Ausführung mit den drei bewerteten Anweisungen fortfahren und Stift sowie Papier jeweils neu vorlegen.</div>;
   if (type === "writing") return <div className="rounded-xl border bg-zinc-50 p-3 text-sm">Bitte schreiben Sie zwei vollständige Sätze. Inhalt frei wählbar; jeder Satz benötigt Subjekt und Verb.</div>;
   if (type === "repetition-words" || type === "repetition-sentences") return null;
-  if (type === "naming") return <div className="overflow-hidden rounded-xl border bg-white"><img src="/material/ACE-benennen.png" alt="ACE-III Benennmaterial" className="h-auto w-full" /></div>;
-  if (type === "reading") return <div className="rounded-xl border bg-zinc-50 p-4 text-center text-3xl font-bold tracking-wide">Uhr<br />Maß<br />fort<br />platt<br />Schrank</div>;
-  if (type === "infinity") return <div className="rounded-xl border bg-zinc-50 p-3"><AceInfinityFigure /></div>;
-  if (type === "cube") return <div className="rounded-xl border bg-zinc-50 p-3"><AceCubeFigure /></div>;
-  if (type === "clock") return <div className="rounded-xl border bg-zinc-50 p-3 text-sm">Bitte zeichnen Sie ein Zifferblatt, dessen Zeiger auf zehn nach fünf stehen.</div>;
-  if (type === "dots") return <div className="grid grid-cols-2 gap-3">{ACE_DOT_COUNTS.map((count, index) => <AceDotsFigure key={count} index={index} />)}</div>;
-  if (type === "letters") return <div className="grid grid-cols-2 gap-3"><AceLetterFigure letter="K" /><AceLetterFigure letter="W" /><AceLetterFigure letter="A" /><AceLetterFigure letter="T" /></div>;
+  if (type === "naming") return null;
+  if (type === "reading") return null;
+  if (["infinity", "cube", "clock", "dots", "letters"].includes(type)) return null;
   return null;
 }
 
@@ -1428,6 +1699,7 @@ const ACE_SECTIONS = [
         label: "Orientierung – Zeit",
         max: 5,
         prompt: "Fragen zu Wochentag, Datum, Monat, Jahr und Jahreszeit stellen.",
+        hint: "Datum: ± 2 Tage zulässig. Beim Jahreszeitenwechsel kann nach einer möglichen anderen Jahreszeit gefragt werden.",
         materials: ["Wochentag", "Datum", "Monat", "Jahr", "Jahreszeit"],
       },
       {
@@ -1435,6 +1707,7 @@ const ACE_SECTIONS = [
         label: "Orientierung – Ort",
         max: 5,
         prompt: "Fragen zum aktuellen Ort stellen.",
+        hint: "In der Wohnumgebung gleichwertige Ortsmerkmale verwenden. Bei auswärtigen Personen kann eine passende benachbarte Ortsangabe großzügig bewertet werden.",
         materials: ["Zimmer/Etage", "Straße/Krankenhaus", "Stadt", "Bundesland", "Land"],
       },
       {
@@ -1442,13 +1715,15 @@ const ACE_SECTIONS = [
         label: "Einprägen / Wiederholen",
         max: 3,
         prompt: "Drei Wörter vorlesen, nachsprechen lassen und für später merken lassen. Nur der erste Versuch wird bewertet.",
-        materials: ["Zitrone", "Schlüssel", "Ball"],
+        hint: "Bei Bedarf bis zu drei Versuche durchführen; ausschließlich den ersten Versuch markieren.",
+        materials: ACE_VERSION_MATERIALS.A.words,
       },
       {
         key: "serial_subtraction",
         label: "Aufmerksamkeit / serielles Rechnen",
         max: 5,
         prompt: "Von 100 fortlaufend 7 abziehen lassen; nach fünf Subtraktionen stoppen.",
+        hint: "Nach einem Fehler nicht korrigieren oder unterbrechen. Jeden folgenden Rechenschritt ausgehend von der unmittelbar vorherigen Antwort bewerten.",
         materials: ["93", "86", "79", "72", "65"],
       },
     ],
@@ -1458,20 +1733,20 @@ const ACE_SECTIONS = [
     title: "Gedächtnis",
     max: 26,
     items: [
-      { key: "recall_words", label: "Wörter erinnern", max: 3, prompt: "Welche drei Wörter hatte ich Sie gebeten zu wiederholen und sich zu merken?", materials: ["Zitrone", "Schlüssel", "Ball"] },
-      { key: "anterograde_memory", label: "Name und Adresse einprägen", max: 7, prompt: "Name und Adresse vorlesen und dreimal wiederholen lassen. Der dritte Versuch wird bewertet.", materialType: "name-address", materials: ACE_NAME_ADDRESS_SCORE_ITEMS },
-      { key: "retrograde_memory", label: "Retrogrades Gedächtnis", max: 4, prompt: "Allgemeinwissensbezogene Gedächtnisfragen stellen.", materialType: "retrograde", materials: ACE_RETROGRADE_QUESTIONS },
-      { key: "recall_name_address", label: "Abruf Name und Adresse", max: 7, prompt: "Name und Adresse, die am Anfang wiederholt wurden, frei abrufen lassen.", materialType: "name-address", materials: ACE_NAME_ADDRESS_SCORE_ITEMS },
+      { key: "recall_words", label: "Wörter erinnern", max: 3, prompt: "Welche drei Wörter hatte ich Sie gebeten zu wiederholen und sich zu merken?", materials: ACE_VERSION_MATERIALS.A.words },
+      { key: "anterograde_memory", label: "Name und Adresse einprägen", max: 7, prompt: "Name und Adresse vorlesen und dreimal wiederholen lassen. Der dritte Versuch wird bewertet.", materialType: "name-address", materials: ACE_VERSION_MATERIALS.A.addressScoreItems },
+      { key: "retrograde_memory", label: "Retrogrades Gedächtnis", max: 4, prompt: "Allgemeinwissensbezogene Gedächtnisfragen stellen.", hint: "Der korrekte Nachname genügt. Bei einem kürzlichen Amtswechsel auch den vorherigen Amtsinhaber erfragen.", materialType: "retrograde", materials: ACE_RETROGRADE_QUESTIONS },
+      { key: "recall_name_address", label: "Abruf Name und Adresse", max: 7, prompt: "Name und Adresse, die am Anfang wiederholt wurden, frei abrufen lassen.", materialType: "name-address", materials: ACE_VERSION_MATERIALS.A.addressScoreItems },
       { key: "recognition", label: "Wiedererkennen", max: 5, prompt: "Nur durchführen, wenn mindestens ein Item beim freien Abruf nicht genannt wurde.", materialType: "recognition" },
     ],
   },
   {
     key: "fluency",
-    title: "Fluency",
+    title: "Wortflüssigkeit",
     max: 14,
     items: [
-      { key: "letter_fluency", label: "Phonematische Wortflüssigkeit", max: 7, prompt: "Eine Minute Wörter mit dem vorgegebenen Buchstaben nennen lassen.", materials: ["Buchstabe: P"], timed: true, fluencyType: "letter" },
-      { key: "animal_fluency", label: "Semantische Wortflüssigkeit", max: 7, prompt: "Eine Minute lang so viele Tiere wie möglich nennen lassen.", materials: ["Kategorie: Tiere"], timed: true, fluencyType: "animal" },
+      { key: "letter_fluency", label: "Phonematische Wortflüssigkeit", max: 7, prompt: "Eine Minute Wörter mit dem vorgegebenen Buchstaben nennen lassen.", hint: "Als korrekt zählen keine Wiederholungen, Flexionsvarianten desselben Wortes, Falschnennungen, Eigennamen oder Pluralvarianten.", materials: ["Buchstabe: P"], timed: true, fluencyType: "letter" },
+      { key: "animal_fluency", label: "Semantische Wortflüssigkeit", max: 7, prompt: "Eine Minute lang so viele Tiere wie möglich nennen lassen.", hint: "Oberkategorie plus genannte Arten sowie verschiedene Geschlechter derselben Tierart jeweils nur einmal zählen. Insekten, Menschen, ausgestorbene und mythische Tiere sind zulässig.", materials: ["Kategorie: Tiere"], timed: true, fluencyType: "animal" },
     ],
   },
   {
@@ -1480,12 +1755,28 @@ const ACE_SECTIONS = [
     max: 26,
     items: [
       { key: "comprehension", label: "Verstehen / Handlungsanweisungen", max: 3, prompt: "Stift und Papier bereitlegen und die Anweisungen durchführen lassen.", materialType: "comprehension", materials: ["Blatt Papier auf den Stift legen", "Stift anheben, aber nicht das Blatt Papier", "Stift reichen, nachdem das Blatt Papier berührt wurde"] },
-      { key: "sentence_writing", label: "Sätze schreiben", max: 2, prompt: "Patient:in schreibt die Sätze auf Papier; hier bewerten.", materialType: "writing" },
-      { key: "repetition_words", label: "Wörter nachsprechen", max: 2, prompt: "Die vier Wörter vorlesen und Wiederholung bewerten.", materialType: "repetition-words", materials: ["Butterblume", "Exzentriker", "unentzifferbar", "Statistiker"], scoringMode: "all-or-three" },
-      { key: "repetition_sentences", label: "Sätze nachsprechen", max: 2, prompt: "Die beiden Sätze vorlesen und Wiederholung bewerten.", materialType: "repetition-sentences", materials: ["Es ist nicht alles Gold, was glänzt.", "Der frühe Vogel fängt den Wurm."] },
-      { key: "naming", label: "Benennen", max: 12, prompt: "Die Begriffe bzw. Bildvorlagen zeigen und korrekte Benennungen zählen.", materialType: "naming" },
-      { key: "semantic_association", label: "Semantisches Wissen", max: 4, prompt: "Mit Hilfe der gezeigten Bilder passende Zuordnungen erfragen.", materials: ["Wird mit Monarchie in Verbindung gebracht", "Stellt ein Beuteltier dar", "Kann in der Antarktis gefunden werden", "Hat einen Bezug zur Seefahrt"] },
-      { key: "reading", label: "Wörter lesen", max: 1, prompt: "Alle fünf Wörter korrekt lesen lassen.", materialType: "reading" },
+      { key: "sentence_writing", label: "Sätze schreiben", max: 2, prompt: "Patient:in schreibt die Sätze auf Papier; hier anhand der Kriterien bewerten.", materialType: "writing" },
+      { key: "repetition_words", label: "Wörter nachsprechen", max: 2, prompt: "Die vier Wörter einzeln vorlesen und Nachsprechen bewerten.", hint: "Nur der erste Versuch wird bewertet. Stockende, forcierte oder undeutliche Aussprache gilt als falsch.", materialType: "repetition-words", materials: ["Butterblume", "Exzentriker", "unentzifferbar", "Statistiker"], scoringMode: "all-or-three" },
+      { key: "repetition_sentences", label: "Sätze nachsprechen", max: 2, prompt: "Die beiden Sätze vorlesen und Nachsprechen bewerten.", hint: "Je vollständig korrekt wiederholtem Sprichwort 1 Punkt; teilweise korrekte Wiederholungen zählen nicht.", materialType: "repetition-sentences", materials: ["Es ist nicht alles Gold, was glänzt.", "Der frühe Vogel fängt den Wurm."] },
+      {
+        key: "naming",
+        label: "Benennen",
+        max: 12,
+        prompt: "Gedrucktes Testmaterial zeigen und jede korrekte Benennung markieren.",
+        hint: "Akzeptiert werden auch: Kamel oder Dromedar; Fass oder Tonne; Krokodil oder Alligator; Ziehharmonika, Akkordeon, Handharmonika oder Quetschkommode.",
+        materialType: "naming",
+        materials: ["Löffel", "Buch", "Känguru", "Pinguin", "Anker", "Kamel/Dromedar", "Harfe", "Nashorn", "Fass/Tonne", "Krone", "Krokodil", "Ziehharmonika"],
+      },
+      { key: "semantic_association", label: "Semantisches Wissen", max: 4, prompt: "Mit Hilfe der gezeigten Bilder passende Zuordnungen erfragen.", hint: "Je korrekter Bildauswahl 1 Punkt. Selbstverbesserungen sind erlaubt; keine Rückmeldung zur Wortbedeutung geben.", materials: ["Wird mit Monarchie in Verbindung gebracht", "Stellt ein Beuteltier dar", "Kann in der Antarktis gefunden werden", "Hat einen Bezug zur Seefahrt"] },
+      {
+        key: "reading",
+        label: "Wörter lesen",
+        max: 1,
+        prompt: "Gedrucktes Testmaterial zeigen und jedes korrekt gelesene Wort markieren. Ein Punkt wird nur vergeben, wenn alle fünf Wörter korrekt sind.",
+        materialType: "reading",
+        materials: ["Uhr", "Maß", "fort", "platt", "Schrank"],
+        scoringMode: "all-or-none",
+      },
     ],
   },
   {
@@ -1496,8 +1787,24 @@ const ACE_SECTIONS = [
       { key: "infinity", label: "Unendlichkeitssymbol abzeichnen", max: 1, hint: "Patient:in zeichnet auf Papier; hier nur Punkte vergeben.", materialType: "infinity" },
       { key: "cube", label: "Würfel abzeichnen", max: 2, hint: "Patient:in zeichnet auf Papier; hier nur Punkte vergeben.", materialType: "cube" },
       { key: "clock", label: "Uhr zeichnen", max: 5, hint: "Patient:in zeichnet auf Papier; hier nur Punkte vergeben.", materialType: "clock" },
-      { key: "dots", label: "Punkte zählen", max: 4, prompt: "Punktmengen zeigen und Antworten bewerten.", materialType: "dots" },
-      { key: "letters", label: "Buchstaben identifizieren", max: 4, prompt: "Fragmentierte Buchstaben zeigen und Antworten bewerten.", materialType: "letters" },
+      {
+        key: "dots",
+        label: "Punkte zählen",
+        max: 4,
+        prompt: "Gedrucktes Testmaterial zeigen und jede korrekte Antwort markieren.",
+        hint: "Die Punkte dürfen nicht mit dem Finger abgezählt werden. Bei Aphasie ist eine schriftliche Antwort zulässig.",
+        materialType: "dots",
+        materials: ["1. Feld: 8 Punkte", "2. Feld: 10 Punkte", "3. Feld: 7 Punkte", "4. Feld: 9 Punkte"],
+      },
+      {
+        key: "letters",
+        label: "Buchstaben identifizieren",
+        max: 4,
+        prompt: "Gedrucktes Testmaterial zeigen und jeden korrekt identifizierten Buchstaben markieren.",
+        hint: "Zeigen mit dem Finger ist erlaubt. Bei Aphasie sind eine schriftliche Antwort oder der entsprechende Laut zulässig.",
+        materialType: "letters",
+        materials: ["K", "M", "A", "T"],
+      },
     ],
   },
 ];
@@ -1513,16 +1820,46 @@ const ACE_TEST_FLOW = [
 ];
 
 function getAceSectionScore(ace, section) {
-  const scores = ace?.scores || {};
-  return section.items.reduce((sum, item) => sum + Math.max(0, Math.min(item.max, Number(scores[item.key] || 0))), 0);
+  return section.items.reduce((sum, item) => sum + getAceItemScore(ace, item), 0);
 }
 
 function getAceTotal(ace) {
   return ACE_SECTIONS.reduce((sum, section) => sum + getAceSectionScore(ace, section), 0);
 }
 
+function isAceRecognitionAutomatic(ace) {
+  return Number(ace?.scores?.recall_name_address || 0) >= 7;
+}
+
+function getAceRecallAddressMarks(ace) {
+  const versionMaterials = getAceVersionMaterials(ace?.version);
+  const storedMarks = ace?.raw?.recall_name_address?.marks;
+  if (storedMarks && Object.keys(storedMarks).length > 0) return storedMarks;
+  const score = Math.max(0, Math.min(7, Number(ace?.scores?.recall_name_address) || 0));
+  return Object.fromEntries(versionMaterials.addressScoreItems.slice(0, score).map((material) => [material, 1]));
+}
+
+function getAceRecognitionScore(ace) {
+  if (isAceRecognitionAutomatic(ace)) return 5;
+  const recognitionChoices = getAceVersionMaterials(ace?.version).recognitionChoices;
+  const recallMarks = getAceRecallAddressMarks(ace);
+  const responses = ace?.raw?.recognition?.responses || {};
+  return recognitionChoices.reduce((score, group) => {
+    const recalled = group.recallItems.every((material) => !!recallMarks[material]);
+    const recognized = responses[group.key] === group.correct;
+    return score + (recalled || recognized ? 1 : 0);
+  }, 0);
+}
+
+function getAceItemScore(ace, item) {
+  const score = item.key === "recognition"
+    ? getAceRecognitionScore(ace)
+    : Number(ace?.scores?.[item.key] || 0);
+  return Math.max(0, Math.min(item.max, score));
+}
+
 function scoreAceFluency(type, count) {
-  const n = Math.max(0, Number(count) || 0);
+  const n = Math.max(0, Math.floor(Number(count) || 0));
   if (type === "letter") {
     if (n >= 18) return 7;
     if (n >= 14) return 6;
@@ -1699,6 +2036,129 @@ function RWTWire({ sessionData, onPersist, onAbort }) {
   );
 }
 
+const CLOCK_SCORE_PARTS = [
+  { key: "kreis" },
+  { key: "nummern1" },
+  { key: "nummern2" },
+  { key: "zeiger1" },
+  { key: "zeiger2" },
+];
+
+const CLOCK_SCORE_GROUPS = [
+  {
+    key: "kreis",
+    title: "Kreis",
+    max: 1,
+    options: [
+      { score: 0, label: "Kein akzeptabler Kreis" },
+      { score: 1, label: "Akzeptabler Kreis" },
+    ],
+  },
+  {
+    key: "nummern",
+    title: "Zahlen",
+    max: 2,
+    options: [
+      { score: 0, label: "Nicht alle Zahlen vorhanden" },
+      { score: 1, label: "Alle Zahlen vorhanden, aber außerhalb oder unregelmäßig verteilt" },
+      { score: 2, label: "Alle Zahlen gleichmäßig innerhalb des Kreises verteilt (leichte Gesamtdrehung zulässig)" },
+    ],
+  },
+  {
+    key: "zeiger",
+    title: "Zeiger",
+    max: 2,
+    options: [
+      { score: 0, label: "Nur ein Zeiger oder keine der Bedingungen für einen Zeigerpunkt erfüllt" },
+      { score: 1, label: "Beide Zeiger vorhanden: richtige Uhrzeit bei falschem Längenverhältnis oder nur ein Zeiger zeigt mit richtiger Länge die richtige Zeit" },
+      { score: 2, label: "Beide Zeiger zeigen mit korrektem Längenverhältnis die richtige Uhrzeit" },
+    ],
+  },
+];
+
+const scoreClockParts = (parts = {}) => CLOCK_SCORE_PARTS.reduce(
+  (sum, part) => sum + (parts[part.key] ? 1 : 0),
+  0
+);
+
+const deriveClockPartsFromScore = (value) => {
+  const score = typeof value === "number" ? Math.max(0, Math.min(5, value)) : 0;
+  return Object.fromEntries(CLOCK_SCORE_PARTS.map((part, index) => [part.key, index < score]));
+};
+
+const normalizeClockParts = (raw) => {
+  if (!raw || typeof raw !== "object") return null;
+  if (["nummern1", "nummern2", "zeiger1", "zeiger2"].some((key) => key in raw)) {
+    return Object.fromEntries(CLOCK_SCORE_PARTS.map((part) => [part.key, !!raw[part.key]]));
+  }
+  if (["nummern", "zeiger"].some((key) => key in raw)) {
+    return {
+      kreis: !!raw.kreis,
+      nummern1: !!raw.nummern,
+      nummern2: !!raw.nummern,
+      zeiger1: !!raw.zeiger,
+      zeiger2: !!raw.zeiger,
+    };
+  }
+  return null;
+};
+
+function ClockScoreButtons({ parts, onToggle }) {
+  const groupScore = (group) => {
+    if (group.key === "kreis") return parts.kreis ? 1 : 0;
+    return Number(!!parts[`${group.key}1`]) + Number(!!parts[`${group.key}2`]);
+  };
+  const selectGroupScore = (group, score) => {
+    const next = { ...parts };
+    if (group.key === "kreis") {
+      next.kreis = score === 1;
+    } else {
+      next[`${group.key}1`] = score >= 1;
+      next[`${group.key}2`] = score >= 2;
+    }
+    onToggle(next);
+  };
+
+  return (
+    <div className="grid gap-3">
+      {CLOCK_SCORE_GROUPS.map((group) => (
+        <div key={group.key} className="rounded-xl border bg-zinc-50 p-3">
+          <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
+            <span>{group.title}</span>
+            <span>{groupScore(group)} / {group.max}</span>
+          </div>
+          <div className="grid gap-2" role="radiogroup" aria-label={`${group.title} bewerten`}>
+            {group.options.map((option) => {
+              const selected = groupScore(group) === option.score;
+              return (
+                <Button
+                  size="bare"
+                  key={option.score}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => selectGroupScore(group, option.score)}
+                  className={cls(
+                    "w-full min-h-11 rounded-xl border px-3 py-2 text-left text-sm",
+                    selected
+                      ? option.score > 0
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                        : "border-zinc-400 bg-zinc-100 text-zinc-800"
+                      : "border-zinc-300 bg-white text-zinc-800"
+                  )}
+                >
+                  <span className="font-semibold">{option.score} {option.score === 1 ? "Punkt" : "Punkte"}</span>
+                  <span className="ml-2">{option.label}</span>
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function AceScoreInput({ item, value, onChange }) {
   const numericValue = value ?? 0;
   const isSinglePoint = item.max === 1;
@@ -1740,72 +2200,477 @@ function AceScoreInput({ item, value, onChange }) {
   );
 }
 
-function AceTaskCard({ item, value, raw = {}, onScoreChange, onRawChange }) {
+function AceGuidelineScoreButtons({ options, value, onChange }) {
+  return (
+    <div className="grid gap-2" role="radiogroup" aria-label="Bewertung nach Auswertungskriterien">
+      {options.map((option) => {
+        const selected = Number(value) === option.score;
+        return (
+          <Button
+            size="bare"
+            key={option.score}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => onChange(option.score)}
+            className={cls(
+              "w-full min-h-12 rounded-xl border px-3 py-2 text-left text-sm",
+              selected
+                ? option.score > 0
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                  : "border-zinc-400 bg-zinc-100 text-zinc-800"
+                : "border-zinc-300 bg-white text-zinc-800"
+            )}
+          >
+            <span className="font-semibold">{option.score} {option.score === 1 ? "Punkt" : "Punkte"}</span>
+            <span className="ml-2">{option.label}</span>
+          </Button>
+        );
+      })}
+    </div>
+  );
+}
+
+function AceFigureScoreButtons({ item, value, raw, onScoreChange, onRawChange }) {
+  const criteria = ACE_FIGURE_SCORING[item.key] || [];
+  const selected = Array.isArray(raw.criteria)
+    ? criteria.map((_, index) => !!raw.criteria[index])
+    : criteria.map((_, index) => index < (Number(value) || 0));
+
+  const toggleCriterion = (index) => {
+    const next = selected.slice();
+    next[index] = !next[index];
+    if (item.key === "cube" && index === 1 && next[1]) next[0] = true;
+    if (item.key === "cube" && index === 0 && !next[0]) next[1] = false;
+    const nextScore = Math.min(item.max, next.filter(Boolean).length);
+    onRawChange({ ...raw, criteria: next });
+    onScoreChange(nextScore);
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="grid gap-2">
+        {criteria.map((criterion, index) => (
+          <Button
+            size="bare"
+            key={criterion}
+            type="button"
+            aria-pressed={!!selected[index]}
+            onClick={() => toggleCriterion(index)}
+            className={cls(
+              "w-full rounded-xl border px-3 py-2 text-left text-sm",
+              selected[index] ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-zinc-300 bg-white"
+            )}
+          >
+            {criterion} (1 Punkt)
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AceClockScoreButtons({ item, value, raw, onScoreChange, onRawChange }) {
+  const parts = normalizeClockParts(raw.parts) || deriveClockPartsFromScore(value);
+  const updateParts = (next) => {
+    onRawChange({ ...raw, parts: next });
+    onScoreChange(Math.min(item.max, scoreClockParts(next)));
+  };
+
+  return (
+    <div>
+      <ClockScoreButtons parts={parts} onToggle={updateParts} />
+    </div>
+  );
+}
+
+function AceRecognitionChoices({ ace, item, raw, testLanguage, onScoreChange, onRawChange }) {
+  const responses = raw.responses && typeof raw.responses === "object" ? raw.responses : {};
+  const usePrintedLanguageVersion = normalizeTestLanguage(testLanguage) !== "de";
+  const recognitionChoices = getAceVersionMaterials(ace?.version).recognitionChoices;
+  const recallMarks = getAceRecallAddressMarks(ace);
+  const missingGroups = recognitionChoices.filter(
+    (group) => !group.recallItems.every((material) => !!recallMarks[material])
+  );
+
+  const selectResponse = (group, option) => {
+    const nextResponses = {
+      ...responses,
+      [group.key]: responses[group.key] === option ? null : option,
+    };
+    const nextAce = {
+      ...ace,
+      raw: {
+        ...(ace?.raw || {}),
+        recognition: { ...raw, responses: nextResponses },
+      },
+    };
+    onRawChange({ ...raw, responses: nextResponses });
+    onScoreChange(Math.min(item.max, getAceRecognitionScore(nextAce)));
+  };
+
+  return (
+    <div className="space-y-3">
+      <AceMaterialHeading>Antwort der Patientin bzw. des Patienten auswählen</AceMaterialHeading>
+      {missingGroups.map((group, index) => (
+        <div key={group.key} className="rounded-xl border bg-zinc-50 p-3">
+          <div className="mb-2 text-sm font-semibold">{index + 1}. {group.label}</div>
+          {usePrintedLanguageVersion && (
+            <div className="mb-2 text-xs text-zinc-500">Antwortoptionen aus der gedruckten Sprachversion verwenden und hier bewerten.</div>
+          )}
+          <div className={cls("grid gap-2", usePrintedLanguageVersion ? "sm:grid-cols-2" : "sm:grid-cols-3")} role="radiogroup" aria-label={group.label}>
+            {(usePrintedLanguageVersion
+              ? [
+                { value: group.correct, label: "Richtig gewählt", correct: true },
+                { value: "__incorrect__", label: "Falsch gewählt", correct: false },
+              ]
+              : group.options.map((option) => ({ value: option, label: option, correct: option === group.correct }))
+            ).map((option) => {
+              const selected = responses[group.key] === option.value;
+              const correct = option.correct;
+              return (
+                <Button
+                  size="bare"
+                  key={option.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => selectResponse(group, option.value)}
+                  className={cls(
+                    "flex min-h-12 items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm",
+                    selected
+                      ? correct
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : "border-rose-200 bg-rose-50 text-rose-700"
+                      : "border-zinc-300 bg-white text-zinc-800"
+                  )}
+                >
+                  <span>{option.label}</span>
+                  {selected && (
+                    <span className="rounded-lg border bg-white px-2 py-0.5 text-xs">
+                      {correct ? "Richtig" : "Falsch"}
+                    </span>
+                  )}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AceNameAddressTrials({ item, value, raw, testLanguage, aceVersion, onScoreChange, onRawChange }) {
+  const [activeRun, setActiveRun] = useState(0);
+  const touchStartX = useRef(null);
+  const usePrintedLanguageVersion = normalizeTestLanguage(testLanguage) !== "de";
+  const versionMaterials = getAceVersionMaterials(aceVersion);
+  const materialEntries = versionMaterials.addressScoreItems.map((material, index) => ({
+    key: material,
+    label: usePrintedLanguageVersion ? ACE_NAME_ADDRESS_PART_LABELS[index] : material,
+  }));
+  const storedRuns = Array.isArray(raw.runs) ? raw.runs : [];
+  const legacyMarks = raw.marks || Object.fromEntries(
+    versionMaterials.addressScoreItems.slice(0, Number(value) || 0).map((material) => [material, 1])
+  );
+  const runs = Array.from({ length: 3 }, (_, index) => ({
+    ...(storedRuns[index] || {}),
+    marks: storedRuns[index]?.marks || (storedRuns.length === 0 && index === 2 ? legacyMarks : {}),
+  }));
+
+  const selectRun = (index) => setActiveRun(Math.max(0, Math.min(2, index)));
+  const toggleMaterial = (material) => {
+    const nextRuns = runs.map((run, index) => {
+      if (index !== activeRun) return run;
+      const marks = { ...run.marks };
+      marks[material] = marks[material] ? 0 : 1;
+      return {
+        ...run,
+        marks: Object.fromEntries(Object.entries(marks).filter(([, checked]) => checked)),
+      };
+    });
+    const nextRaw = { ...raw, runs: nextRuns };
+    delete nextRaw.marks;
+    onRawChange(nextRaw);
+    if (activeRun === 2) onScoreChange(Object.keys(nextRuns[2].marks).length);
+  };
+
+  const activeMarks = runs[activeRun].marks;
+  const activeCount = Object.keys(activeMarks).length;
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Einprägedurchgänge">
+        {runs.map((run, index) => {
+          const count = Object.keys(run.marks).length;
+          const selected = activeRun === index;
+          return (
+            <Button
+              key={index}
+              type="button"
+              size="bare"
+              role="tab"
+              aria-selected={selected}
+              onClick={() => selectRun(index)}
+              className={cls(
+                "rounded-xl border px-2 py-2 text-sm",
+                selected ? "border-indigo-700 bg-indigo-700 text-white" : "border-zinc-300 bg-white text-zinc-700"
+              )}
+            >
+              <span className="block font-semibold">Durchgang {index + 1}</span>
+              <span className={cls("block text-xs", selected ? "text-zinc-300" : "text-zinc-500")}>{count}/{item.max}</span>
+            </Button>
+          );
+        })}
+      </div>
+
+      <div
+        className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 touch-pan-y"
+        onTouchStart={(event) => { touchStartX.current = event.touches[0]?.clientX ?? null; }}
+        onTouchEnd={(event) => {
+          if (touchStartX.current === null) return;
+          const endX = event.changedTouches[0]?.clientX ?? touchStartX.current;
+          const delta = endX - touchStartX.current;
+          touchStartX.current = null;
+          if (Math.abs(delta) < 45) return;
+          selectRun(activeRun + (delta < 0 ? 1 : -1));
+        }}
+      >
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <AceMaterialHeading>Durchgang {activeRun + 1} von 3</AceMaterialHeading>
+            {usePrintedLanguageVersion ? (
+              <div className="mt-2 max-w-xl rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-950">
+                Name und Adresse aus der gedruckten ACE-III-Version in {getTestLanguageLabel(testLanguage)} vorlesen.
+              </div>
+            ) : (
+              <div className="mt-2 text-xl font-semibold leading-relaxed">
+                {versionMaterials.nameAddress.map((line) => <div key={line}>{line}</div>)}
+              </div>
+            )}
+          </div>
+          <div className={cls(
+            "shrink-0 rounded-lg border px-2 py-1 text-xs font-semibold",
+            activeRun === 2 ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-zinc-200 bg-white text-zinc-600"
+          )}>
+            {activeRun === 2 ? `Gewertet: ${activeCount}/${item.max}` : "Ohne Wertung"}
+          </div>
+        </div>
+
+        <div className="grid gap-2 md:grid-cols-2">
+          {materialEntries.map(({ key, label }) => {
+            const checked = !!activeMarks[key];
+            return (
+              <Button
+                size="bare"
+                key={key}
+                type="button"
+                aria-pressed={checked}
+                onClick={() => toggleMaterial(key)}
+                className={cls(
+                  "flex min-h-12 items-center justify-between rounded-xl border px-3 py-2 text-left",
+                  checked ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-zinc-300 bg-white"
+                )}
+              >
+                <span>{label}</span>
+                <span>{checked ? "✔️" : "✖️"}</span>
+              </Button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        <Button type="button" variant="secondary" size="sm" disabled={activeRun === 0} onClick={() => selectRun(activeRun - 1)}>
+          ← Vorheriger Durchgang
+        </Button>
+        <div className="text-xs text-zinc-500">Auf der Karte nach links oder rechts wischen</div>
+        <Button type="button" variant="primary" size="sm" disabled={activeRun === 2} onClick={() => selectRun(activeRun + 1)}>
+          Nächster Durchgang →
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function AceTaskCard({ ace, item, value, raw = {}, testLanguage, aceVersion, onScoreChange, onRawChange }) {
   const isFluency = !!item.fluencyType;
-  const hasScorableMaterials = Array.isArray(item.materials) && item.materials.length > 0 && (item.materials.length === item.max || item.scoringMode === "all-or-three");
+  const isNameAddressLearning = item.key === "anterograde_memory";
+  const hasFigureCriteria = !!ACE_FIGURE_SCORING[item.key];
+  const isClockScoring = item.key === "clock";
+  const isRecognition = item.key === "recognition";
+  const isComprehension = item.key === "comprehension";
+  const guidelineScoreOptions = ACE_GUIDELINE_SCORE_OPTIONS[item.key];
+  const materialEntries = getAceMaterialEntries(item, testLanguage, aceVersion);
+  const prompt = normalizeTestLanguage(testLanguage) !== "de" && item.key === "animal_fluency"
+    ? "Eine Minute lang Wörter gemäß der Vorgabe in der gedruckten Sprachversion nennen lassen."
+    : item.prompt;
+  const hasScorableMaterials = materialEntries.length > 0 && (materialEntries.length === item.max || !!item.scoringMode);
   const count = raw.count ?? "";
   const transcript = raw.transcript || "";
+  const comprehensionPractice = raw.practice || (
+    Number(value) > 0 || Object.keys(raw.marks || {}).length > 0 ? "passed" : null
+  );
   const updateCount = (nextCount) => {
-    const normalized = nextCount === "" ? "" : Math.max(0, Number(nextCount) || 0);
+    const normalized = nextCount === "" ? "" : Math.max(0, Math.floor(Number(nextCount) || 0));
     onRawChange({ ...raw, count: normalized });
     onScoreChange(scoreAceFluency(item.fluencyType, normalized));
   };
-  const materialMarks = raw.marks || (hasScorableMaterials && item.scoringMode !== "all-or-three"
-    ? Object.fromEntries(item.materials.slice(0, Number(value) || 0).map((material) => [material, 1]))
-    : {});
+  const materialMarks = raw.marks || (hasScorableMaterials && !item.scoringMode
+    ? Object.fromEntries(materialEntries.slice(0, Number(value) || 0).map(({ key }) => [key, 1]))
+    : hasScorableMaterials && item.scoringMode === "all-or-none" && Number(value) === item.max
+      ? Object.fromEntries(materialEntries.map(({ key }) => [key, 1]))
+      : {});
   const toggleMaterial = (material) => {
     const marks = { ...materialMarks };
     marks[material] = marks[material] ? 0 : 1;
     const nextMarks = Object.fromEntries(Object.entries(marks).filter(([, checked]) => checked));
     onRawChange({ ...raw, marks: nextMarks });
     const correctCount = Object.keys(nextMarks).length;
-    onScoreChange(item.scoringMode === "all-or-three" ? (correctCount === 4 ? 2 : correctCount === 3 ? 1 : 0) : correctCount);
+    if (item.scoringMode === "all-or-three") {
+      onScoreChange(correctCount === 4 ? 2 : correctCount === 3 ? 1 : 0);
+    } else if (item.scoringMode === "all-or-none") {
+      onScoreChange(correctCount === materialEntries.length ? item.max : 0);
+    } else {
+      onScoreChange(correctCount);
+    }
+  };
+  const setComprehensionPractice = (practice) => {
+    if (practice === "failed") {
+      onRawChange({ ...raw, practice, marks: {} });
+      onScoreChange(0);
+      return;
+    }
+    onRawChange({ ...raw, practice });
   };
 
   return (
     <Card className="space-y-3">
-      <div>
-        <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <div className="text-lg font-semibold">{item.label}</div>
-          {item.prompt && <p className="mt-1 text-sm text-zinc-600">{item.prompt}</p>}
+          {prompt && <p className="mt-1 text-sm text-zinc-600">{prompt}</p>}
           {item.hint && <p className="mt-1 text-xs text-zinc-500">{item.hint}</p>}
         </div>
+        <div className="shrink-0 text-sm text-zinc-600">
+          Punkte: <span className="font-semibold tabular-nums text-zinc-900">{value ?? 0} / {item.max}</span>
+        </div>
       </div>
-      <AceMaterial item={item} />
-      {Array.isArray(item.materials) && item.materials.length > 0 && !hasScorableMaterials && (
+      {!isNameAddressLearning && <AceMaterial item={item} testLanguage={testLanguage} />}
+      {isComprehension && (
+        <div className="rounded-xl border bg-zinc-50 p-3">
+          <div className="mb-2 text-sm font-semibold">Probe vor den drei bewerteten Anweisungen</div>
+          <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Ergebnis der Verständnisprobe">
+            {[
+              { value: "passed", label: "Probe korrekt – fortfahren", positive: true },
+              { value: "failed", label: "Probe nicht korrekt – Abschnitt beenden (0 Punkte)", positive: false },
+            ].map((option) => {
+              const selected = comprehensionPractice === option.value;
+              return (
+                <Button
+                  size="bare"
+                  key={option.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => setComprehensionPractice(option.value)}
+                  className={cls(
+                    "min-h-12 rounded-xl border px-3 py-2 text-left text-sm",
+                    selected
+                      ? option.positive
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                        : "border-rose-200 bg-rose-50 text-rose-800"
+                      : "border-zinc-300 bg-white text-zinc-800"
+                  )}
+                >
+                  {option.label}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {isNameAddressLearning && (
+        <AceNameAddressTrials
+          item={item}
+          value={value}
+          raw={raw}
+          testLanguage={testLanguage}
+          aceVersion={aceVersion}
+          onScoreChange={onScoreChange}
+          onRawChange={onRawChange}
+        />
+      )}
+      {hasFigureCriteria && (
+        <AceFigureScoreButtons
+          item={item}
+          value={value}
+          raw={raw}
+          onScoreChange={onScoreChange}
+          onRawChange={onRawChange}
+        />
+      )}
+      {isClockScoring && (
+        <AceClockScoreButtons
+          item={item}
+          value={value}
+          raw={raw}
+          onScoreChange={onScoreChange}
+          onRawChange={onRawChange}
+        />
+      )}
+      {isRecognition && (
+        <AceRecognitionChoices
+          ace={ace}
+          item={item}
+          raw={raw}
+          testLanguage={testLanguage}
+          onScoreChange={onScoreChange}
+          onRawChange={onRawChange}
+        />
+      )}
+      {guidelineScoreOptions && (
+        <AceGuidelineScoreButtons
+          options={guidelineScoreOptions}
+          value={value}
+          onChange={onScoreChange}
+        />
+      )}
+      {materialEntries.length > 0 && !hasScorableMaterials && (
         <div className="rounded-xl border bg-zinc-50 p-3">
           <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Material / Zielantworten</div>
           <div className="mt-2 flex flex-wrap gap-2">
-            {item.materials.map((material) => (
-              <span key={material} className="rounded-lg border bg-white px-3 py-1 text-sm">
-                {material}
+            {materialEntries.map(({ key, label }) => (
+              <span key={key} className="rounded-lg border bg-white px-3 py-1 text-sm">
+                {label}
               </span>
             ))}
           </div>
         </div>
       )}
-      {hasScorableMaterials && (
+      {hasScorableMaterials && !isNameAddressLearning && (!isComprehension || comprehensionPractice === "passed") && (
         <div className="space-y-2">
           <div className="grid gap-2 md:grid-cols-2">
-            {item.materials.map((material) => {
-              const checked = !!materialMarks[material];
+            {materialEntries.map(({ key, label }) => {
+              const checked = !!materialMarks[key];
               return (
                 <Button size="bare"
-                  key={material}
+                  key={key}
                   type="button"
-                  onClick={() => toggleMaterial(material)}
+                  aria-pressed={checked}
+                  onClick={() => toggleMaterial(key)}
                   className={cls(
                     "flex min-h-12 items-center justify-between rounded-xl border px-3 py-2 text-left",
                     checked ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-zinc-300 bg-white"
                   )}
                 >
-                  <span>{material}</span>
+                  <span>{label}</span>
                   <span>{checked ? "✔️" : "✖️"}</span>
                 </Button>
               );
             })}
           </div>
-          {item.scoringMode === "all-or-three" && <div className="text-sm font-medium text-zinc-700">Aktuell: {value ?? 0} / {item.max} Punkte</div>}
         </div>
       )}
       {isFluency && (
@@ -1834,16 +2699,70 @@ function AceTaskCard({ item, value, raw = {}, onScoreChange, onRawChange }) {
           </div>
         </div>
       )}
-      {!hasScorableMaterials && !isFluency && <AceScoreInput item={item} value={value} onChange={onScoreChange} />}
+      {!hasScorableMaterials && !isFluency && !hasFigureCriteria && !isClockScoring && !isRecognition && !guidelineScoreOptions && <AceScoreInput item={item} value={value} onChange={onScoreChange} />}
     </Card>
   );
 }
 
-function AceWire({ sessionData, onPersist, onAbort }) {
+function AceVersionSelection({ testLanguage, onSelect, onBack }) {
+  const languageLabel = getTestLanguageLabel(testLanguage);
+  return (
+    <section className="py-6">
+      <Header
+        title="ACE-III"
+        subtitle={`Testsprache: ${languageLabel}`}
+      />
+      <Card className="space-y-4">
+        <div>
+          <div className="text-xl font-semibold">ACE-Version auswählen</div>
+          <p className="mt-1 text-sm text-zinc-600">Welche Parallelversion soll für diese Testung verwendet werden?</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {ACE_VERSION_OPTIONS.map((version) => (
+            <Button
+              size="bare"
+              key={version}
+              type="button"
+              onClick={() => onSelect(version)}
+              className="min-h-28 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-4 text-left text-indigo-950 shadow-sm hover:bg-indigo-100"
+            >
+              <span className="block text-xs font-semibold uppercase tracking-wide text-indigo-600">ACE-III</span>
+              <span className="mt-1 block text-2xl font-semibold">Version {version}</span>
+              <span className="mt-2 block text-sm text-indigo-700">Version verwenden →</span>
+            </Button>
+          ))}
+        </div>
+        <div className="flex justify-end">
+          <Button type="button" variant="secondary" onClick={() => onBack && onBack()}>
+            Zurück zum Hauptmenü
+          </Button>
+        </div>
+      </Card>
+    </section>
+  );
+}
+
+function AceWire({ sessionData, testLanguage, onPersist, onAbort, onDone }) {
   const ace = sessionData?.ace || {};
+  const normalizedLanguage = normalizeTestLanguage(testLanguage);
+  const languageLabel = getTestLanguageLabel(normalizedLanguage);
   const scores = ace.scores || {};
   const raw = ace.raw || {};
   const notes = ace.notes || "";
+  const hasLegacyAceData = Object.keys(scores).length > 0 || Object.keys(raw).length > 0 || !!notes;
+  const storedVersion = ACE_VERSION_OPTIONS.includes(ace.version) ? ace.version : null;
+  const aceVersion = storedVersion || (hasLegacyAceData ? "A" : null);
+
+  if (!aceVersion) {
+    return (
+      <AceVersionSelection
+        testLanguage={normalizedLanguage}
+        onSelect={(version) => onPersist && onPersist({ version })}
+        onBack={onDone}
+      />
+    );
+  }
+
   const total = getAceTotal(ace);
   const persistScore = (key, max, value) => {
     const clamped = Math.max(0, Math.min(max, Number(value) || 0));
@@ -1857,38 +2776,59 @@ function AceWire({ sessionData, onPersist, onAbort }) {
     <section className="py-6">
       <Header
         title="ACE-III"
-        subtitle="Version A · Durchführung und Bewertung innerhalb der App"
-        right={<div className="rounded-2xl border bg-white px-4 py-2 text-3xl font-semibold tabular-nums">{total}/100</div>}
+        subtitle={`Version ${aceVersion} · Testsprache: ${languageLabel} · Durchführung mit gedrucktem Testmaterial`}
+        right={<div className="rounded-2xl border border-indigo-100 bg-white/90 px-4 py-2 text-3xl font-semibold tabular-nums shadow-sm">{total} / 100</div>}
       />
-      <div className="mb-3">
+      <div className="mb-3 flex flex-wrap gap-2">
         <AbortButton onAbort={onAbort} />
+        {!hasLegacyAceData && storedVersion && (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => onPersist && onPersist({ version: null })}
+          >
+            Version ändern
+          </Button>
+        )}
       </div>
       <Card className="mb-4">
         <div className="text-sm text-zinc-700">
-          Aufgabenstellungen und Testmaterial werden hier angezeigt. Zeichnungsaufgaben erfolgen auf Papier; am iPad wird nur bewertet.
+          Gedrucktes Testmaterial verwenden. Antworten und Bewertung werden hier erfasst; Zeichnungsaufgaben erfolgen auf Papier.
         </div>
+        {normalizedLanguage !== "de" && (
+          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+            Für die Durchführung die offizielle ACE-III-Sprachversion in {languageLabel} verwenden. Sprachabhängige Inhalte werden in der App neutral nach Wort, Bild, Satz oder Aufgabe nummeriert; die Bewertungslogik und Exportfelder bleiben identisch.
+          </div>
+        )}
       </Card>
       <div className="space-y-4">
         {ACE_TEST_FLOW.map((flowStep, flowIndex) => {
           const section = ACE_SECTIONS.find(({ key }) => key === flowStep.sectionKey);
-          const items = section?.items.filter((item) => flowStep.itemKeys.includes(item.key)) || [];
+          const items = section?.items.filter((item) => (
+            flowStep.itemKeys.includes(item.key) &&
+            !(item.key === "recognition" && isAceRecognitionAutomatic(ace))
+          )) || [];
           if (!section || items.length === 0) return null;
           const sectionScore = getAceSectionScore(ace, section);
           return (
             <section key={`${section.key}-${flowIndex}`} className="space-y-2">
               <div className="flex items-center justify-between gap-3">
                 <SectionTitle>{section.title}</SectionTitle>
-                <div className="rounded-xl border bg-white px-3 py-1 text-lg font-semibold tabular-nums">
-                  {sectionScore}/{section.max}
+                <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-1 text-lg font-semibold tabular-nums text-indigo-950">
+                  {sectionScore} / {section.max}
                 </div>
               </div>
               <div className="grid gap-3">
                 {items.map((item) => (
                   <AceTaskCard
                     key={item.key}
+                    ace={ace}
                     item={item}
-                    value={scores[item.key] ?? 0}
+                    value={getAceItemScore(ace, item)}
                     raw={raw[item.key] || {}}
+                    testLanguage={normalizedLanguage}
+                    aceVersion={aceVersion}
                     onScoreChange={(value) => persistScore(item.key, item.max, value)}
                     onRawChange={(value) => persistRaw(item.key, value)}
                   />
@@ -1897,7 +2837,8 @@ function AceWire({ sessionData, onPersist, onAbort }) {
             </section>
           );
         })}
-        <Card>
+        <Card className="space-y-2">
+          <SectionTitle>Allgemeine Notiz</SectionTitle>
           <textarea
             className="h-28 w-full rounded-xl border p-2"
             value={notes}
@@ -1906,6 +2847,1062 @@ function AceWire({ sessionData, onPersist, onAbort }) {
             placeholder="Notiz"
           />
         </Card>
+        <div className="flex justify-end">
+          <Button type="button" variant="primary" onClick={() => onDone && onDone()}>
+            Fertig
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const MOCA_GERMAN_VERSION_OPTIONS = ["A", "B", "C"];
+
+const MOCA_VARIANTS = {
+  de: {
+    A: {
+      displayLabel: "Deutsche Version A",
+      exportVersion: "A",
+      figure: { label: "Würfel abzeichnen", button: "Würfel erfüllt alle Kriterien" },
+      clock: { label: "Uhr zeichnen – zehn nach elf", prompt: "Eine Uhr mit allen Zahlen und der Zeit zehn nach elf zeichnen lassen." },
+      naming: ["Löwe", "Nashorn", "Kamel"],
+      memoryWords: ["Gesicht", "Samt", "Kirche", "Tulpe", "Rot"],
+      digitForward: "2 – 1 – 8 – 5 – 4",
+      digitBackward: "7 – 4 – 2",
+      vigilanceTarget: "A",
+      vigilanceSequence: "FBACMNAAJKLBAFAKDEAAAJAMOFAAB",
+      serialStart: 100,
+      serialExpected: [93, 86, 79, 72, 65],
+      sentences: [
+        "Ich weiß lediglich, dass Hans heute an der Reihe ist zu helfen.",
+        "Die Katze versteckte sich immer unter der Couch, wenn die Hunde im Zimmer waren.",
+      ],
+      fluencyLetter: "F",
+      abstractionPractice: { text: "Banane – Orange", answer: "Beispiel: sind Früchte" },
+      abstractionTasks: [
+        { key: "train_bicycle", text: "Eisenbahn – Fahrrad", correctLabel: "Korrekt (sind Fahrzeuge/sind aus Metall)" },
+        { key: "watch_ruler", text: "Uhr – Lineal", correctLabel: "Korrekt (sind Messinstrumente/haben Zahlen)" },
+      ],
+      orientation: ["Datum", "Monat", "Jahr", "Wochentag", "Ort", "Stadt"],
+    },
+    B: {
+      displayLabel: "Deutsche Alternative Version 2",
+      exportVersion: "B",
+      figure: { label: "Quader nachzeichnen", button: "Quader erfüllt alle Kriterien" },
+      clock: { label: "Uhr zeichnen – fünf nach vier", prompt: "Eine Uhr mit allen Zahlen und der Zeit fünf nach vier zeichnen lassen." },
+      naming: ["Giraffe", "Bär", "Nilpferd"],
+      memoryWords: ["Lastwagen", "Banane", "Geige", "Tisch", "Grün"],
+      digitForward: "3 – 2 – 9 – 6 – 5",
+      digitBackward: "8 – 5 – 2",
+      vigilanceTarget: "A",
+      vigilanceSequence: "FBACMNAAJKLBAFAKDEAAAJAMOFAAB",
+      serialStart: 90,
+      serialExpected: [83, 76, 69, 62, 55],
+      sentences: [
+        "Ein Vogel kann in geschlossene Fenster fliegen, wenn es dunkel und windig ist.",
+        "Die liebevolle Großmutter schickte Lebensmittel vor über einer Woche.",
+      ],
+      fluencyLetter: "K",
+      abstractionPractice: { text: "Banane – Apfelsine", answer: "Beispiel: sind Früchte" },
+      abstractionTasks: [
+        { key: "diamond_ruby", text: "Diamant – Rubin", correctLabel: "Korrekt (sind Edelsteine/sind wertvoll)" },
+        { key: "cannon_rifle", text: "Kanone – Gewehr", correctLabel: "Korrekt (sind Waffen/können schießen)" },
+      ],
+      orientation: ["Datum", "Monat", "Jahr", "Wochentag", "Ort", "Stadt"],
+    },
+    C: {
+      displayLabel: "Deutsche Alternative Version 3",
+      exportVersion: "C",
+      figure: { label: "Zylinder nachzeichnen", button: "Zylinder erfüllt alle Kriterien" },
+      clock: { label: "Uhr zeichnen – zehn nach neun", prompt: "Eine Uhr mit allen Zahlen und der Zeit zehn nach neun zeichnen lassen." },
+      naming: ["Esel", "Schwein", "Känguru"],
+      memoryWords: ["Zug", "Ei", "Hut", "Stuhl", "Blau"],
+      digitForward: "5 – 4 – 1 – 8 – 7",
+      digitBackward: "1 – 7 – 4",
+      vigilanceTarget: "A",
+      vigilanceSequence: "FBACMNAAJKLBAFAKDEAAAJAMOFAAB",
+      serialStart: 80,
+      serialExpected: [73, 66, 59, 52, 45],
+      sentences: [
+        "Sie hörte, sein Rechtsanwalt war derjenige, der nach dem Unfall klagte.",
+        "Die kleinen Mädchen, denen zu viele Süßigkeiten gegeben wurden, bekamen Magenschmerzen.",
+      ],
+      fluencyLetter: "M",
+      abstractionPractice: { text: "Banane – Apfelsine", answer: "Beispiel: sind Früchte" },
+      abstractionTasks: [
+        { key: "eye_ear", text: "Auge – Ohr", correctLabel: "Korrekt (sind Sinnesorgane/Körperteile)" },
+        { key: "trumpet_piano", text: "Trompete – Klavier", correctLabel: "Korrekt (sind Musikinstrumente/machen Musik)" },
+      ],
+      orientation: ["Datum", "Monat", "Jahr", "Wochentag", "Ort", "Stadt"],
+    },
+  },
+  en: {
+    A: {
+      displayLabel: "English Version 7.1 Original",
+      exportVersion: "7.1",
+      figure: { label: "Copy cube", button: "Cube fulfils all criteria" },
+      clock: { label: "Draw a clock – ten past eleven", prompt: "Draw a clock, put in all the numbers, and set the time to ten past eleven." },
+      naming: ["Lion", "Rhinoceros", "Camel"],
+      memoryWords: ["Face", "Velvet", "Church", "Daisy", "Red"],
+      digitForward: "2 – 1 – 8 – 5 – 4",
+      digitBackward: "7 – 4 – 2",
+      vigilanceTarget: "A",
+      vigilanceSequence: "FBACMNAAJKLBAFAKDEAAAJAMOFAAB",
+      serialStart: 100,
+      serialExpected: [93, 86, 79, 72, 65],
+      sentences: [
+        "I only know that John is the one to help today.",
+        "The cat always hid under the couch when dogs were in the room.",
+      ],
+      fluencyLetter: "F",
+      abstractionPractice: { text: "Banana – orange", answer: "Example: fruit" },
+      abstractionTasks: [
+        { key: "train_bicycle", text: "Train – bicycle", correctLabel: "Correct (means of transportation/made of metal)" },
+        { key: "watch_ruler", text: "Watch – ruler", correctLabel: "Correct (measuring instruments/have numbers)" },
+      ],
+      orientation: ["Date", "Month", "Year", "Day", "Place", "City"],
+    },
+  },
+  pl: {
+    A: {
+      displayLabel: "Polska wersja 8.1",
+      exportVersion: "8.1",
+      figure: { label: "Skopiuj sześcian", button: "Sześcian spełnia wszystkie kryteria" },
+      clock: { label: "Narysuj zegar – dziesięć po jedenastej", prompt: "Narysuj zegar ze wszystkimi liczbami i ustaw godzinę dziesięć po jedenastej." },
+      naming: ["Lew", "Nosorożec", "Wielbłąd"],
+      memoryWords: ["Twarz", "Aksamit", "Kościół", "Stokrotka", "Czerwony"],
+      digitForward: "2 – 1 – 8 – 5 – 4",
+      digitBackward: "7 – 4 – 2",
+      vigilanceTarget: "A",
+      vigilanceSequence: "FBACMNAAJKLBAFAKDEAAAJAMOFAAB",
+      serialStart: 100,
+      serialExpected: [93, 86, 79, 72, 65],
+      sentences: [
+        "Wiem tylko, że to Jan ma dzisiaj pomagać.",
+        "Kot zawsze chował się pod kanapą, gdy psy były w pokoju.",
+      ],
+      fluencyLetter: "F",
+      abstractionPractice: { text: "Banan – pomarańcza", answer: "Przykład: owoce" },
+      abstractionTasks: [
+        { key: "train_bicycle", text: "Pociąg – rower", correctLabel: "Prawidłowo (środki transportu/są z metalu)" },
+        { key: "watch_ruler", text: "Zegarek – linijka", correctLabel: "Prawidłowo (przyrządy pomiarowe/mają liczby)" },
+      ],
+      orientation: ["Data", "Miesiąc", "Rok", "Dzień", "Miejsce", "Miasto"],
+    },
+  },
+  ru: {
+    A: {
+      displayLabel: "Русская версия 7.1 (2010)",
+      exportVersion: "7.1 (2010)",
+      figure: { label: "Скопируйте куб", button: "Куб соответствует всем критериям" },
+      clock: { label: "Нарисуйте часы – десять минут двенадцатого", prompt: "Нарисуйте часы со всеми цифрами и установите время десять минут двенадцатого." },
+      naming: ["Лев", "Носорог", "Верблюд"],
+      memoryWords: ["Лицо", "Бархат", "Церковь", "Фиалка", "Красный"],
+      digitForward: "2 – 1 – 8 – 5 – 4",
+      digitBackward: "7 – 4 – 2",
+      vigilanceTarget: "А",
+      vigilanceSequence: "ФБАВМНААЖКЛБАФАКДЕАААЖАМОФААБ",
+      serialStart: 100,
+      serialExpected: [93, 86, 79, 72, 65],
+      sentences: [
+        "Я знаю только одно, что Иван – это тот, кто может сегодня помочь.",
+        "Кошка всегда пряталась под диваном, когда собаки были в комнате.",
+      ],
+      fluencyLetter: "Л",
+      abstractionPractice: { text: "Банан – яблоко", answer: "Пример: фрукты" },
+      abstractionTasks: [
+        { key: "train_bicycle", text: "Поезд – велосипед", correctLabel: "Верно (транспортные средства/сделаны из металла)" },
+        { key: "watch_ruler", text: "Часы – линейка", correctLabel: "Верно (измерительные приборы/имеют цифры)" },
+      ],
+      orientation: ["Дата", "Месяц", "Год", "День недели", "Место", "Город"],
+    },
+  },
+  tr: {
+    A: {
+      displayLabel: "Türkçe versiyon 2009",
+      exportVersion: "2009",
+      figure: { label: "Küp kopyalama", button: "Küp tüm kriterleri karşılıyor" },
+      clock: { label: "Saat çizme – on biri on geçe", prompt: "Tüm rakamları içeren ve on biri on geçeyi gösteren bir saat çizin." },
+      naming: ["Aslan", "Gergedan", "Deve"],
+      memoryWords: ["Burun", "Kadife", "Cami", "Papatya", "Mor"],
+      digitForward: "2 – 1 – 8 – 5 – 4",
+      digitBackward: "7 – 4 – 2",
+      vigilanceTarget: "A",
+      vigilanceSequence: "FBACMNAAJKLBAFAKDEAAAJAMOFAAB",
+      serialStart: 100,
+      serialExpected: [93, 86, 79, 72, 65],
+      sentences: [
+        "Tek bildiğim bugün yardıma ihtiyacı olan kişinin Ahmet olduğudur.",
+        "Köpekler odadayken kedi hep kanapenin altında saklanırdı.",
+      ],
+      fluencyLetter: "K",
+      abstractionPractice: { text: "Muz – portakal", answer: "Örnek: meyve" },
+      abstractionTasks: [
+        { key: "train_bicycle", text: "Tren – bisiklet", correctLabel: "Doğru (taşıttır/metalden yapılmıştır)" },
+        { key: "watch_ruler", text: "Saat – cetvel", correctLabel: "Doğru (ölçüm aracıdır/rakamları vardır)" },
+      ],
+      orientation: ["Gün", "Ay", "Yıl", "Gün adı", "Yer", "Şehir"],
+    },
+  },
+};
+
+const MOCA_MEMORY_WORDS = MOCA_VARIANTS.de.A.memoryWords;
+
+function normalizeMocaGermanVersion(version) {
+  return MOCA_GERMAN_VERSION_OPTIONS.includes(version) ? version : "A";
+}
+
+function getMocaVariant(testLanguage, version) {
+  const language = normalizeTestLanguage(testLanguage);
+  const availableVariants = MOCA_VARIANTS[language];
+  const versionKey = language === "de" ? normalizeMocaGermanVersion(version) : "A";
+  const available = !!availableVariants?.[versionKey];
+  const materials = available ? availableVariants[versionKey] : MOCA_VARIANTS.de.A;
+  return {
+    ...materials,
+    displayLabel: available ? materials.displayLabel : `Externe MoCA-Version (${getTestLanguageLabel(language)})`,
+    exportVersion: available ? materials.exportVersion : "extern",
+    language,
+    versionKey,
+    available,
+  };
+}
+
+const MOCA_SECTIONS = [
+  {
+    key: "visuospatial_executive",
+    title: "Visuell-räumlich / Exekutiv",
+    max: 5,
+    items: [
+      {
+        key: "trail",
+        label: "Alternierender Pfad",
+        max: 1,
+        prompt: "Aufgabe auf dem gedruckten Testbogen durchführen und das Ergebnis hier bewerten.",
+        hint: "1 Punkt nur für die vollständig korrekte Folge ohne gekreuzte Linien. Ein unmittelbar selbst korrigierter Fehler ist zulässig.",
+        materials: ["Pfad vollständig korrekt"],
+      },
+      {
+        key: "cube",
+        label: "Würfel abzeichnen",
+        max: 1,
+        prompt: "Patient:in zeichnet den Würfel auf dem Testbogen; hier nur die Bewertung erfassen.",
+        hint: "Dreidimensional, alle Linien vorhanden, keine zusätzlichen Linien und annähernd parallele Seiten.",
+        materials: ["Würfel erfüllt alle Kriterien"],
+      },
+      {
+        key: "clock",
+        label: "Uhr zeichnen – zehn nach elf",
+        max: 3,
+        prompt: "Eine Uhr mit allen Zahlen und der Zeit zehn nach elf zeichnen lassen.",
+        hint: "Je 1 Punkt für Kontur, Zahlen und Zeiger. Die Kontur muss als geschlossener Kreis erkennbar sein.",
+        materials: ["Kontur korrekt", "Zahlen korrekt", "Zeiger korrekt"],
+      },
+    ],
+  },
+  {
+    key: "naming",
+    title: "Benennen",
+    max: 3,
+    items: [
+      {
+        key: "naming",
+        label: "Tiere benennen",
+        max: 3,
+        prompt: "Die drei Abbildungen auf dem gedruckten Testbogen zeigen und jede korrekte Benennung markieren.",
+        materials: ["Löwe", "Nashorn", "Kamel"],
+        neutralPrefix: "Bild",
+      },
+    ],
+  },
+  {
+    key: "attention",
+    title: "Aufmerksamkeit",
+    max: 6,
+    items: [
+      {
+        key: "digit_span",
+        label: "Zahlenspanne",
+        max: 2,
+        prompt: "Ziffern mit einer Ziffer pro Sekunde vorlesen und zunächst in gleicher, anschließend in umgekehrter Reihenfolge wiederholen lassen.",
+        scoringMode: "digit-span",
+      },
+      {
+        key: "vigilance",
+        label: "Vigilanz – Zielbuchstabe A",
+        max: 1,
+        prompt: "Die Buchstabenfolge mit einem Buchstaben pro Sekunde vorlesen; bei jedem A klopfen lassen.",
+        hint: "1 Punkt bei höchstens einem Fehler. Als Fehler zählen ausgelassene A und Reaktionen auf andere Buchstaben.",
+        sequence: "FBACMNAAJKLBAFAKDEAAAJAMOFAAB",
+        scoringMode: "errors",
+      },
+      {
+        key: "serial_subtraction",
+        label: "Serielles Rechnen",
+        max: 3,
+        prompt: "Von 100 fünfmal nacheinander 7 im Kopf abziehen lassen.",
+        hint: "Jeden Rechenschritt unabhängig bewerten: Nach einem Fehler kann die nächste korrekte Subtraktion wieder zählen. 4–5 korrekte Subtraktionen = 3 Punkte, 2–3 = 2 Punkte, 1 = 1 Punkt, keine = 0 Punkte.",
+        materials: ["1. Subtraktion korrekt · Sollwert bei fehlerfreier Reihe: 93", "2. Subtraktion korrekt · Sollwert bei fehlerfreier Reihe: 86", "3. Subtraktion korrekt · Sollwert bei fehlerfreier Reihe: 79", "4. Subtraktion korrekt · Sollwert bei fehlerfreier Reihe: 72", "5. Subtraktion korrekt · Sollwert bei fehlerfreier Reihe: 65"],
+        scoringMode: "serial-seven",
+      },
+    ],
+  },
+  {
+    key: "language",
+    title: "Sprache",
+    max: 3,
+    items: [
+      {
+        key: "sentence_repetition",
+        label: "Sätze nachsprechen",
+        max: 2,
+        prompt: "Jeden Satz genau einmal vorlesen und vollständig nachsprechen lassen.",
+        hint: "Je wortgetreu wiederholtem Satz 1 Punkt.",
+        materials: [
+          "Ich weiß lediglich, dass Hans heute an der Reihe ist zu helfen.",
+          "Die Katze versteckte sich immer unter der Couch, wenn die Hunde im Zimmer waren.",
+        ],
+        neutralPrefix: "Satz",
+      },
+      {
+        key: "letter_fluency",
+        label: "Phonematische Wortflüssigkeit",
+        max: 1,
+        prompt: "Eine Minute lang möglichst viele Wörter mit F nennen lassen.",
+        hint: "Mindestens 11 zulässige Wörter ergeben 1 Punkt. Eigennamen sowie Varianten desselben Wortstamms nicht zählen.",
+        scoringMode: "fluency",
+      },
+    ],
+  },
+  {
+    key: "abstraction",
+    title: "Abstraktion",
+    max: 2,
+    items: [
+      {
+        key: "abstraction",
+        label: "Gemeinsamkeiten",
+        max: 2,
+        prompt: "Nach der Gemeinsamkeit der beiden Begriffe fragen.",
+        scoringMode: "abstraction",
+        tasks: [
+          { key: "train_bicycle", text: "Eisenbahn – Fahrrad", correctLabel: "Korrekt (sind Fahrzeuge/sind aus Metall)" },
+          { key: "watch_ruler", text: "Uhr – Lineal", correctLabel: "Korrekt (sind Messinstrumente/haben Zahlen)" },
+        ],
+      },
+    ],
+  },
+  {
+    key: "delayed_recall",
+    title: "Verzögerter Abruf",
+    max: 5,
+    items: [
+      {
+        key: "delayed_recall",
+        label: "Wörter frei abrufen",
+        max: 5,
+        prompt: "Die fünf zuvor eingeprägten Wörter ohne Hinweis frei abrufen lassen.",
+        hint: "Nur der freie Abruf zählt. Kategoriehinweise und Mehrfachauswahl anschließend nur bei nicht frei erinnerten Wörtern dokumentieren.",
+        materials: MOCA_MEMORY_WORDS,
+        neutralPrefix: "Wort",
+        scoringMode: "delayed-recall",
+      },
+    ],
+  },
+  {
+    key: "orientation",
+    title: "Orientierung",
+    max: 6,
+    items: [
+      {
+        key: "orientation",
+        label: "Zeit und Ort",
+        max: 6,
+        prompt: "Nach Datum, Monat, Jahr, Wochentag, Ort und Stadt fragen.",
+        hint: "Je korrekter Antwort 1 Punkt. Beim Datum ist kein Toleranzbereich vorgesehen.",
+        materials: ["Datum", "Monat", "Jahr", "Wochentag", "Ort", "Stadt"],
+        neutralPrefix: "Orientierungsfrage",
+      },
+    ],
+  },
+];
+
+function getMocaVariantItem(item, variant) {
+  const materialsLocalized = variant.available;
+  if (item.key === "cube") {
+    return {
+      ...item,
+      label: materialsLocalized ? variant.figure.label : "Figur abzeichnen",
+      materials: [materialsLocalized ? variant.figure.button : "Figur erfüllt alle Kriterien"],
+      materialsLocalized,
+    };
+  }
+  if (item.key === "clock") {
+    return {
+      ...item,
+      label: materialsLocalized ? variant.clock.label : "Uhr zeichnen",
+      prompt: materialsLocalized ? variant.clock.prompt : "Uhrzeit gemäß der offiziellen gedruckten Sprachversion zeichnen lassen.",
+      materialsLocalized,
+    };
+  }
+  if (item.key === "naming") {
+    return { ...item, materials: variant.naming, materialsLocalized };
+  }
+  if (item.key === "digit_span") {
+    return {
+      ...item,
+      digitForward: variant.digitForward,
+      digitBackward: variant.digitBackward,
+      materialsLocalized,
+    };
+  }
+  if (item.key === "vigilance") {
+    return {
+      ...item,
+      label: materialsLocalized ? `Vigilanz – Zielbuchstabe ${variant.vigilanceTarget}` : "Vigilanz – Zielbuchstabe laut Druckversion",
+      prompt: materialsLocalized
+        ? `Die Buchstabenfolge mit einem Buchstaben pro Sekunde vorlesen; bei jedem ${variant.vigilanceTarget} klopfen lassen.`
+        : "Buchstabenfolge und Zielbuchstabe aus der offiziellen gedruckten Sprachversion verwenden.",
+      sequence: materialsLocalized ? variant.vigilanceSequence : null,
+      materialsLocalized,
+    };
+  }
+  if (item.key === "serial_subtraction") {
+    return {
+      ...item,
+      prompt: `Von ${variant.serialStart} fünfmal nacheinander 7 im Kopf abziehen lassen.`,
+      materials: variant.serialExpected.map((expected, index) => `${index + 1}. Subtraktion korrekt · Sollwert bei fehlerfreier Reihe: ${expected}`),
+      materialsLocalized,
+    };
+  }
+  if (item.key === "sentence_repetition") {
+    return { ...item, materials: variant.sentences, materialsLocalized };
+  }
+  if (item.key === "letter_fluency") {
+    return {
+      ...item,
+      prompt: materialsLocalized
+        ? `Eine Minute lang möglichst viele Wörter mit ${variant.fluencyLetter} nennen lassen.`
+        : "Eine Minute lang möglichst viele Wörter mit dem Buchstaben der offiziellen gedruckten Sprachversion nennen lassen.",
+      fluencyLetter: variant.fluencyLetter,
+      materialsLocalized,
+    };
+  }
+  if (item.key === "abstraction") {
+    return {
+      ...item,
+      practice: variant.abstractionPractice,
+      tasks: variant.abstractionTasks,
+      materialsLocalized,
+    };
+  }
+  if (item.key === "delayed_recall") {
+    return { ...item, materials: variant.memoryWords, materialsLocalized };
+  }
+  if (item.key === "orientation") {
+    return { ...item, materials: variant.orientation, materialsLocalized };
+  }
+  return { ...item, materialsLocalized };
+}
+
+function countMocaMarks(marks) {
+  if (!marks || typeof marks !== "object") return 0;
+  return Object.values(marks).filter(Boolean).length;
+}
+
+function getMocaItemScore(moca, item) {
+  const score = Number(moca?.scores?.[item.key] || 0);
+  return Math.max(0, Math.min(item.max, score));
+}
+
+function getMocaSectionScore(moca, section) {
+  return section.items.reduce((sum, item) => sum + getMocaItemScore(moca, item), 0);
+}
+
+function getMocaRawTotal(moca) {
+  return MOCA_SECTIONS.reduce((sum, section) => sum + getMocaSectionScore(moca, section), 0);
+}
+
+function getMocaTotal(moca) {
+  return getMocaRawTotal(moca);
+}
+
+function scoreMocaSerialSeven(correctCount) {
+  if (correctCount >= 4) return 3;
+  if (correctCount >= 2) return 2;
+  if (correctCount >= 1) return 1;
+  return 0;
+}
+
+function getMocaMaterialEntries(item, testLanguage) {
+  const materials = Array.isArray(item.materials) ? item.materials : [];
+  if (item.materialsLocalized || normalizeTestLanguage(testLanguage) === "de" || !item.neutralPrefix) {
+    return materials.map((material) => ({ key: material, label: material }));
+  }
+  return materials.map((material, index) => ({ key: material, label: `${item.neutralPrefix} ${index + 1}` }));
+}
+
+function MocaLearningTrials({ raw = {}, testLanguage, variant, onRawChange }) {
+  const [activeRun, setActiveRun] = useState(0);
+  const touchStartX = useRef(null);
+  const usePrintedLanguageVersion = !variant.available;
+  const storedRuns = Array.isArray(raw.runs) ? raw.runs : [];
+  const runs = Array.from({ length: 2 }, (_, index) => ({
+    ...(storedRuns[index] || {}),
+    marks: storedRuns[index]?.marks || {},
+  }));
+  const entries = variant.memoryWords.map((word, index) => ({
+    key: word,
+    label: usePrintedLanguageVersion ? `Wort ${index + 1}` : word,
+  }));
+  const selectRun = (index) => setActiveRun(Math.max(0, Math.min(1, index)));
+  const toggleWord = (word) => {
+    const nextRuns = runs.map((run, index) => {
+      if (index !== activeRun) return run;
+      const marks = { ...run.marks, [word]: !run.marks[word] };
+      return { ...run, marks: Object.fromEntries(Object.entries(marks).filter(([, checked]) => checked)) };
+    });
+    onRawChange({ ...raw, runs: nextRuns });
+  };
+  const activeMarks = runs[activeRun].marks;
+
+  return (
+    <Card className="space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-lg font-semibold">Wörter einprägen</div>
+          <p className="mt-1 text-sm text-zinc-600">Fünf Wörter vorlesen und nachsprechen lassen; anschließend einen zweiten Durchgang durchführen.</p>
+          <p className="mt-1 text-xs text-zinc-500">Beide Durchgänge werden dokumentiert, aber nicht bepunktet. Nach dem zweiten Durchgang auf den späteren Abruf hinweisen.</p>
+        </div>
+        <div className="shrink-0 rounded-lg border bg-zinc-50 px-2 py-1 text-xs font-semibold text-zinc-600">Ohne Wertung</div>
+      </div>
+      <div className="grid grid-cols-2 gap-2" role="tablist" aria-label="Einprägedurchgänge">
+        {runs.map((run, index) => {
+          const selected = activeRun === index;
+          return (
+            <Button
+              key={index}
+              size="bare"
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              onClick={() => selectRun(index)}
+              className={cls(
+                "rounded-xl border px-2 py-2 text-sm",
+                selected ? "border-indigo-700 bg-indigo-700 text-white" : "border-zinc-300 bg-white text-zinc-700"
+              )}
+            >
+              <span className="block font-semibold">Durchgang {index + 1}</span>
+              <span className={cls("block text-xs", selected ? "text-indigo-100" : "text-zinc-500")}>{countMocaMarks(run.marks)}/5 nachgesprochen</span>
+            </Button>
+          );
+        })}
+      </div>
+      <div
+        className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 touch-pan-y"
+        onTouchStart={(event) => { touchStartX.current = event.touches[0]?.clientX ?? null; }}
+        onTouchEnd={(event) => {
+          if (touchStartX.current === null) return;
+          const endX = event.changedTouches[0]?.clientX ?? touchStartX.current;
+          const delta = endX - touchStartX.current;
+          touchStartX.current = null;
+          if (Math.abs(delta) >= 45) selectRun(activeRun + (delta < 0 ? 1 : -1));
+        }}
+      >
+        {usePrintedLanguageVersion && (
+          <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+            Wörter aus der offiziellen gedruckten MoCA-Version in {getTestLanguageLabel(testLanguage)} verwenden.
+          </div>
+        )}
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          {entries.map(({ key, label }) => {
+            const checked = !!activeMarks[key];
+            return (
+              <Button
+                key={key}
+                size="bare"
+                type="button"
+                aria-pressed={checked}
+                onClick={() => toggleWord(key)}
+                className={cls(
+                  "flex min-h-12 items-center justify-between rounded-xl border px-3 py-2 text-left",
+                  checked ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-zinc-300 bg-white"
+                )}
+              >
+                <span>{label}</span><span>{checked ? "✔️" : "✖️"}</span>
+              </Button>
+            );
+          })}
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <Button type="button" variant="secondary" size="sm" disabled={activeRun === 0} onClick={() => selectRun(activeRun - 1)}>← Vorheriger Durchgang</Button>
+        <div className="text-xs text-zinc-500">Karte nach links oder rechts wischen</div>
+        <Button type="button" variant="primary" size="sm" disabled={activeRun === 1} onClick={() => selectRun(activeRun + 1)}>Nächster Durchgang →</Button>
+      </div>
+    </Card>
+  );
+}
+
+function MocaDelayedRecallCues({ item, raw, materialMarks, testLanguage, onRawChange }) {
+  const entries = getMocaMaterialEntries(item, testLanguage).filter(({ key }) => !materialMarks[key]);
+  if (entries.length === 0) return null;
+  const cues = raw.cues && typeof raw.cues === "object" ? raw.cues : {};
+  const setCue = (word, outcome) => {
+    const nextCues = { ...cues, [word]: cues[word] === outcome ? null : outcome };
+    onRawChange({ ...raw, cues: Object.fromEntries(Object.entries(nextCues).filter(([, value]) => value)) });
+  };
+  return (
+    <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+      <div className="text-sm font-semibold text-amber-950">Nicht frei erinnerte Wörter – optionale Hinweise ohne Punkte</div>
+      {entries.map(({ key, label }) => (
+        <div key={key} className="rounded-xl border border-amber-200 bg-white p-3">
+          <div className="mb-2 text-sm font-medium">{label}</div>
+          <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label={`Hinweisergebnis ${label}`}>
+            {[
+              { value: "category", label: "Nach Kategoriehinweis erinnert", positive: true },
+              { value: "choice", label: "Nach Mehrfachauswahl erkannt", positive: true },
+              { value: "missed", label: "Auch mit Hinweisen nicht erinnert", positive: false },
+            ].map((option) => {
+              const selected = cues[key] === option.value;
+              return (
+                <Button
+                  key={option.value}
+                  size="bare"
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => setCue(key, option.value)}
+                  className={cls(
+                    "min-h-11 rounded-xl border px-3 py-2 text-left text-sm",
+                    selected
+                      ? option.positive
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                        : "border-rose-200 bg-rose-50 text-rose-800"
+                      : "border-zinc-300 bg-white"
+                  )}
+                >
+                  {option.label}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MocaDigitSpan({ item, value, raw, onScoreChange, onRawChange }) {
+  const legacyForwardKey = "Vorwärts korrekt: 2 – 1 – 8 – 5 – 4";
+  const legacyBackwardKey = "Rückwärts korrekt: 2 – 4 – 7";
+  const hasLegacyMarks = raw.marks && typeof raw.marks === "object";
+  const vals = raw.vals && typeof raw.vals === "object"
+    ? raw.vals
+    : {
+        v1: hasLegacyMarks ? (raw.marks[legacyForwardKey] ? 1 : null) : Number(value) >= 1 ? 1 : null,
+        v2: hasLegacyMarks ? (raw.marks[legacyBackwardKey] ? 1 : null) : Number(value) >= 2 ? 1 : null,
+      };
+  const update = (nextVals) => {
+    onRawChange({ ...raw, vals: nextVals });
+    onScoreChange(Number(nextVals.v1 === 1) + Number(nextVals.v2 === 1));
+  };
+
+  return (
+    <AttemptsRow
+      title="MoCA – Zahlenspanne"
+      seq1={item.materialsLocalized ? `Vorwärts: ${item.digitForward}` : "Vorwärts: gemäß offizieller Druckversion"}
+      seq2={item.materialsLocalized ? `Rückwärts: ${item.digitBackward}` : "Rückwärts: gemäß offizieller Druckversion"}
+      val={vals}
+      onChange={update}
+      stacked
+    />
+  );
+}
+
+function MocaAbstraction({ item, value, raw, onScoreChange, onRawChange }) {
+  const usePrintedLanguageVersion = !item.materialsLocalized;
+  const tasks = Array.isArray(item.tasks) ? item.tasks : [];
+  const practice = item.practice || MOCA_VARIANTS.de.A.abstractionPractice;
+  const marks = raw.marks || Object.fromEntries(tasks.slice(0, Number(value) || 0).map((task) => [task.key, 1]));
+  const toggleTask = (taskKey) => {
+    const nextMarks = { ...marks, [taskKey]: !marks[taskKey] };
+    const cleanedMarks = Object.fromEntries(Object.entries(nextMarks).filter(([, checked]) => checked));
+    onRawChange({ ...raw, marks: cleanedMarks });
+    onScoreChange(countMocaMarks(cleanedMarks));
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <span className="text-xs font-semibold uppercase tracking-wide text-amber-800">Probe</span>
+          <span className="rounded-lg border border-amber-300 bg-white px-2 py-1 text-xs font-semibold text-amber-900">Ohne Wertung</span>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <span className="text-lg font-semibold text-amber-950">{usePrintedLanguageVersion ? "Begriffspaar der offiziellen Probe" : practice.text}</span>
+          <div className="rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm text-amber-950">
+            {usePrintedLanguageVersion ? "Beispielantwort gemäß gedruckter Sprachversion" : practice.answer}
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {tasks.map((task, index) => {
+          const selected = !!marks[task.key];
+          return (
+            <div key={task.key} className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-lg font-semibold text-zinc-900">{usePrintedLanguageVersion ? `Begriffspaar ${index + 1}` : task.text}</span>
+              <Button
+                size="bare"
+                type="button"
+                aria-pressed={selected}
+                onClick={() => toggleTask(task.key)}
+                className={cls(
+                  "min-h-11 rounded-xl border px-3 py-2 text-left text-sm",
+                  selected ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-zinc-300 bg-white"
+                )}
+              >
+                {usePrintedLanguageVersion ? "Korrekt" : task.correctLabel}
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function MocaTaskCard({ item, value, raw = {}, testLanguage, onScoreChange, onRawChange }) {
+  const entries = getMocaMaterialEntries(item, testLanguage);
+  const isErrors = item.scoringMode === "errors";
+  const isSerial = item.scoringMode === "serial-seven";
+  const isFluency = item.scoringMode === "fluency";
+  const isDelayedRecall = item.scoringMode === "delayed-recall";
+  const isDigitSpan = item.scoringMode === "digit-span";
+  const isAbstraction = item.scoringMode === "abstraction";
+  const inferredCount = isSerial
+    ? ({ 0: 0, 1: 1, 2: 2, 3: 4 }[Number(value) || 0] || 0)
+    : Number(value) || 0;
+  const materialMarks = raw.marks || Object.fromEntries(entries.slice(0, inferredCount).map(({ key }) => [key, 1]));
+  const usePrintedLanguageVersion = !item.materialsLocalized;
+
+  const toggleMaterial = (material) => {
+    const nextMarks = { ...materialMarks, [material]: !materialMarks[material] };
+    const cleanedMarks = Object.fromEntries(Object.entries(nextMarks).filter(([, checked]) => checked));
+    const nextRaw = { ...raw, marks: cleanedMarks };
+    if (isDelayedRecall && cleanedMarks[material]) {
+      const nextCues = { ...(raw.cues || {}) };
+      delete nextCues[material];
+      nextRaw.cues = nextCues;
+    }
+    onRawChange(nextRaw);
+    const correctCount = countMocaMarks(cleanedMarks);
+    onScoreChange(isSerial ? scoreMocaSerialSeven(correctCount) : correctCount);
+  };
+
+  const updateErrors = (nextValue) => {
+    const normalized = nextValue === "" ? "" : Math.max(0, Math.floor(Number(nextValue) || 0));
+    onRawChange({ ...raw, errors: normalized });
+    onScoreChange(normalized !== "" && normalized <= 1 ? 1 : 0);
+  };
+  const updateFluency = (nextValue) => {
+    const normalized = nextValue === "" ? "" : Math.max(0, Math.floor(Number(nextValue) || 0));
+    onRawChange({ ...raw, count: normalized });
+    onScoreChange(normalized !== "" && normalized >= 11 ? 1 : 0);
+  };
+
+  return (
+    <Card className="space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-lg font-semibold">{item.label}</div>
+          {item.prompt && <p className="mt-1 text-sm text-zinc-600">{usePrintedLanguageVersion && item.key === "letter_fluency" ? "Aufgabe gemäß der offiziellen gedruckten Sprachversion durchführen." : item.prompt}</p>}
+          {item.hint && <p className="mt-1 text-xs text-zinc-500">{item.hint}</p>}
+        </div>
+        <div className="shrink-0 text-sm text-zinc-600">Punkte: <span className="font-semibold tabular-nums text-zinc-900">{value ?? 0} / {item.max}</span></div>
+      </div>
+
+      {isDigitSpan && (
+        <MocaDigitSpan
+          item={item}
+          value={value}
+          raw={raw}
+          onScoreChange={onScoreChange}
+          onRawChange={onRawChange}
+        />
+      )}
+
+      {isAbstraction && (
+        <MocaAbstraction
+          item={item}
+          value={value}
+          raw={raw}
+          onScoreChange={onScoreChange}
+          onRawChange={onRawChange}
+        />
+      )}
+
+      {entries.length > 0 && !isErrors && !isFluency && !isDigitSpan && !isAbstraction && (
+        <div className="grid gap-2 md:grid-cols-2">
+          {entries.map(({ key, label }) => {
+            const checked = !!materialMarks[key];
+            return (
+              <Button
+                key={key}
+                size="bare"
+                type="button"
+                aria-pressed={checked}
+                onClick={() => toggleMaterial(key)}
+                className={cls(
+                  "flex min-h-12 items-center justify-between rounded-xl border px-3 py-2 text-left",
+                  checked ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-zinc-300 bg-white"
+                )}
+              >
+                <span>{label}</span><span>{checked ? "✔️" : "✖️"}</span>
+              </Button>
+            );
+          })}
+        </div>
+      )}
+
+      {isErrors && (
+        <div className="space-y-3">
+          {item.sequence && (
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-4" aria-label="Buchstabenfolge für die Vigilanzaufgabe">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-indigo-700">Buchstabenfolge</div>
+              <div className="break-words font-mono text-xl font-semibold leading-relaxed tracking-[0.22em] text-indigo-950 sm:text-2xl">
+                {item.sequence.split("").join(" ")}
+              </div>
+            </div>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="secondary" onClick={() => updateErrors((Number(raw.errors) || 0) + 1)}>+1 Fehler</Button>
+            <input
+              className="h-11 w-28 rounded-xl border px-3 text-lg"
+              inputMode="numeric"
+              aria-label="Anzahl Fehler"
+              value={raw.errors ?? ""}
+              onChange={(event) => updateErrors(event.target.value)}
+              placeholder="Fehler"
+            />
+            <Button variant="secondary" disabled={(Number(raw.errors) || 0) <= 0} onClick={() => updateErrors((Number(raw.errors) || 0) - 1)}>−1 Fehler</Button>
+          </div>
+        </div>
+      )}
+
+      {isFluency && (
+        <div className="grid gap-3 md:grid-cols-[260px_1fr]">
+          <Countdown60 />
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Korrekte Wörter</label>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="secondary" onClick={() => updateFluency((Number(raw.count) || 0) + 1)}>+1 Wort</Button>
+              <input
+                className="h-11 w-28 rounded-xl border px-3 text-lg"
+                inputMode="numeric"
+                value={raw.count ?? ""}
+                onChange={(event) => updateFluency(event.target.value)}
+                placeholder="0"
+                aria-label="Korrekte Wörter"
+              />
+              <Button variant="secondary" disabled={(Number(raw.count) || 0) <= 0} onClick={() => updateFluency((Number(raw.count) || 0) - 1)}>−1 Wort</Button>
+            </div>
+            <textarea
+              className="h-24 w-full rounded-xl border p-2 text-sm"
+              value={raw.transcript || ""}
+              onChange={(event) => onRawChange({ ...raw, transcript: event.target.value })}
+              aria-label="Wortflüssigkeitsnotiz"
+              placeholder="Nennungen / Notiz"
+            />
+          </div>
+        </div>
+      )}
+
+      {isDelayedRecall && (
+        <MocaDelayedRecallCues
+          item={item}
+          raw={raw}
+          materialMarks={materialMarks}
+          testLanguage={testLanguage}
+          onRawChange={onRawChange}
+        />
+      )}
+    </Card>
+  );
+}
+
+function MocaVersionSelection({ onSelect, onBack }) {
+  const options = [
+    { key: "A", label: "A" },
+    { key: "B", label: "B" },
+    { key: "C", label: "C" },
+  ];
+  return (
+    <section className="py-6">
+      <Header title="MoCA" subtitle="Testsprache: Deutsch" />
+      <Card className="space-y-4">
+        <div>
+          <div className="text-xl font-semibold">Deutsche MoCA-Version auswählen</div>
+          <p className="mt-1 text-sm text-zinc-600">Welche Parallelversion soll für diese Testung verwendet werden?</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {options.map((option) => (
+            <Button
+              key={option.key}
+              size="bare"
+              type="button"
+              onClick={() => onSelect(option.key)}
+              className="min-h-28 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-4 text-left text-blue-950 shadow-sm hover:bg-blue-100"
+            >
+              <span className="block text-xs font-semibold uppercase tracking-wide text-blue-600">MoCA</span>
+              <span className="mt-1 block text-xl font-semibold">{option.label}</span>
+              <span className="mt-2 block text-sm text-blue-700">Version verwenden →</span>
+            </Button>
+          ))}
+        </div>
+        <div className="flex justify-end">
+          <Button type="button" variant="secondary" onClick={onBack}>Zurück zum Hauptmenü</Button>
+        </div>
+      </Card>
+    </section>
+  );
+}
+
+function MocaWire({ sessionData, testLanguage, onPersist, onReset, onAbort, onDone }) {
+  const moca = sessionData?.moca || {};
+  const scores = moca.scores || {};
+  const raw = moca.raw || {};
+  const requestedLanguage = normalizeTestLanguage(testLanguage);
+  const storedLanguage = moca.language ? normalizeTestLanguage(moca.language) : null;
+  const hasMocaData = Object.keys(scores).length > 0 || Object.keys(raw).length > 0 || !!moca.notes || !!sessionData?.moca_aborted;
+  const languageChangeRequiresReset = !!storedLanguage && hasMocaData && storedLanguage !== requestedLanguage;
+  const normalizedLanguage = languageChangeRequiresReset ? storedLanguage : requestedLanguage;
+  const storedGermanVersion = MOCA_GERMAN_VERSION_OPTIONS.includes(moca.version) ? moca.version : null;
+  const germanVersion = storedGermanVersion || (hasMocaData ? "A" : null);
+
+  const resetForRequestedLanguage = () => {
+    if (!onReset) return;
+    const confirmed = window.confirm(
+      `Die vorhandene MoCA-Testung in ${getTestLanguageLabel(normalizedLanguage)} wird vollständig gelöscht. MoCA anschließend in ${getTestLanguageLabel(requestedLanguage)} neu beginnen?`
+    );
+    if (confirmed) onReset(requestedLanguage);
+  };
+
+  if (normalizedLanguage === "de" && !germanVersion) {
+    return (
+      <MocaVersionSelection
+        onSelect={(version) => onPersist({ version, language: "de" })}
+        onBack={onDone}
+      />
+    );
+  }
+
+  const variant = getMocaVariant(normalizedLanguage, germanVersion || "A");
+  const total = getMocaTotal(moca);
+  const persistWithMetadata = (patch) => onPersist({
+    version: variant.versionKey,
+    language: normalizedLanguage,
+    ...patch,
+  });
+  const persistScore = (key, max, value) => {
+    const clamped = Math.max(0, Math.min(max, Number(value) || 0));
+    persistWithMetadata({ scores: { ...scores, [key]: clamped } });
+  };
+  const persistRaw = (key, value) => persistWithMetadata({ raw: { ...raw, [key]: value } });
+
+  return (
+    <section className="py-6">
+      <Header
+        title="MoCA"
+        subtitle={`${variant.displayLabel} · Testsprache: ${getTestLanguageLabel(normalizedLanguage)} · Durchführung mit gedrucktem Testmaterial`}
+        right={<div className="rounded-2xl border border-indigo-100 bg-white/90 px-4 py-2 text-3xl font-semibold tabular-nums shadow-sm">{total} / 30</div>}
+      />
+      <div className="mb-3 flex flex-wrap gap-2">
+        <AbortButton onAbort={onAbort} />
+        {normalizedLanguage === "de" && storedGermanVersion && !hasMocaData && (
+          <Button type="button" variant="secondary" size="sm" onClick={() => onPersist({ version: null })}>Version ändern</Button>
+        )}
+      </div>
+      <Card className="mb-4">
+        <div className="text-sm text-zinc-700">Gedrucktes Testmaterial verwenden. Abbildungen und Zeichnungsvorlagen werden nicht in der App angezeigt; Antworten, Kriterien und Punkte werden hier erfasst.</div>
+        {languageChangeRequiresReset && (
+          <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+            <div className="font-semibold">Die Testsprache der vorhandenen MoCA-Testung bleibt {getTestLanguageLabel(normalizedLanguage)}.</div>
+            <div className="mt-1">
+              In den Basisdaten ist jetzt {getTestLanguageLabel(requestedLanguage)} ausgewählt. Für den Sprachwechsel muss die vorhandene MoCA-Testung ausdrücklich zurückgesetzt werden.
+            </div>
+            <Button type="button" variant="warning" size="sm" className="mt-3" onClick={resetForRequestedLanguage}>
+              MoCA zurücksetzen und Sprache wechseln
+            </Button>
+          </div>
+        )}
+        {!variant.available && (
+          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+            Für {getTestLanguageLabel(normalizedLanguage)} wurde keine MoCA-Fassung bereitgestellt. Bitte die entsprechende offizielle Druckversion verwenden; sprachabhängige Inhalte werden hier neutral dargestellt.
+          </div>
+        )}
+      </Card>
+      <div className="space-y-4">
+        {MOCA_SECTIONS.map((section, sectionIndex) => (
+          <React.Fragment key={section.key}>
+            <section className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <SectionTitle>{section.title}</SectionTitle>
+                <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-1 text-lg font-semibold tabular-nums text-indigo-950">
+                  {getMocaSectionScore(moca, section)} / {section.max}
+                </div>
+              </div>
+              <div className="grid gap-3">
+                {section.items.map((baseItem) => {
+                  const item = getMocaVariantItem(baseItem, variant);
+                  return (
+                    <MocaTaskCard
+                      key={item.key}
+                      item={item}
+                      value={getMocaItemScore(moca, item)}
+                      raw={raw[item.key] || {}}
+                      testLanguage={normalizedLanguage}
+                      onScoreChange={(value) => persistScore(item.key, item.max, value)}
+                      onRawChange={(value) => persistRaw(item.key, value)}
+                    />
+                  );
+                })}
+              </div>
+            </section>
+            {sectionIndex === 1 && (
+              <section className="space-y-2">
+                <SectionTitle>Gedächtnis – Einprägen</SectionTitle>
+                <MocaLearningTrials
+                  raw={raw.learning || {}}
+                  testLanguage={normalizedLanguage}
+                  variant={variant}
+                  onRawChange={(value) => persistRaw("learning", value)}
+                />
+              </section>
+            )}
+          </React.Fragment>
+        ))}
+        <Card>
+          <div className="flex items-center justify-between gap-3">
+            <SectionTitle>Auswertung</SectionTitle>
+            <div className="text-lg font-semibold tabular-nums">{total} / 30</div>
+          </div>
+        </Card>
+        <Card className="space-y-2">
+          <SectionTitle>Allgemeine Notizen</SectionTitle>
+          <textarea
+            className="h-28 w-full rounded-xl border p-2"
+            value={moca.notes || ""}
+            onChange={(event) => persistWithMetadata({ notes: event.target.value })}
+            aria-label="MoCA Notiz"
+            placeholder="Allgemeine Notiz"
+          />
+        </Card>
+        <div className="flex justify-end">
+          <Button type="button" variant="primary" onClick={onDone}>Fertig</Button>
+        </div>
       </div>
     </section>
   );
@@ -2103,6 +4100,182 @@ function GroovedPegboardWire({ sessionData, onPersistPanel, onAbort }) {
   );
 }
 
+function QuestionnaireMenu({ statusMap, onOpen }) {
+  const items = Object.entries(QUESTIONNAIRE_DEFINITIONS).map(([key, definition]) => ({
+    key,
+    label: definition.title,
+  }));
+  return (
+    <section className="py-6">
+      <Header title="Fragebögen" subtitle="Fragebogen auswählen" />
+      <Card className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {items.map((item) => (
+          <Button
+            key={item.key}
+            size="bare"
+            type="button"
+            onClick={() => onOpen?.(item.key)}
+            className="flex h-24 items-center justify-between rounded-2xl border bg-white px-4 text-left shadow-sm hover:bg-zinc-50"
+          >
+            <div>
+              <div className="text-lg font-medium">{item.label}</div>
+              {statusMap?.[item.key] && <StatusBadges status={statusMap[item.key]} />}
+            </div>
+            <span className="text-lg">→</span>
+          </Button>
+        ))}
+      </Card>
+    </section>
+  );
+}
+
+function QuestionnaireWire({ questionnaireKey, sessionData, onPersist, onAbort, onDone, onBack }) {
+  const definition = QUESTIONNAIRE_DEFINITIONS[questionnaireKey];
+  if (!definition) return null;
+  const data = sessionData?.[questionnaireKey] || {};
+  const responses = data.responses || {};
+  const manualMode = isQuestionnaireManual(data);
+  const answeredCount = getQuestionnaireAnsweredCount(data, definition);
+  const max = definition.max;
+  const responseOptions = definition.responseOptions || QUESTIONNAIRE_RESPONSE_OPTIONS;
+  const manualTotal = getQuestionnaireManualTotal(data, definition);
+  const total = getQuestionnaireEffectiveTotal(data, definition);
+  const complete = manualMode ? manualTotal !== null : answeredCount === definition.items.length;
+  const setResponse = (itemKey, value) => {
+    onPersist?.({ responses: { ...responses, [itemKey]: value } });
+  };
+  const setManualTotal = (value) => {
+    if (value === "") {
+      onPersist?.({ entry_mode: "manual", manual_total: null });
+      return;
+    }
+    const normalized = Math.max(0, Math.min(max, Math.floor(Number(value) || 0)));
+    onPersist?.({ entry_mode: "manual", manual_total: normalized });
+  };
+
+  return (
+    <section className="py-6">
+      <Header
+        title={definition.title}
+        subtitle={definition.fullTitle}
+        right={<div className="rounded-2xl border border-indigo-100 bg-white/90 px-4 py-2 text-3xl font-semibold tabular-nums shadow-sm">{total ?? "–"} / {max}</div>}
+      />
+      <div className="mb-3 flex flex-wrap gap-2">
+        <AbortButton onAbort={onAbort} />
+        <Button type="button" variant="secondary" size="sm" onClick={onBack}>Zur Fragebogenauswahl</Button>
+      </div>
+      <Card className="mb-4">
+        <div className="text-sm font-medium text-zinc-800">
+          {definition.prompt}
+        </div>
+      </Card>
+      <div className="space-y-3">
+        <Card className="space-y-3">
+          <label className="flex cursor-pointer items-center gap-3">
+            <input
+              type="checkbox"
+              className="h-5 w-5 rounded border-zinc-300 accent-indigo-700"
+              checked={manualMode}
+              onChange={(event) => onPersist?.({ entry_mode: event.target.checked ? "manual" : "items" })}
+            />
+            <span className="font-medium">Gesamtscore händisch eingeben</span>
+          </label>
+          {manualMode && (
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-3">
+              <label className="block text-sm font-medium text-indigo-950" htmlFor={`${questionnaireKey}-manual-total`}>
+                Gesamtscore (0–{max})
+              </label>
+              <input
+                id={`${questionnaireKey}-manual-total`}
+                className="mt-2 h-12 w-32 rounded-xl border border-indigo-200 bg-white px-3 text-xl font-semibold tabular-nums"
+                type="number"
+                inputMode="numeric"
+                min="0"
+                max={max}
+                step="1"
+                value={manualTotal ?? ""}
+                onChange={(event) => setManualTotal(event.target.value)}
+                placeholder={`0–${max}`}
+              />
+            </div>
+          )}
+        </Card>
+        {!manualMode && definition.items.map((item, index) => {
+          const selectedValue = getQuestionnaireResponse(data, definition, item.key);
+          return (
+            <Card key={item.key} className="space-y-3">
+              <div className="flex items-start gap-3">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-sm font-semibold text-indigo-700">
+                  {index + 1}
+                </span>
+                <div className="text-base font-medium leading-relaxed text-zinc-900">{item.text}</div>
+              </div>
+              <div className={cls("grid gap-2", responseOptions.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-4")} role="radiogroup" aria-label={item.text}>
+                {responseOptions.map((option) => {
+                  const selected = selectedValue === option.value;
+                  return (
+                    <Button
+                      key={option.value}
+                      size="bare"
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => setResponse(item.key, option.value)}
+                      className={cls(
+                        "min-h-14 rounded-xl border px-3 py-2 text-left text-sm",
+                        selected
+                          ? "border-indigo-300 bg-indigo-50 text-indigo-950 shadow-sm"
+                          : "border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50"
+                      )}
+                    >
+                      {typeof option.value === "number" && <span className="block font-semibold">{option.value}</span>}
+                      <span className={cls("block", typeof option.value !== "number" && "font-semibold")}>{option.label}</span>
+                    </Button>
+                  );
+                })}
+              </div>
+            </Card>
+          );
+        })}
+        <Card className="space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <SectionTitle>Auswertung</SectionTitle>
+            <div className="text-lg font-semibold tabular-nums">Gesamtwert: {total ?? "–"} / {max}</div>
+          </div>
+          <div className={cls(
+            "rounded-xl border px-3 py-2 text-sm",
+            complete
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border-amber-200 bg-amber-50 text-amber-900"
+          )}>
+            {manualMode
+              ? complete
+                ? "Gesamtscore händisch erfasst"
+                : "Bitte Gesamtscore eingeben"
+              : complete
+                ? `Vollständig beantwortet (${answeredCount}/${definition.items.length})`
+                : `${answeredCount}/${definition.items.length} Fragen beantwortet`}
+          </div>
+        </Card>
+        <Card className="space-y-2">
+          <SectionTitle>Allgemeine Notizen</SectionTitle>
+          <textarea
+            className="h-28 w-full rounded-xl border p-2"
+            value={data.notes || ""}
+            onChange={(event) => onPersist?.({ notes: event.target.value })}
+            aria-label={`${definition.title} Notiz`}
+            placeholder="Allgemeine Notiz"
+          />
+        </Card>
+        {definition.attribution && <div className="text-xs text-zinc-500">{definition.attribution}</div>}
+        <div className="flex justify-end">
+          <Button type="button" variant="primary" onClick={onDone}>Fertig</Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function StatusBadges({ status, centered = false }) {
   const labels = Array.isArray(status) ? status : [status];
   return (
@@ -2112,7 +4285,7 @@ function StatusBadges({ status, centered = false }) {
           key={label}
           className={cls(
             "inline-block px-2 py-0.5 rounded-full text-xs border",
-            label === "abgebrochen" || label.includes("Subtest")
+            label.includes("abgebrochen") || label.includes("Subtest")
               ? "bg-rose-50 text-rose-700 border-rose-200"
               : label === "fällig"
                 ? "bg-amber-50 text-amber-700 border-amber-200"
@@ -2161,62 +4334,18 @@ function SpannenMenu({ statusMap, onOpen }) {
 
 function UhrentestWire({ sessionData, onPersist, onAbort }) {
   const data = sessionData?.uhr || {};
-  const scoreFromParts = (p = {}) =>
-    (p.kreis ? 1 : 0) +
-    (p.nummern1 ? 1 : 0) +
-    (p.nummern2 ? 1 : 0) +
-    (p.zeiger1 ? 1 : 0) +
-    (p.zeiger2 ? 1 : 0);
-
-  const derivePartsFromScore = (val) => {
-    const s = typeof val === "number" ? Math.max(0, Math.min(5, val)) : 0;
-    const parts = { kreis: false, nummern1: false, nummern2: false, zeiger1: false, zeiger2: false };
-    let remaining = s;
-    if (remaining >= 1) { parts.kreis = true; remaining -= 1; }
-    if (remaining >= 1) { parts.nummern1 = true; remaining -= 1; }
-    if (remaining >= 1) { parts.nummern2 = true; remaining -= 1; }
-    if (remaining >= 1) { parts.zeiger1 = true; remaining -= 1; }
-    if (remaining >= 1) { parts.zeiger2 = true; remaining -= 1; }
-    return parts;
-  };
-
-  const normalizeParts = (raw) => {
-    if (!raw || typeof raw !== "object") return null;
-    // New 5-part format
-    if (["nummern1", "nummern2", "zeiger1", "zeiger2"].some((k) => k in raw)) {
-      return {
-        kreis: !!raw.kreis,
-        nummern1: !!raw.nummern1,
-        nummern2: !!raw.nummern2,
-        zeiger1: !!raw.zeiger1,
-        zeiger2: !!raw.zeiger2,
-      };
-    }
-    // Legacy 3-part format: map 2-point buttons to two 1-point buttons
-    if (["nummern", "zeiger"].some((k) => k in raw)) {
-      return {
-        kreis: !!raw.kreis,
-        nummern1: !!raw.nummern,
-        nummern2: !!raw.nummern,
-        zeiger1: !!raw.zeiger,
-        zeiger2: !!raw.zeiger,
-      };
-    }
-    return null;
-  };
-
-  const [parts, setParts] = useState(() => normalizeParts(data.parts) || derivePartsFromScore(data.score));
+  const [parts, setParts] = useState(() => normalizeClockParts(data.parts) || deriveClockPartsFromScore(data.score));
   const [score, setScore] = useState(() => {
     if (typeof data.score === "number") return data.score;
-    const p = normalizeParts(data.parts) || derivePartsFromScore(data.score);
-    return scoreFromParts(p);
+    const partsFromData = normalizeClockParts(data.parts) || deriveClockPartsFromScore(data.score);
+    return scoreClockParts(partsFromData);
   });
   const [note, setNote] = useState(data.note || "");
   useEffect(() => {
-    const nextParts = normalizeParts(data.parts) || derivePartsFromScore(data.score);
+    const nextParts = normalizeClockParts(data.parts) || deriveClockPartsFromScore(data.score);
     const nextScore = typeof data.score === "number"
       ? data.score
-      : scoreFromParts(nextParts);
+      : scoreClockParts(nextParts);
     const frameId = requestAnimationFrame(() => {
       setParts(nextParts);
       setScore(nextScore);
@@ -2225,14 +4354,11 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
     return () => cancelAnimationFrame(frameId);
   }, [data.score, data.note, data.parts]);
 
-  const togglePart = (key) => {
-    setParts((prev) => {
-      const next = { ...prev, [key]: !prev[key] };
-      const nextScore = scoreFromParts(next);
-      setScore(nextScore);
-      onPersist && onPersist({ score: nextScore, parts: next, note });
-      return next;
-    });
+  const updateParts = (next) => {
+    const nextScore = scoreClockParts(next);
+    setParts(next);
+    setScore(nextScore);
+    onPersist && onPersist({ score: nextScore, parts: next, note });
   };
   return (
     <section className="py-6">
@@ -2242,58 +4368,7 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
       </div>
       <div className="p-3 rounded-2xl border bg-white max-w-md space-y-3">
         <div className="text-sm text-zinc-700">Punkte: <span className="font-semibold">{score}</span> / 5</div>
-        <div className="grid gap-2">
-          <Button size="bare"
-            type="button"
-            onClick={() => togglePart("kreis")}
-            className={cls(
-              "w-full min-h-12 text-left px-4 py-3 rounded-xl border text-sm",
-              parts.kreis ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
-            )}
-          >
-            Kreis (1 Punkt)
-          </Button>
-          <Button size="bare"
-            type="button"
-            onClick={() => togglePart("nummern1")}
-            className={cls(
-              "w-full min-h-12 text-left px-4 py-3 rounded-xl border text-sm",
-              parts.nummern1 ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
-            )}
-          >
-            Nummern korrekt (1 Punkt)
-          </Button>
-          <Button size="bare"
-            type="button"
-            onClick={() => togglePart("nummern2")}
-            className={cls(
-              "w-full min-h-12 text-left px-4 py-3 rounded-xl border text-sm",
-              parts.nummern2 ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
-            )}
-          >
-            Nummern korrekt (1 Punkt)
-          </Button>
-          <Button size="bare"
-            type="button"
-            onClick={() => togglePart("zeiger1")}
-            className={cls(
-              "w-full min-h-12 text-left px-4 py-3 rounded-xl border text-sm",
-              parts.zeiger1 ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
-            )}
-          >
-            Zeiger korrekt (1 Punkt)
-          </Button>
-          <Button size="bare"
-            type="button"
-            onClick={() => togglePart("zeiger2")}
-            className={cls(
-              "w-full min-h-12 text-left px-4 py-3 rounded-xl border text-sm",
-              parts.zeiger2 ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-white border-zinc-300"
-            )}
-          >
-            Zeiger korrekt (1 Punkt)
-          </Button>
-        </div>
+        <ClockScoreButtons parts={parts} onToggle={updateParts} />
         <input
           className="w-full rounded-xl border p-2"
           value={note}
@@ -2944,7 +5019,33 @@ export default function App() {
 
     // ACE-III
     if (s.ace_aborted) set("ace", "abgebrochen");
-    else if (s.ace && (Object.keys(s.ace.scores || {}).length > 0 || s.ace.notes)) set("ace", "erfasst");
+    else if (s.ace && (Object.keys(s.ace.scores || {}).length > 0 || Object.keys(s.ace.raw || {}).length > 0 || s.ace.notes)) set("ace", "erfasst");
+
+    // MoCA
+    if (s.moca_aborted) set("moca", "abgebrochen");
+    else if (s.moca && (Object.keys(s.moca.scores || {}).length > 0 || Object.keys(s.moca.raw || {}).length > 0 || s.moca.notes)) set("moca", "erfasst");
+
+    // Fragebögen
+    const questionnaireKeys = Object.keys(QUESTIONNAIRE_DEFINITIONS);
+    const hasQuestionnaireData = (key) => {
+      const data = s[key] || {};
+      const definition = QUESTIONNAIRE_DEFINITIONS[key];
+      return data.entry_mode === "manual" || getQuestionnaireManualTotal(data, definition) !== null || Object.keys(data.responses || {}).length > 0 || !!data.notes;
+    };
+    questionnaireKeys.forEach((key) => {
+      if (s[`${key}_aborted`]) set(key, "abgebrochen");
+      else if (hasQuestionnaireData(key)) set(key, "erfasst");
+    });
+    const questionnaireAbortCount = questionnaireKeys.filter((key) => !!s[`${key}_aborted`]).length;
+    const questionnaireAny = questionnaireKeys.some(hasQuestionnaireData);
+    if (questionnaireAbortCount) {
+      set("frageboegen_menu", [
+        ...(questionnaireAny ? ["erfasst"] : []),
+        `${questionnaireAbortCount} ${questionnaireAbortCount === 1 ? "Fragebogen" : "Fragebögen"} abgebrochen`,
+      ]);
+    } else if (questionnaireAny) {
+      set("frageboegen_menu", "erfasst");
+    }
 
     // Uhrentest
     if (s.uhr_aborted) set("uhr","abgebrochen"); else if (s.uhr && (s.uhr.score !== undefined || s.uhr.note)) set("uhr","erfasst");
@@ -3059,6 +5160,7 @@ export default function App() {
         {screen.name === "ace" && (
           <AceWire
             sessionData={sessionData}
+            testLanguage={sessionData?.demographics?.test_language}
             onPersist={(patch) =>
               setSessionData((s) => ({
                 ...s,
@@ -3071,6 +5173,81 @@ export default function App() {
                 ace_aborted: payload,
               }))
             }
+            onDone={() => setScreen({ name: "menu" })}
+          />
+        )}
+        {screen.name === "moca" && (
+          <MocaWire
+            sessionData={sessionData}
+            testLanguage={sessionData?.demographics?.test_language}
+            onPersist={(patch) =>
+              setSessionData((s) => ({
+                ...s,
+                moca: { ...(s.moca || {}), ...patch },
+              }))
+            }
+            onReset={(language) =>
+              setSessionData((s) => {
+                const next = {
+                  ...s,
+                  moca: { language: normalizeTestLanguage(language) },
+                };
+                delete next.moca_aborted;
+                return next;
+              })
+            }
+            onAbort={(payload) =>
+              setSessionData((s) => ({
+                ...s,
+                moca_aborted: payload,
+              }))
+            }
+            onDone={() => setScreen({ name: "menu" })}
+          />
+        )}
+        {screen.name === "frageboegen_menu" && (
+          <QuestionnaireMenu
+            statusMap={statusMap}
+            onOpen={(name) => setScreen({ name })}
+          />
+        )}
+        {screen.name === "phq9" && (
+          <QuestionnaireWire
+            questionnaireKey="phq9"
+            sessionData={sessionData}
+            onPersist={(patch) => setSessionData((s) => ({
+              ...s,
+              phq9: { ...(s.phq9 || {}), ...patch },
+            }))}
+            onAbort={(payload) => setSessionData((s) => ({ ...s, phq9_aborted: payload }))}
+            onDone={() => setScreen({ name: "frageboegen_menu" })}
+            onBack={() => setScreen({ name: "frageboegen_menu" })}
+          />
+        )}
+        {screen.name === "gad7" && (
+          <QuestionnaireWire
+            questionnaireKey="gad7"
+            sessionData={sessionData}
+            onPersist={(patch) => setSessionData((s) => ({
+              ...s,
+              gad7: { ...(s.gad7 || {}), ...patch },
+            }))}
+            onAbort={(payload) => setSessionData((s) => ({ ...s, gad7_aborted: payload }))}
+            onDone={() => setScreen({ name: "frageboegen_menu" })}
+            onBack={() => setScreen({ name: "frageboegen_menu" })}
+          />
+        )}
+        {screen.name === "gds" && (
+          <QuestionnaireWire
+            questionnaireKey="gds"
+            sessionData={sessionData}
+            onPersist={(patch) => setSessionData((s) => ({
+              ...s,
+              gds: { ...(s.gds || {}), ...patch },
+            }))}
+            onAbort={(payload) => setSessionData((s) => ({ ...s, gds_aborted: payload }))}
+            onDone={() => setScreen({ name: "frageboegen_menu" })}
+            onBack={() => setScreen({ name: "frageboegen_menu" })}
           />
         )}
         {screen.name === "dcsr" && (
@@ -3751,16 +5928,19 @@ function ReminderPill({ timer, onClear, onOpen }) {
 // ---------- Tile Menu ----------
 function TileMenu({ onOpen, onOpenCERAD, statusMap, disabled }) {
   const tiles = [
-    { key: "vlmt", label: "VLMT", accent: "border-teal-200 bg-teal-50/80 hover:bg-teal-100/80", dot: "bg-teal-500" },
-    { key: "dcsr", label: "DCS-R", accent: "border-sky-200 bg-sky-50/80 hover:bg-sky-100/80", dot: "bg-sky-500" },
-    { key: "epi", label: "Epi-Track", accent: "border-violet-200 bg-violet-50/80 hover:bg-violet-100/80", dot: "bg-violet-500" },
-    { key: "tmt_ab", label: "TMT A und B", accent: "border-indigo-200 bg-indigo-50/80 hover:bg-indigo-100/80", dot: "bg-indigo-500" },
-    { key: "spannen_menu", label: "Zahlen- und Blockspanne", accent: "border-cyan-200 bg-cyan-50/80 hover:bg-cyan-100/80", dot: "bg-cyan-500" },
-    { key: "rwt", label: "Wortflüssigkeit (RWT)", accent: "border-fuchsia-200 bg-fuchsia-50/80 hover:bg-fuchsia-100/80", dot: "bg-fuchsia-500" },
-    { key: "stroop", label: "Stroop", accent: "border-amber-200 bg-amber-50/80 hover:bg-amber-100/80", dot: "bg-amber-500" },
-    { key: "gp", label: "Grooved Pegboard", accent: "border-orange-200 bg-orange-50/80 hover:bg-orange-100/80", dot: "bg-orange-500" },
-    { key: "cerad_menu", label: "CERAD plus", accent: "border-rose-200 bg-rose-50/80 hover:bg-rose-100/80", dot: "bg-rose-500" },
-    { key: "uhr", label: "Uhrentest", accent: "border-emerald-200 bg-emerald-50/80 hover:bg-emerald-100/80", dot: "bg-emerald-500" },
+    { key: "vlmt", label: "VLMT", accent: "border-violet-200 bg-violet-50/80 hover:bg-violet-100/80", dot: "bg-violet-500" },
+    { key: "dcsr", label: "DCS-R", accent: "border-cyan-200 bg-cyan-50/80 hover:bg-cyan-100/80", dot: "bg-cyan-500" },
+    { key: "epi", label: "Epi-Track", accent: "border-orange-200 bg-orange-50/80 hover:bg-orange-100/80", dot: "bg-orange-500" },
+    { key: "tmt_ab", label: "TMT A und B", accent: "border-lime-200 bg-lime-50/80 hover:bg-lime-100/80", dot: "bg-lime-500" },
+    { key: "spannen_menu", label: "Zahlen- und Blockspanne", accent: "border-sky-200 bg-sky-50/80 hover:bg-sky-100/80", dot: "bg-sky-500" },
+    { key: "rwt", label: "Wortflüssigkeit (RWT)", accent: "border-indigo-200 bg-indigo-50/80 hover:bg-indigo-100/80", dot: "bg-indigo-500" },
+    { key: "stroop", label: "Stroop", accent: "border-rose-200 bg-rose-50/80 hover:bg-rose-100/80", dot: "bg-rose-500" },
+    { key: "gp", label: "Grooved Pegboard", accent: "border-emerald-200 bg-emerald-50/80 hover:bg-emerald-100/80", dot: "bg-emerald-500" },
+    { key: "cerad_menu", label: "CERAD plus", accent: "border-fuchsia-200 bg-fuchsia-50/80 hover:bg-fuchsia-100/80", dot: "bg-fuchsia-500" },
+    { key: "uhr", label: "Uhrentest", accent: "border-purple-200 bg-purple-50/80 hover:bg-purple-100/80", dot: "bg-purple-500" },
+    { key: "ace", label: "ACE-III", accent: "border-blue-200 bg-blue-50/80 hover:bg-blue-100/80", dot: "bg-blue-500" },
+    { key: "moca", label: "MoCA", accent: "border-amber-200 bg-amber-50/80 hover:bg-amber-100/80", dot: "bg-amber-500" },
+    { key: "frageboegen_menu", label: "Fragebögen", accent: "border-teal-200 bg-teal-50/80 hover:bg-teal-100/80", dot: "bg-teal-500" },
   ];
   return (
     <div className="py-6">
