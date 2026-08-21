@@ -154,7 +154,6 @@ const QUESTIONNAIRE_DEFINITIONS = {
     title: "GDS",
     fullTitle: "GDS (Geriatrische Depressions-Skala)",
     max: 30,
-    prompt: "Bitte jede Frage mit Ja oder Nein beantworten.",
     responseOptions: GDS_RESPONSE_OPTIONS,
     scoringMode: "keyed-binary",
     items: [
@@ -1638,7 +1637,10 @@ function getAceMaterialEntries(item, testLanguage, aceVersion) {
     }));
   }
   if (normalizedLanguage === "de") {
-    return materials.map((material) => ({ key: material, label: material }));
+    return materials.map((material) => ({
+      key: material,
+      label: item.materialLabels?.[material] || material,
+    }));
   }
 
   if (item.key === "letter_fluency" || item.key === "animal_fluency") {
@@ -1698,7 +1700,6 @@ const ACE_SECTIONS = [
         key: "orientation_time",
         label: "Orientierung – Zeit",
         max: 5,
-        prompt: "Fragen zu Wochentag, Datum, Monat, Jahr und Jahreszeit stellen.",
         hint: "Datum: ± 2 Tage zulässig. Beim Jahreszeitenwechsel kann nach einer möglichen anderen Jahreszeit gefragt werden.",
         materials: ["Wochentag", "Datum", "Monat", "Jahr", "Jahreszeit"],
       },
@@ -1706,15 +1707,13 @@ const ACE_SECTIONS = [
         key: "orientation_place",
         label: "Orientierung – Ort",
         max: 5,
-        prompt: "Fragen zum aktuellen Ort stellen.",
-        hint: "In der Wohnumgebung gleichwertige Ortsmerkmale verwenden. Bei auswärtigen Personen kann eine passende benachbarte Ortsangabe großzügig bewertet werden.",
+        hint: "Bei auswärtigen Personen kann eine passende benachbarte Ortsangabe großzügig bewertet werden.",
         materials: ["Zimmer/Etage", "Straße/Krankenhaus", "Stadt", "Bundesland", "Land"],
       },
       {
         key: "registration",
         label: "Einprägen / Wiederholen",
         max: 3,
-        prompt: "Drei Wörter vorlesen, nachsprechen lassen und für später merken lassen. Nur der erste Versuch wird bewertet.",
         hint: "Bei Bedarf bis zu drei Versuche durchführen; ausschließlich den ersten Versuch markieren.",
         materials: ACE_VERSION_MATERIALS.A.words,
       },
@@ -1763,11 +1762,16 @@ const ACE_SECTIONS = [
         label: "Benennen",
         max: 12,
         prompt: "Gedrucktes Testmaterial zeigen und jede korrekte Benennung markieren.",
-        hint: "Akzeptiert werden auch: Kamel oder Dromedar; Fass oder Tonne; Krokodil oder Alligator; Ziehharmonika, Akkordeon, Handharmonika oder Quetschkommode.",
         materialType: "naming",
         materials: ["Löffel", "Buch", "Känguru", "Pinguin", "Anker", "Kamel/Dromedar", "Harfe", "Nashorn", "Fass/Tonne", "Krone", "Krokodil", "Ziehharmonika"],
+        materialLabels: {
+          "Kamel/Dromedar": "Kamel / Dromedar",
+          "Fass/Tonne": "Fass / Tonne",
+          Krokodil: "Krokodil / Alligator",
+          Ziehharmonika: "Ziehharmonika / Akkordeon / Handharmonika / Quetschkommode",
+        },
       },
-      { key: "semantic_association", label: "Semantisches Wissen", max: 4, prompt: "Mit Hilfe der gezeigten Bilder passende Zuordnungen erfragen.", hint: "Je korrekter Bildauswahl 1 Punkt. Selbstverbesserungen sind erlaubt; keine Rückmeldung zur Wortbedeutung geben.", materials: ["Wird mit Monarchie in Verbindung gebracht", "Stellt ein Beuteltier dar", "Kann in der Antarktis gefunden werden", "Hat einen Bezug zur Seefahrt"] },
+      { key: "semantic_association", label: "Semantisches Wissen", max: 4, prompt: "Mit Hilfe der gezeigten Bilder passende Zuordnungen erfragen.", materials: ["Wird mit Monarchie in Verbindung gebracht", "Stellt ein Beuteltier dar", "Kann in der Antarktis gefunden werden", "Hat einen Bezug zur Seefahrt"] },
       {
         key: "reading",
         label: "Wörter lesen",
@@ -2724,11 +2728,9 @@ function AceVersionSelection({ testLanguage, onSelect, onBack }) {
               key={version}
               type="button"
               onClick={() => onSelect(version)}
-              className="min-h-28 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-4 text-left text-indigo-950 shadow-sm hover:bg-indigo-100"
+              className="flex min-h-24 items-center rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-4 text-left text-indigo-950 shadow-sm hover:bg-indigo-100"
             >
-              <span className="block text-xs font-semibold uppercase tracking-wide text-indigo-600">ACE-III</span>
-              <span className="mt-1 block text-2xl font-semibold">Version {version}</span>
-              <span className="mt-2 block text-sm text-indigo-700">Version verwenden →</span>
+              <span className="block text-2xl font-semibold">Version {version}</span>
             </Button>
           ))}
         </div>
@@ -3142,7 +3144,7 @@ const MOCA_SECTIONS = [
         label: "Serielles Rechnen",
         max: 3,
         prompt: "Von 100 fünfmal nacheinander 7 im Kopf abziehen lassen.",
-        hint: "Jeden Rechenschritt unabhängig bewerten: Nach einem Fehler kann die nächste korrekte Subtraktion wieder zählen. 4–5 korrekte Subtraktionen = 3 Punkte, 2–3 = 2 Punkte, 1 = 1 Punkt, keine = 0 Punkte.",
+        hint: "Jeden Rechenschritt unabhängig bewerten: Nach einem Fehler kann die nächste korrekte Subtraktion wieder zählen.",
         materials: ["1. Subtraktion korrekt · Sollwert bei fehlerfreier Reihe: 93", "2. Subtraktion korrekt · Sollwert bei fehlerfreier Reihe: 86", "3. Subtraktion korrekt · Sollwert bei fehlerfreier Reihe: 79", "4. Subtraktion korrekt · Sollwert bei fehlerfreier Reihe: 72", "5. Subtraktion korrekt · Sollwert bei fehlerfreier Reihe: 65"],
         scoringMode: "serial-seven",
       },
@@ -3158,7 +3160,6 @@ const MOCA_SECTIONS = [
         label: "Sätze nachsprechen",
         max: 2,
         prompt: "Jeden Satz genau einmal vorlesen und vollständig nachsprechen lassen.",
-        hint: "Je wortgetreu wiederholtem Satz 1 Punkt.",
         materials: [
           "Ich weiß lediglich, dass Hans heute an der Reihe ist zu helfen.",
           "Die Katze versteckte sich immer unter der Couch, wenn die Hunde im Zimmer waren.",
@@ -3754,11 +3755,9 @@ function MocaVersionSelection({ onSelect, onBack }) {
               size="bare"
               type="button"
               onClick={() => onSelect(option.key)}
-              className="min-h-28 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-4 text-left text-blue-950 shadow-sm hover:bg-blue-100"
+              className="flex min-h-24 items-center rounded-2xl border border-blue-200 bg-blue-50 px-4 py-4 text-left text-blue-950 shadow-sm hover:bg-blue-100"
             >
-              <span className="block text-xs font-semibold uppercase tracking-wide text-blue-600">MoCA</span>
-              <span className="mt-1 block text-xl font-semibold">{option.label}</span>
-              <span className="mt-2 block text-sm text-blue-700">Version verwenden →</span>
+              <span className="block text-2xl font-semibold">{option.label}</span>
             </Button>
           ))}
         </div>
@@ -4135,12 +4134,10 @@ function QuestionnaireWire({ questionnaireKey, sessionData, onPersist, onAbort, 
   const data = sessionData?.[questionnaireKey] || {};
   const responses = data.responses || {};
   const manualMode = isQuestionnaireManual(data);
-  const answeredCount = getQuestionnaireAnsweredCount(data, definition);
   const max = definition.max;
   const responseOptions = definition.responseOptions || QUESTIONNAIRE_RESPONSE_OPTIONS;
   const manualTotal = getQuestionnaireManualTotal(data, definition);
   const total = getQuestionnaireEffectiveTotal(data, definition);
-  const complete = manualMode ? manualTotal !== null : answeredCount === definition.items.length;
   const setResponse = (itemKey, value) => {
     onPersist?.({ responses: { ...responses, [itemKey]: value } });
   };
@@ -4164,11 +4161,6 @@ function QuestionnaireWire({ questionnaireKey, sessionData, onPersist, onAbort, 
         <AbortButton onAbort={onAbort} />
         <Button type="button" variant="secondary" size="sm" onClick={onBack}>Zur Fragebogenauswahl</Button>
       </div>
-      <Card className="mb-4">
-        <div className="text-sm font-medium text-zinc-800">
-          {definition.prompt}
-        </div>
-      </Card>
       <div className="space-y-3">
         <Card className="space-y-3">
           <label className="flex cursor-pointer items-center gap-3">
@@ -4200,6 +4192,11 @@ function QuestionnaireWire({ questionnaireKey, sessionData, onPersist, onAbort, 
             </div>
           )}
         </Card>
+        {!manualMode && definition.prompt && (
+          <Card>
+            <div className="text-sm font-medium text-zinc-800">{definition.prompt}</div>
+          </Card>
+        )}
         {!manualMode && definition.items.map((item, index) => {
           const selectedValue = getQuestionnaireResponse(data, definition, item.key);
           return (
@@ -4237,26 +4234,6 @@ function QuestionnaireWire({ questionnaireKey, sessionData, onPersist, onAbort, 
             </Card>
           );
         })}
-        <Card className="space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <SectionTitle>Auswertung</SectionTitle>
-            <div className="text-lg font-semibold tabular-nums">Gesamtwert: {total ?? "–"} / {max}</div>
-          </div>
-          <div className={cls(
-            "rounded-xl border px-3 py-2 text-sm",
-            complete
-              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-              : "border-amber-200 bg-amber-50 text-amber-900"
-          )}>
-            {manualMode
-              ? complete
-                ? "Gesamtscore händisch erfasst"
-                : "Bitte Gesamtscore eingeben"
-              : complete
-                ? `Vollständig beantwortet (${answeredCount}/${definition.items.length})`
-                : `${answeredCount}/${definition.items.length} Fragen beantwortet`}
-          </div>
-        </Card>
         <Card className="space-y-2">
           <SectionTitle>Allgemeine Notizen</SectionTitle>
           <textarea
