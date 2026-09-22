@@ -37,6 +37,33 @@ html[data-theme="legacy"] #topbar-root {
   box-shadow: none;
 }
 
+html[data-theme="legacy"] .reminder-panel {
+  border-color: #d4d4d8;
+  background-color: rgba(250, 250, 250, 0.98);
+  box-shadow: 0 4px 12px rgba(24, 24, 27, 0.1);
+  backdrop-filter: none;
+}
+
+html[data-theme="legacy"] .reminder-row {
+  box-shadow: none;
+}
+
+html[data-theme="legacy"] .reminder-row-active {
+  border-color: #e4e4e7;
+  background-color: #fff;
+  color: #27272a;
+}
+
+html[data-theme="legacy"] .reminder-open-button {
+  border-color: #d4d4d8;
+  background-color: #fff;
+  color: #27272a;
+}
+
+html[data-theme="legacy"] .reminder-open-button:hover {
+  background-color: #f4f4f5;
+}
+
 html[data-theme="legacy"] .tile-btn {
   background-color: #fff !important;
   border-color: #e4e4e7 !important;
@@ -113,6 +140,12 @@ button,
   min-width: 44px;
   min-height: 44px;
   transition: transform 120ms ease, filter 120ms ease, box-shadow 120ms ease, background-color 120ms ease, border-color 120ms ease;
+}
+
+/* Reminder controls stay deliberately compact inside their floating desktop panel. */
+.reminder-panel button {
+  min-width: 0;
+  min-height: 28px;
 }
 
 button:enabled:active {

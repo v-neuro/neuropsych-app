@@ -77,6 +77,7 @@ const VLMT_RECOG = {
     { w: "Gewehr", t: false }, { w: "Stille", t: false }, { w: "Auto", t: false }, { w: "Form", t: true }, { w: "Handtuch", t: false },
   ],
   D: [
+    { w: "Trompete", t: true }, { w: "Posaune", t: false }, { w: "Boot", t: false }, { w: "Anzug", t: false }, { w: "Schwester", t: true },
     { w: "Ofen", t: false }, { w: "Kamin", t: true }, { w: "Schornstein", t: false }, { w: "Kuh", t: false }, { w: "Wald", t: true },
     { w: "Schuh", t: false }, { w: "Aufzug", t: true }, { w: "See", t: false }, { w: "Förster", t: false }, { w: "Sand", t: true },
     { w: "Tisch", t: false }, { w: "Fisch", t: false }, { w: "Tango", t: false }, { w: "Lamm", t: false }, { w: "Tanz", t: true },
@@ -262,7 +263,7 @@ const WORD_TRANSLATIONS = {
     Vase: "vase", Lehrer: "teacher", Kuh: "cow", Fisch: "fish", Kuchen: "cake", Garbe: "sheaf", Maus: "mouse", Locke: "curl", Jäger: "hunter", Stille: "silence", Mut: "courage", Mauer: "wall", Bein: "leg", Schaf: "sheep", Warten: "waiting", Pauke: "kettledrum", Kinder: "children",
     Flöte: "flute", Riese: "giant", Licht: "light", Urlaub: "vacation", Gras: "grass", Neige: "slope", Klee: "clover", Wonne: "delight", Glas: "glass", Sieger: "winner", Rampe: "ramp", Stufe: "step", Löwe: "lion",
     Geweih: "antlers", Hund: "dog", Huhn: "chicken", Degen: "rapier", Milch: "milk", Hand: "hand", Gesicht: "face", Beil: "hatchet", Mandel: "almond", Norm: "norm", Auto: "car",
-    Schornstein: "chimney", Tango: "tango", Lage: "position", legal: "legal", Stirn: "forehead", Wall: "rampart", Schuppe: "scale", Backe: "cheek", Bruder: "brother", Gabel: "fork",
+    Posaune: "trombone", Anzug: "suit", Schornstein: "chimney", Tango: "tango", Lage: "position", legal: "legal", Stirn: "forehead", Wall: "rampart", Schuppe: "scale", Backe: "cheek", Bruder: "brother", Gabel: "fork",
     Butter: "butter", Strand: "beach", Brief: "letter", Königin: "queen", Hütte: "hut", Stange: "pole", Karte: "card", Motor: "engine", Kirche: "church", Dollar: "dollar", Fünf: "five", Hotel: "hotel", Pantoffel: "slipper", Dorf: "village", Band: "ribbon", Heer: "army",
   },
   tr: {
@@ -274,7 +275,7 @@ const WORD_TRANSLATIONS = {
     Vase: "vazo", Lehrer: "öğretmen", Kuh: "inek", Fisch: "balık", Kuchen: "pasta", Garbe: "demet", Maus: "fare", Locke: "bukle", Jäger: "avcı", Stille: "sessizlik", Mut: "cesaret", Mauer: "duvar", Bein: "bacak", Schaf: "koyun", Warten: "bekleme", Pauke: "timpani", Kinder: "çocuklar",
     Flöte: "flüt", Riese: "dev", Licht: "ışık", Urlaub: "tatil", Gras: "çimen", Neige: "eğim", Klee: "yonca", Wonne: "sevinç", Glas: "bardak", Sieger: "kazanan", Rampe: "rampa", Stufe: "basamak", Löwe: "aslan",
     Geweih: "geyik boynuzu", Hund: "köpek", Huhn: "tavuk", Degen: "meç", Milch: "süt", Hand: "el", Gesicht: "yüz", Beil: "balta", Mandel: "badem", Norm: "norm", Auto: "otomobil",
-    Schornstein: "baca", Tango: "tango", Lage: "konum", legal: "yasal", Stirn: "alın", Wall: "sur", Schuppe: "pul", Backe: "yanak", Bruder: "erkek kardeş", Gabel: "çatal",
+    Posaune: "trombon", Anzug: "takım elbise", Schornstein: "baca", Tango: "tango", Lage: "konum", legal: "yasal", Stirn: "alın", Wall: "sur", Schuppe: "pul", Backe: "yanak", Bruder: "erkek kardeş", Gabel: "çatal",
     Butter: "tereyağı", Strand: "plaj", Brief: "mektup", Königin: "kraliçe", Hütte: "kulübe", Stange: "direk", Karte: "kart", Motor: "motor", Kirche: "kilise", Dollar: "dolar", Fünf: "beş", Hotel: "otel", Pantoffel: "terlik", Dorf: "köy", Band: "kurdele", Heer: "ordu",
   },
   ru: {
@@ -286,7 +287,7 @@ const WORD_TRANSLATIONS = {
     Vase: "ваза", Lehrer: "учитель", Kuh: "корова", Fisch: "рыба", Kuchen: "пирог", Garbe: "сноп", Maus: "мышь", Locke: "локон", Jäger: "охотник", Stille: "тишина", Mut: "смелость", Mauer: "стена", Bein: "нога", Schaf: "овца", Warten: "ожидание", Pauke: "литавра", Kinder: "дети",
     Flöte: "флейта", Riese: "великан", Licht: "свет", Urlaub: "отпуск", Gras: "трава", Neige: "наклон", Klee: "клевер", Wonne: "радость", Glas: "стакан", Sieger: "победитель", Rampe: "пандус", Stufe: "ступень", Löwe: "лев",
     Geweih: "рога", Hund: "собака", Huhn: "курица", Degen: "шпага", Milch: "молоко", Hand: "кисть", Gesicht: "лицо", Beil: "топорик", Mandel: "миндаль", Norm: "норма", Auto: "машина",
-    Schornstein: "дымоход", Tango: "танго", Lage: "положение", legal: "легальный", Stirn: "лоб", Wall: "вал", Schuppe: "чешуйка", Backe: "щека", Bruder: "брат", Gabel: "вилка",
+    Posaune: "тромбон", Anzug: "костюм", Schornstein: "дымоход", Tango: "танго", Lage: "положение", legal: "легальный", Stirn: "лоб", Wall: "вал", Schuppe: "чешуйка", Backe: "щека", Bruder: "брат", Gabel: "вилка",
     Butter: "масло", Strand: "пляж", Brief: "письмо", Königin: "королева", Hütte: "хижина", Stange: "шест", Karte: "карта", Motor: "мотор", Kirche: "церковь", Dollar: "доллар", Fünf: "пять", Hotel: "отель", Pantoffel: "тапок", Dorf: "деревня", Band: "лента", Heer: "армия",
   },
   ar: {
@@ -298,7 +299,7 @@ const WORD_TRANSLATIONS = {
     Vase: "مزهرية", Lehrer: "معلم", Kuh: "بقرة", Fisch: "سمكة", Kuchen: "كعكة", Garbe: "حزمة", Maus: "فأر", Locke: "خصلة شعر", Jäger: "صياد", Stille: "صمت", Mut: "شجاعة", Mauer: "جدار", Bein: "ساق", Schaf: "خروف", Warten: "انتظار", Pauke: "طبل كبير", Kinder: "أطفال",
     Flöte: "ناي", Riese: "عملاق", Licht: "ضوء", Urlaub: "إجازة", Gras: "عشب", Neige: "ميل", Klee: "برسيم", Wonne: "بهجة", Glas: "كأس", Sieger: "فائز", Rampe: "منحدر", Stufe: "درجة", Löwe: "أسد",
     Geweih: "قرون غزال", Hund: "كلب", Huhn: "دجاجة", Degen: "سيف", Milch: "حليب", Hand: "يد", Gesicht: "وجه", Beil: "بلطة", Mandel: "لوز", Norm: "معيار", Auto: "سيارة",
-    Schornstein: "مدخنة", Tango: "تانغو", Lage: "موضع", legal: "قانوني", Stirn: "جبهة", Wall: "سور", Schuppe: "قشرة", Backe: "خد", Bruder: "أخ", Gabel: "شوكة",
+    Posaune: "ترومبون", Anzug: "بدلة", Schornstein: "مدخنة", Tango: "تانغو", Lage: "موضع", legal: "قانوني", Stirn: "جبهة", Wall: "سور", Schuppe: "قشرة", Backe: "خد", Bruder: "أخ", Gabel: "شوكة",
     Butter: "زبدة", Strand: "شاطئ", Brief: "رسالة", Königin: "ملكة", Hütte: "كوخ", Stange: "عمود", Karte: "بطاقة", Motor: "محرك", Kirche: "كنيسة", Dollar: "دولار", Fünf: "خمسة", Hotel: "فندق", Pantoffel: "شبشب", Dorf: "قرية", Band: "شريط", Heer: "جيش",
   },
   uk: {
@@ -310,7 +311,7 @@ const WORD_TRANSLATIONS = {
     Vase: "ваза", Lehrer: "учитель", Kuh: "корова", Fisch: "риба", Kuchen: "пиріг", Garbe: "сніп", Maus: "миша", Locke: "локон", Jäger: "мисливець", Stille: "тиша", Mut: "сміливість", Mauer: "стіна", Bein: "нога", Schaf: "вівця", Warten: "очікування", Pauke: "литавра", Kinder: "діти",
     Flöte: "флейта", Riese: "велетень", Licht: "світло", Urlaub: "відпустка", Gras: "трава", Neige: "нахил", Klee: "конюшина", Wonne: "радість", Glas: "склянка", Sieger: "переможець", Rampe: "пандус", Stufe: "сходинка", Löwe: "лев",
     Geweih: "роги", Hund: "собака", Huhn: "курка", Degen: "шпага", Milch: "молоко", Hand: "кисть", Gesicht: "обличчя", Beil: "топірець", Mandel: "мигдаль", Norm: "норма", Auto: "авто",
-    Schornstein: "димар", Tango: "танго", Lage: "положення", legal: "легальний", Stirn: "лоб", Wall: "вал", Schuppe: "луска", Backe: "щока", Bruder: "брат", Gabel: "виделка",
+    Posaune: "тромбон", Anzug: "костюм", Schornstein: "димар", Tango: "танго", Lage: "положення", legal: "легальний", Stirn: "лоб", Wall: "вал", Schuppe: "луска", Backe: "щока", Bruder: "брат", Gabel: "виделка",
     Butter: "масло", Strand: "пляж", Brief: "лист", Königin: "королева", Hütte: "хатина", Stange: "жердина", Karte: "картка", Motor: "мотор", Kirche: "церква", Dollar: "долар", Fünf: "п’ять", Hotel: "готель", Pantoffel: "капці", Dorf: "село", Band: "стрічка", Heer: "армія",
   },
   pl: {
@@ -322,7 +323,7 @@ const WORD_TRANSLATIONS = {
     Vase: "wazon", Lehrer: "nauczyciel", Kuh: "krowa", Fisch: "ryba", Kuchen: "ciasto", Garbe: "snop", Maus: "mysz", Locke: "lok", Jäger: "myśliwy", Stille: "cisza", Mut: "odwaga", Mauer: "mur", Bein: "noga", Schaf: "owca", Warten: "czekanie", Pauke: "kocioł", Kinder: "dzieci",
     Flöte: "flet", Riese: "olbrzym", Licht: "światło", Urlaub: "urlop", Gras: "trawa", Neige: "nachylenie", Klee: "koniczyna", Wonne: "rozkosz", Glas: "szklanka", Sieger: "zwycięzca", Rampe: "rampa", Stufe: "stopień", Löwe: "lew",
     Geweih: "poroże", Hund: "pies", Huhn: "kura", Degen: "szpada", Milch: "mleko", Hand: "dłoń", Gesicht: "twarz", Beil: "siekierka", Mandel: "migdał", Norm: "norma", Auto: "samochód",
-    Schornstein: "komin", Tango: "tango", Lage: "położenie", legal: "legalny", Stirn: "czoło", Wall: "wał", Schuppe: "łuska", Backe: "policzek", Bruder: "brat", Gabel: "widelec",
+    Posaune: "puzon", Anzug: "garnitur", Schornstein: "komin", Tango: "tango", Lage: "położenie", legal: "legalny", Stirn: "czoło", Wall: "wał", Schuppe: "łuska", Backe: "policzek", Bruder: "brat", Gabel: "widelec",
     Butter: "masło", Strand: "plaża", Brief: "list", Königin: "królowa", Hütte: "chata", Stange: "drążek", Karte: "karta", Motor: "silnik", Kirche: "kościół", Dollar: "dolar", Fünf: "pięć", Hotel: "hotel", Pantoffel: "pantofel", Dorf: "wieś", Band: "wstążka", Heer: "armia",
   },
 };
@@ -470,7 +471,53 @@ function SystemUpdateReminder({ open, onClose }) {
   );
 }
 
-function TestbereicheModal({ open, onClose, onOpenTest }) {
+const PIPELINE_STEP_LABELS = {
+  vlmt: "VLMT",
+  dcsr: "DCS-R",
+  epi: "Epi-Track",
+  stroop: "Stroop",
+  tmt_ab: "TMT A und B",
+  zahl_fwd: "Zahlenspanne vorwärts",
+  zahl_rev: "Zahlenspanne rückwärts",
+  block_fwd: "Blockspanne vorwärts",
+  block_rev: "Blockspanne rückwärts",
+  rwt: "Wortflüssigkeit (RWT)",
+  phq9: "PHQ-9",
+  gad7: "GAD-7",
+  gds: "GDS",
+  ace: "ACE-III",
+  moca: "MoCA",
+  gp: "Grooved Pegboard",
+  uhr: "Uhrentest",
+  cerad: "CERAD+",
+};
+
+function buildTestingPipelineSteps(area) {
+  return area.items.flatMap((item, itemIndex) => {
+    const routes = item.pipelineRoutes || (item.testRoute ? [item.testRoute] : []);
+    if (routes.length === 0) {
+      const isPreAppAnamnesis = item.name.trim().toLocaleLowerCase("de").startsWith("strukturierte anamnese");
+      if (isPreAppAnamnesis) return [];
+      return [{
+        key: `offline_${itemIndex}`,
+        route: { name: "testbattery_offline" },
+        label: item.name,
+        offline: true,
+      }];
+    }
+    return routes.map((entry) => {
+      const route = typeof entry === "string" ? { name: entry } : entry.route;
+      const key = typeof entry === "string" ? entry : entry.key;
+      return {
+        key,
+        route,
+        label: (typeof entry === "object" && entry.label) || PIPELINE_STEP_LABELS[key] || item.name,
+      };
+    });
+  });
+}
+
+function TestbereicheModal({ open, onClose, onOpenTest, onStartPipeline }) {
   const [openSections, setOpenSections] = useState({});
   if (!open) return null;
   const onOpen = (route) => {
@@ -490,10 +537,10 @@ function TestbereicheModal({ open, onClose, onOpenTest }) {
         { name: "DCS-R", testRoute: "dcsr" },
         { name: "EpiTrack (TMT A & B, Interferenz,  Zahlenspanne rückwärts,  Labyrinth,    Wortflüssigkeit phonematisch [P, L])", testRoute: "epi" },
         { name: "Stroop (Farbwörter lesen, Farbstriche benennen, Farb-Wort Interferenz)", testRoute: "stroop" },
-        { name: "Zahlenspanne vorwärts und rückwärts", testRoute: "spannen_menu" },
-        { name: "Blockspanne vorwärts und rückwärts", testRoute: "spannen_menu" },
+        { name: "Zahlenspanne vorwärts und rückwärts", testRoute: "spannen_menu", pipelineRoutes: ["zahl_fwd", "zahl_rev"] },
+        { name: "Blockspanne vorwärts und rückwärts", testRoute: "spannen_menu", pipelineRoutes: ["block_fwd", "block_rev"] },
         { name: "Wortflüssigkeit phonematisch (P, G-R) und semantisch (Tier, Sportarten + Früchte)", testRoute: "rwt" },
-        { name: "PHQ-9 und GAD-7", testRoute: "frageboegen_menu" },
+        { name: "PHQ-9 und GAD-7", testRoute: "frageboegen_menu", pipelineRoutes: ["phq9", "gad7"] },
         { name: "QOLIE-31", testRoute: null },
       ],
     },
@@ -502,7 +549,7 @@ function TestbereicheModal({ open, onClose, onOpenTest }) {
       items: [
         { name: "Strukturierte Anamnese einschl. psychiatrischer Screeningfragen", testRoute: null },
         { name: "EpiTrack (TMT A & B, Interferenz, Zahlenspanne rückwärts, Labyrinth, Wortflüssigkeit phonematisch)", testRoute: "epi" },
-        { name: "PHQ-9 und GAD-7", testRoute: "frageboegen_menu" },
+        { name: "PHQ-9 und GAD-7", testRoute: "frageboegen_menu", pipelineRoutes: ["phq9", "gad7"] },
       ],
     },
     {
@@ -512,10 +559,10 @@ function TestbereicheModal({ open, onClose, onOpenTest }) {
         { name: "VLMT", testRoute: "vlmt" },
         { name: "Rey-Figur – Copy", testRoute: null },
         { name: "TMT A & B", testRoute: "tmt_ab" },
-        { name: "Zahlenspanne vorwärts und rückwärts", testRoute: "spannen_menu" },
+        { name: "Zahlenspanne vorwärts und rückwärts", testRoute: "spannen_menu", pipelineRoutes: ["zahl_fwd", "zahl_rev"] },
         { name: "Stroop (Farbwörter lesen, Farben benennen, Farb-Wort Interferenz)", testRoute: "stroop" },
         { name: "Wortflüssigkeit phonematisch (P, G-R) und semantisch (Tier, Sportarten + Früchte)", testRoute: "rwt" },
-        { name: "PHQ-9 und GAD-7", testRoute: "frageboegen_menu" },
+        { name: "PHQ-9 und GAD-7", testRoute: "frageboegen_menu", pipelineRoutes: ["phq9", "gad7"] },
       ],
     },
     {
@@ -523,7 +570,7 @@ function TestbereicheModal({ open, onClose, onOpenTest }) {
       items: [
         { name: "Strukturierte Anamnese einschl. Screening-Fragen Depression/Ängste", testRoute: null },
         { name: "ACE-III", testRoute: "ace" },
-        { name: "PHQ-9 und GAD-7", testRoute: "frageboegen_menu" },
+        { name: "PHQ-9 und GAD-7", testRoute: "frageboegen_menu", pipelineRoutes: ["phq9", "gad7"] },
       ],
     },
     {
@@ -542,17 +589,17 @@ function TestbereicheModal({ open, onClose, onOpenTest }) {
         { name: "EpiTrack (TMT A & B, Interferenz, Zahlenspanne rückwärts,  Labyrinth,    Wortflüssigkeit phonematisch)", testRoute: "epi" },
         { name: "Grooved Pegboard", testRoute: "gp" },
         { name: "MoCA", testRoute: "moca" },
-        { name: "PHQ-9 und GAD-7", testRoute: "frageboegen_menu" },
+        { name: "PHQ-9 und GAD-7", testRoute: "frageboegen_menu", pipelineRoutes: ["phq9", "gad7"] },
       ],
     },
     {
       titel: "Demenz-Diagnostik/Memory Clinic",
       items: [
         { name: "Strukturierte Anamnese einschl. Screening-Fragen Depression/Ängste und Abfrage der Orientierung", testRoute: null },
-        { name: "CERAD+", testRoute: "cerad_menu" },
-        { name: "Zahlenspanne vorwärts und rückwärts", testRoute: "spannen_menu" },
+        { name: "CERAD+", testRoute: "cerad_menu", pipelineRoutes: [{ key: "cerad", route: { name: "cerad_mmst" }, label: "CERAD+" }] },
+        { name: "Zahlenspanne vorwärts und rückwärts", testRoute: "spannen_menu", pipelineRoutes: ["zahl_fwd", "zahl_rev"] },
         { name: "Uhrentest", testRoute: "uhr" },
-        { name: "PHQ-9 und GAD-7", testRoute: "frageboegen_menu" },
+        { name: "PHQ-9 und GAD-7", testRoute: "frageboegen_menu", pipelineRoutes: ["phq9", "gad7"] },
         { name: "GDS", testRoute: "gds" },
       ],
     },
@@ -564,7 +611,7 @@ function TestbereicheModal({ open, onClose, onOpenTest }) {
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
             <div className="text-lg font-semibold">Testungsaufbau für verschiedene Fragestellungen</div>
-            <p className="text-sm text-zinc-600 mt-1">Direktstart verfügbarer Tests mit einem Klick. Nicht digital verfügbare Module sind hier abgelegt.</p>
+            <p className="text-sm text-zinc-600 mt-1">Einzeltests direkt öffnen oder die vollständige Testbatterie einer Fragestellung in der vorgesehenen Reihenfolge starten.</p>
           </div>
           <Button
             type="button"
@@ -599,6 +646,26 @@ function TestbereicheModal({ open, onClose, onOpenTest }) {
               >
                 <div className="p-3 pt-2 space-y-2">
                   {bereich.subtitle && <p className="text-sm italic text-zinc-600">{bereich.subtitle}</p>}
+                  <div className="flex flex-col gap-2 rounded-xl border border-indigo-100 bg-indigo-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="font-medium text-indigo-950">Testbatterie</div>
+                      <div className="text-xs text-indigo-700">Digitale Tests laufen in der aufgeführten Reihenfolge. Bei nicht digitalen Bestandteilen erscheint zum passenden Zeitpunkt ein Hinweis.</div>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="primary"
+                      className="shrink-0"
+                      onClick={() => {
+                        const steps = buildTestingPipelineSteps(bereich);
+                        if (!steps.length || !onStartPipeline) return;
+                        onClose();
+                        onStartPipeline({ title: bereich.titel, steps });
+                      }}
+                    >
+                      Testbatterie starten
+                    </Button>
+                  </div>
                   {bereich.items.map((item) => (
                     <div
                       key={item.name}
@@ -673,7 +740,7 @@ function PasswordPrompt({ onSubmit, error }) {
 }
 
 // Epi-Track: echte UI mit Stopwatches, Countdown und Span-Übernahme
-function EpiTrackWire({ sessionData, onImportInv, onPersistTime, onAbort, onSendTmt }) {
+function EpiTrackWire({ sessionData, onImportInv, onPersistTime, onAbort, onSendTmt, onDone }) {
   const subs = [
     { id: "zahlen_interferenz", label: "Zahleninterferenz", type: "stopwatch" },
     { id: "zahlen_verbinden", label: "Zahlen verbinden", type: "stopwatch", limit: 180_000 },
@@ -813,6 +880,11 @@ function EpiTrackWire({ sessionData, onImportInv, onPersistTime, onAbort, onSend
           </div>
         ))}
       </div>
+      {onDone && (
+        <div className="mt-4 flex justify-end">
+          <Button type="button" variant="primary" onClick={onDone}>Epi-Track abschließen</Button>
+        </div>
+      )}
     </section>
   );
 }
@@ -1376,7 +1448,7 @@ function AttemptsRow({ title, seq1, seq2, val, onChange, stacked = false }) {
   );
 }
 
-function ZahlenSpanneScreen({ label, sequences, persisted, extraActionLabel, onStateChange, onAbort, onExtraAction, onBackToSpanMenu }) {
+function ZahlenSpanneScreen({ label, sequences, persisted, extraActionLabel, onStateChange, onAbort, onExtraAction, onBackToSpanMenu, onDone }) {
   const pairs = useMemo(() => (sequences && sequences.length ? sequences : []), [sequences]);
   const [vals, setVals] = useState(() => {
     if (persisted?.vals && Array.isArray(persisted.vals) && persisted.vals.length === pairs.length) {
@@ -1440,11 +1512,16 @@ function ZahlenSpanneScreen({ label, sequences, persisted, extraActionLabel, onS
           <Button size="bare" onClick={()=> onExtraAction && onExtraAction(longest)} className="px-3 py-2 rounded-xl border">{extraActionLabel}</Button>
         </div>
       )}
+      {onDone && (
+        <div className="mt-4 flex justify-end">
+          <Button type="button" variant="primary" onClick={onDone}>Fertig</Button>
+        </div>
+      )}
     </section>
   );
 }
 
-function BlockSpanneScreen({ label, sequences, persisted, onStateChange, onAbort, onBackToSpanMenu }) {
+function BlockSpanneScreen({ label, sequences, persisted, onStateChange, onAbort, onBackToSpanMenu, onDone }) {
   const pairs = useMemo(() => (sequences && sequences.length ? sequences : []), [sequences]);
   const [vals, setVals] = useState(() => {
     if (persisted?.vals && Array.isArray(persisted.vals) && persisted.vals.length === pairs.length) {
@@ -1502,6 +1579,11 @@ function BlockSpanneScreen({ label, sequences, persisted, onStateChange, onAbort
       <div className="mt-3 text-sm text-zinc-600">
         Längste korrekt reproduzierte Reihe: <span className="font-medium">{longest}</span>
       </div>
+      {onDone && (
+        <div className="mt-4 flex justify-end">
+          <Button type="button" variant="primary" onClick={onDone}>Fertig</Button>
+        </div>
+      )}
     </section>
   );
 }
@@ -2017,7 +2099,7 @@ function RWTTestPanel({ meta, modeKey, sessionData, onPersist, onClose }) {
   );
 }
 
-function RWTWire({ sessionData, onPersist, onAbort }) {
+function RWTWire({ sessionData, onPersist, onAbort, onDone }) {
   const [mode, setMode] = useState(null); // null | modes
   return (
     <section className="py-6">
@@ -2026,7 +2108,14 @@ function RWTWire({ sessionData, onPersist, onAbort }) {
         <AbortButton onAbort={onAbort} />
       </div>
       {mode === null ? (
-        <RWTModeMenu onSelect={(m) => setMode(m)} />
+        <>
+          <RWTModeMenu onSelect={(m) => setMode(m)} />
+          {onDone && (
+            <div className="mt-4 flex justify-end">
+              <Button type="button" variant="primary" onClick={onDone}>RWT abschließen</Button>
+            </div>
+          )}
+        </>
       ) : (
         <RWTTestPanel
           meta={RWT_MODES[mode]}
@@ -3907,7 +3996,7 @@ function MocaWire({ sessionData, testLanguage, onPersist, onReset, onAbort, onDo
   );
 }
 
-function StroopWire({ sessionData, onPersistTime, onPersistNote, onAbort }) {
+function StroopWire({ sessionData, onPersistTime, onPersistNote, onAbort, onDone }) {
   const col1 = [
     "blau","grün","gelb","rot","grün","blau","gelb","rot","blau","gelb","grün","rot",
     "gelb","blau","grün","rot","gelb","grün","blau","rot","grün","blau","gelb","rot",
@@ -3948,6 +4037,8 @@ function StroopWire({ sessionData, onPersistTime, onPersistNote, onAbort }) {
   };
 
   const interferenzTimerRef = useRef(null);
+  const [interferenzTimerState, setInterferenzTimerState] = useState("idle");
+  const [interferenzStoppedByButton, setInterferenzStoppedByButton] = useState(false);
 
   return (
     <section className="py-6">
@@ -3978,6 +4069,10 @@ function StroopWire({ sessionData, onPersistTime, onPersistNote, onAbort }) {
                 ref={interferenzTimerRef}
                 persisted={sessionData?.stroop?.interferenz ?? null}
                 onPersist={(ms) => onPersistTime && onPersistTime("interferenz", ms)}
+                onStateChange={(nextState) => {
+                  setInterferenzTimerState(nextState);
+                  if (nextState !== "stopped") setInterferenzStoppedByButton(false);
+                }}
               />
             </div>
             <div className="rounded-xl border bg-zinc-50 p-2 text-xs text-zinc-700">
@@ -4016,10 +4111,14 @@ function StroopWire({ sessionData, onPersistTime, onPersistNote, onAbort }) {
             <div className="flex justify-end">
               <Button size="bare"
                 type="button"
-                onClick={() => interferenzTimerRef.current?.stop?.()}
-                className="px-3 py-2 rounded-xl border bg-white"
+                disabled={interferenzTimerState !== "running"}
+                onClick={() => {
+                  interferenzTimerRef.current?.stop?.();
+                  setInterferenzStoppedByButton(true);
+                }}
+                className="px-3 py-2 rounded-xl border bg-white disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Timer stoppen
+                {interferenzStoppedByButton ? "Timer gestoppt" : "Timer stoppen"}
               </Button>
             </div>
           </div>
@@ -4032,12 +4131,19 @@ function StroopWire({ sessionData, onPersistTime, onPersistNote, onAbort }) {
         aria-label="Notiz"
         placeholder="Notiz"
       />
+      {onDone && (
+        <div className="mt-4 flex justify-end">
+          <Button type="button" variant="primary" onClick={onDone}>Stroop abschließen</Button>
+        </div>
+      )}
     </section>
   );
 }
 
-function GroovedPegboardWire({ sessionData, onPersistPanel, onAbort }) {
+function GroovedPegboardWire({ sessionData, onPersistPanel, onAbort, onDone }) {
   const gp = sessionData?.gp || {};
+  const dominantTimerRef = useRef(null);
+  const nonDominantTimerRef = useRef(null);
   const [domHand, setDomHand] = useState(gp.dom_hand || "rechts"); // "links"|"rechts"
   useEffect(() => {
     const frameId = requestAnimationFrame(() => setDomHand(gp.dom_hand || "rechts"));
@@ -4048,11 +4154,17 @@ function GroovedPegboardWire({ sessionData, onPersistPanel, onAbort }) {
     onPersistPanel && onPersistPanel(handKey, patch);
   };
 
+  const abortTest = (payload) => {
+    dominantTimerRef.current?.stopIfRunning();
+    nonDominantTimerRef.current?.stopIfRunning();
+    onAbort?.(payload);
+  };
+
   return (
     <section className="py-6">
       <Header title="Grooved Pegboard" />
       <div className="mb-3">
-        <AbortButton onAbort={onAbort} />
+        <AbortButton onAbort={abortTest} />
       </div>
       <div className="mb-4 space-y-2">
         <div className="text-sm text-zinc-700">Dominante Hand:</div>
@@ -4080,6 +4192,7 @@ function GroovedPegboardWire({ sessionData, onPersistPanel, onAbort }) {
           <Card key={panel.key} className="space-y-2">
             <div className="font-medium">{panel.label}</div>
             <Stopwatch
+              ref={panel.key === "dom" ? dominantTimerRef : nonDominantTimerRef}
               persisted={gp[panel.key + "_ms"] ?? null}
               onPersist={(ms) => persistHand(panel.key, { ms })}
             />
@@ -4095,6 +4208,21 @@ function GroovedPegboardWire({ sessionData, onPersistPanel, onAbort }) {
           </Card>
         ))}
       </div>
+      {onDone && (
+        <div className="mt-4 flex justify-end">
+          <Button
+            type="button"
+            variant="primary"
+            onClick={() => {
+              dominantTimerRef.current?.stopIfRunning();
+              nonDominantTimerRef.current?.stopIfRunning();
+              onDone();
+            }}
+          >
+            Grooved Pegboard abschließen
+          </Button>
+        </div>
+      )}
     </section>
   );
 }
@@ -4264,7 +4392,7 @@ function StatusBadges({ status, centered = false }) {
             "inline-block px-2 py-0.5 rounded-full text-xs border",
             label.includes("abgebrochen") || label.includes("Subtest")
               ? "bg-rose-50 text-rose-700 border-rose-200"
-              : label === "fällig"
+              : label === "fällig" || label === "Wartezeit"
                 ? "bg-amber-50 text-amber-700 border-amber-200"
                 : "bg-emerald-50 text-emerald-700 border-emerald-200"
           )}
@@ -4309,7 +4437,7 @@ function SpannenMenu({ statusMap, onOpen }) {
   );
 }
 
-function UhrentestWire({ sessionData, onPersist, onAbort }) {
+function UhrentestWire({ sessionData, onPersist, onAbort, onDone }) {
   const data = sessionData?.uhr || {};
   const [parts, setParts] = useState(() => normalizeClockParts(data.parts) || deriveClockPartsFromScore(data.score));
   const [score, setScore] = useState(() => {
@@ -4358,6 +4486,11 @@ function UhrentestWire({ sessionData, onPersist, onAbort }) {
           placeholder="Notiz"
         />
       </div>
+      {onDone && (
+        <div className="mt-4 flex justify-end">
+          <Button type="button" variant="primary" onClick={onDone}>Uhrentest abschließen</Button>
+        </div>
+      )}
     </section>
   );
 }
@@ -4617,6 +4750,8 @@ export default function App() {
   });
 
   const [globalTimers, setGlobalTimers] = useState([]); // only reminder timers live here
+  const [activePipeline, setActivePipeline] = useState(null);
+  const [pipelineInterruption, setPipelineInterruption] = useState(null);
   const addGlobalReminder = (label, minutes, nav) => {
     const now = Date.now();
     const t = {
@@ -4647,29 +4782,48 @@ export default function App() {
     localStorage.setItem("sessionUUID", nextId);
     setSessionUUID(nextId);
     setGlobalTimers([]);
+    setActivePipeline(null);
+    setPipelineInterruption(null);
     setSessionData({});
     setScreen({ name: "menu" });
   };
 
   const [sessionData, setSessionData] = useState({});
   const [hydrated, setHydrated] = useState(false);
-  const latestStateRef = useRef({ screen, globalTimers, sessionData, sessionUUID });
+  const latestStateRef = useRef({ screen, globalTimers, activePipeline, pipelineInterruption, sessionData, sessionUUID });
 
   useLayoutEffect(() => {
-    latestStateRef.current = { screen, globalTimers, sessionData, sessionUUID };
+    latestStateRef.current = { screen, globalTimers, activePipeline, pipelineInterruption, sessionData, sessionUUID };
     if (!hydrated) return;
     localStorage.setItem(SESSION_BACKUP_STORAGE_KEY, JSON.stringify({
       screen,
       globalTimers,
+      activePipeline,
+      pipelineInterruption,
       sessionData,
       sessionUUID,
       lastUpdated: Date.now(),
     }));
-  }, [hydrated, screen, globalTimers, sessionData, sessionUUID]);
+  }, [hydrated, screen, globalTimers, activePipeline, pipelineInterruption, sessionData, sessionUUID]);
 
   const persistNow = useCallback(() => {
-    const { screen: s, globalTimers: g, sessionData: sd, sessionUUID: id } = latestStateRef.current;
-    const snapshot = { screen: s, globalTimers: g, sessionData: sd, sessionUUID: id, lastUpdated: Date.now() };
+    const {
+      screen: s,
+      globalTimers: g,
+      activePipeline: pipeline,
+      pipelineInterruption: interruption,
+      sessionData: sd,
+      sessionUUID: id,
+    } = latestStateRef.current;
+    const snapshot = {
+      screen: s,
+      globalTimers: g,
+      activePipeline: pipeline,
+      pipelineInterruption: interruption,
+      sessionData: sd,
+      sessionUUID: id,
+      lastUpdated: Date.now(),
+    };
     localStorage.setItem(SESSION_BACKUP_STORAGE_KEY, JSON.stringify(snapshot));
     idbSet(id, snapshot).catch((e) => {
       console.error("Persistenz speichern fehlgeschlagen", e);
@@ -4693,6 +4847,8 @@ export default function App() {
         if (latest) {
           if (latest.screen) setScreen(normalizeScreen(latest.screen));
           if (latest.globalTimers) setGlobalTimers(latest.globalTimers);
+          if (latest.activePipeline?.steps?.length) setActivePipeline(latest.activePipeline);
+          if (latest.pipelineInterruption?.key) setPipelineInterruption(latest.pipelineInterruption);
           setSessionData(latest.sessionData || {});
         }
       } catch (e) {
@@ -4712,7 +4868,7 @@ export default function App() {
     if (!hydrated) return;
     const h = setTimeout(persistNow, 300);
     return () => clearTimeout(h);
-  }, [hydrated, persistNow, sessionUUID, screen, globalTimers, sessionData]);
+  }, [hydrated, persistNow, sessionUUID, screen, globalTimers, activePipeline, pipelineInterruption, sessionData]);
 
   // flush immediately when the tab is hidden or closed to reduce data loss risk
   useEffect(() => {
@@ -4736,6 +4892,116 @@ export default function App() {
     if (name === "menu" || name === "cerad_menu" || name === "spannen_menu") return;
     setSessionData((s) => (s?.testing_started_at ? s : { ...s, testing_started_at: Date.now() }));
   }, [screen?.name, sessionData?.testing_started_at]);
+
+  const startPipeline = ({ title, steps }) => {
+    if (!Array.isArray(steps) || steps.length === 0) return;
+    const pipeline = {
+      id: crypto && crypto.randomUUID ? crypto.randomUUID() : `pipeline_${Date.now()}`,
+      title,
+      steps,
+      index: 0,
+      pendingReminders: [],
+    };
+    setPipelineInterruption(null);
+    setActivePipeline(pipeline);
+    setScreen(steps[0].route);
+  };
+
+  const movePipelineForward = (pipeline, pendingReminders = pipeline.pendingReminders || []) => {
+    const nextIndex = pipeline.index + 1;
+    if (nextIndex < pipeline.steps.length) {
+      const nextPipeline = { ...pipeline, index: nextIndex, pendingReminders };
+      setActivePipeline(nextPipeline);
+      setScreen(nextPipeline.steps[nextIndex].route);
+      return;
+    }
+    if (pendingReminders.length > 0) {
+      setActivePipeline({ ...pipeline, index: pipeline.steps.length, pendingReminders });
+      setScreen({ name: "menu" });
+      return;
+    }
+    setActivePipeline(null);
+    setPipelineInterruption(null);
+    setScreen({ name: "menu" });
+  };
+
+  const deferPipelineStep = (key) => {
+    const currentStep = activePipeline?.steps?.[activePipeline.index];
+    if (!activePipeline || currentStep?.key !== key) return false;
+    const pendingReminders = Array.from(new Set([...(activePipeline.pendingReminders || []), key]));
+    movePipelineForward(activePipeline, pendingReminders);
+    return true;
+  };
+
+  const finishPipelineStep = (key, fallback = { name: "menu" }) => {
+    if (pipelineInterruption?.key === key) {
+      const pendingReminders = (activePipeline?.pendingReminders || []).filter((pendingKey) => pendingKey !== key);
+      const hasRegularStep = !!activePipeline?.steps?.[activePipeline.index];
+      setPipelineInterruption(null);
+      if (activePipeline && (hasRegularStep || pendingReminders.length > 0)) {
+        setActivePipeline({ ...activePipeline, pendingReminders });
+        setScreen(hasRegularStep ? pipelineInterruption.returnScreen : { name: "menu" });
+      } else {
+        setActivePipeline(null);
+        setScreen({ name: "menu" });
+      }
+      return;
+    }
+
+    const currentStep = activePipeline?.steps?.[activePipeline.index];
+    if (activePipeline && currentStep?.key === key) {
+      movePipelineForward(activePipeline);
+      return;
+    }
+    setScreen(fallback);
+  };
+
+  const openReminder = (timer) => {
+    const reminderKey = timer?.nav?.name;
+    const currentStep = activePipeline?.steps?.[activePipeline.index];
+    if (activePipeline && ["vlmt", "dcsr"].includes(reminderKey)) {
+      setPipelineInterruption({
+        key: reminderKey,
+        returnScreen: currentStep?.route || { name: "menu" },
+        reminderScreen: timer.nav,
+      });
+    }
+    setScreen(timer.nav || { name: "menu" });
+    clearGlobalTimer(timer.id);
+  };
+
+  const resumeTestBattery = () => {
+    if (!activePipeline) return;
+    if (pipelineInterruption) {
+      const fallbackReminderScreen = pipelineInterruption.key === "vlmt"
+        ? { name: "vlmt", go: "dg7", list: sessionData?.vlmt?.list }
+        : { name: "dcsr", go: "rekog" };
+      setScreen(pipelineInterruption.reminderScreen || fallbackReminderScreen);
+      return;
+    }
+    const currentStep = activePipeline.steps?.[activePipeline.index];
+    if (currentStep?.route) setScreen(currentStep.route);
+  };
+
+  const dismissReminder = (id) => {
+    const timer = globalTimers.find((entry) => entry.id === id);
+    const reminderKey = timer?.nav?.name;
+    clearGlobalTimer(id);
+    if (!activePipeline || !(activePipeline.pendingReminders || []).includes(reminderKey)) return;
+    const pendingReminders = activePipeline.pendingReminders.filter((key) => key !== reminderKey);
+    if (activePipeline.index >= activePipeline.steps.length && pendingReminders.length === 0) {
+      setActivePipeline(null);
+      setPipelineInterruption(null);
+      return;
+    }
+    setActivePipeline({ ...activePipeline, pendingReminders });
+  };
+
+  const stopPipeline = () => {
+    setActivePipeline(null);
+    setPipelineInterruption(null);
+    setScreen({ name: "menu" });
+  };
 
   const passwordHash = (import.meta.env?.VITE_APP_PASSWORD_HASH || "e3f67bab0aaf4f97f50b6d999c89300f988ca9e34895207bf9e700591406e09c").toLowerCase();
 
@@ -4938,15 +5204,15 @@ export default function App() {
       m[key] = ["erfasst", `${count} ${count === 1 ? "Subtest" : "Subtests"} abgebrochen`];
     };
 
-    // Helper: mark as fällig if a reminder exists that navigates to this screen
-    const dueFor = (key) => (globalTimers || []).some((t) => t?.nav?.name === key && !t.endedAt);
+    // Show that the delayed subtest is currently in its reminder waiting period.
+    const hasReminderFor = (key) => (globalTimers || []).some((t) => t?.nav?.name === key && !t.endedAt);
 
-    // VLMT / DCS-R (haben Reminder → "fällig")
-    if (dueFor("vlmt")) set("vlmt", "fällig");
+    // VLMT / DCS-R (haben Reminder → "Wartezeit")
+    if (hasReminderFor("vlmt")) set("vlmt", "Wartezeit");
     else if (s.vlmt_aborted) set("vlmt", "abgebrochen");
     else if (s.vlmt) set("vlmt", "erfasst");
 
-    if (dueFor("dcsr")) set("dcsr", "fällig");
+    if (hasReminderFor("dcsr")) set("dcsr", "Wartezeit");
     else if (s.dcsr_aborted) set("dcsr", "abgebrochen");
     else if (s.dcsr) set("dcsr", "erfasst");
 
@@ -5078,28 +5344,54 @@ export default function App() {
         <TopBar
           onBackToMenu={() => setScreen({ name: "menu" })}
           globalTimers={globalTimers}
-          onClearTimer={clearGlobalTimer}
-          onOpenTimer={(t) => { setScreen(t.nav || { name: "menu" }); clearGlobalTimer(t.id); }}
+          onClearTimer={dismissReminder}
+          onOpenTimer={openReminder}
           onNewSession={newSession}
           sessionData={sessionData}
-        onOpenCeradRecall={() => {
-          setSessionData(s => ({
-            ...s,
-            cerad_wl: { ...(s.cerad_wl || {}), recall_pending: false }
-          }));
-          setScreen({ name: "cerad_wl", go: "dg4" });
-        }}
-        onOpenCeradFigRecall={() => {
-        setSessionData((s) => ({
-          ...s,
-          cerad_fig: { ...(s.cerad_fig || {}), recall_pending: false }
-        }));
-        setScreen({ name: "cerad_fig", go: "recall" });
-      }}
-        onExportCsv={triggerCsvExport}
-        onExportPdf={triggerPdfExport}
-      />
+          onOpenCeradRecall={() => {
+            setSessionData((s) => ({
+              ...s,
+              cerad_wl: { ...(s.cerad_wl || {}), recall_pending: false },
+            }));
+            setScreen({ name: "cerad_wl", go: "dg4" });
+          }}
+          onClearCeradRecall={() => {
+            setSessionData((s) => ({
+              ...s,
+              cerad_wl: { ...(s.cerad_wl || {}), recall_pending: false },
+            }));
+          }}
+          onOpenCeradFigRecall={() => {
+            setSessionData((s) => ({
+              ...s,
+              cerad_fig: { ...(s.cerad_fig || {}), recall_pending: false },
+            }));
+            setScreen({ name: "cerad_fig", go: "recall" });
+          }}
+          onClearCeradFigRecall={() => {
+            setSessionData((s) => ({
+              ...s,
+              cerad_fig: { ...(s.cerad_fig || {}), recall_pending: false },
+            }));
+          }}
+          onExportCsv={triggerCsvExport}
+          onExportPdf={triggerPdfExport}
+        />
         <main className="max-w-5xl mx-auto px-4 pb-24 pt-3">
+        {activePipeline && (
+          <TestBatteryProgress
+            pipeline={activePipeline}
+            interruption={pipelineInterruption}
+            onResume={resumeTestBattery}
+            onStop={stopPipeline}
+          />
+        )}
+        {activePipeline?.steps?.[activePipeline.index]?.offline && screen.name === "testbattery_offline" && (
+          <OfflineTestBatteryStep
+            step={activePipeline.steps[activePipeline.index]}
+            onDone={() => finishPipelineStep(activePipeline.steps[activePipeline.index].key)}
+          />
+        )}
         {screen.name === "menu" && (
           <TileMenu
             onOpen={(n) => setScreen({ name: n })}
@@ -5129,7 +5421,8 @@ export default function App() {
               route={screen}
               savedState={sessionData?.vlmt}
               testLanguage={sessionData?.demographics?.test_language}
-              onDone={() => setScreen({ name: "menu" })}
+              onDone={() => finishPipelineStep("vlmt")}
+              onReminderStarted={() => deferPipelineStep("vlmt")}
               onStateChange={(data)=> setSessionData((s)=>({ ...s, vlmt: data }))}
               onAbort={(payload)=> setSessionData((s)=>({ ...s, vlmt_aborted: payload }))}
             />
@@ -5150,7 +5443,7 @@ export default function App() {
                 ace_aborted: payload,
               }))
             }
-            onDone={() => setScreen({ name: "menu" })}
+            onDone={() => finishPipelineStep("ace")}
           />
         )}
         {screen.name === "moca" && (
@@ -5179,7 +5472,7 @@ export default function App() {
                 moca_aborted: payload,
               }))
             }
-            onDone={() => setScreen({ name: "menu" })}
+            onDone={() => finishPipelineStep("moca")}
           />
         )}
         {screen.name === "frageboegen_menu" && (
@@ -5197,7 +5490,7 @@ export default function App() {
               phq9: { ...(s.phq9 || {}), ...patch },
             }))}
             onAbort={(payload) => setSessionData((s) => ({ ...s, phq9_aborted: payload }))}
-            onDone={() => setScreen({ name: "frageboegen_menu" })}
+            onDone={() => finishPipelineStep("phq9", { name: "frageboegen_menu" })}
             onBack={() => setScreen({ name: "frageboegen_menu" })}
           />
         )}
@@ -5210,7 +5503,7 @@ export default function App() {
               gad7: { ...(s.gad7 || {}), ...patch },
             }))}
             onAbort={(payload) => setSessionData((s) => ({ ...s, gad7_aborted: payload }))}
-            onDone={() => setScreen({ name: "frageboegen_menu" })}
+            onDone={() => finishPipelineStep("gad7", { name: "frageboegen_menu" })}
             onBack={() => setScreen({ name: "frageboegen_menu" })}
           />
         )}
@@ -5223,7 +5516,7 @@ export default function App() {
               gds: { ...(s.gds || {}), ...patch },
             }))}
             onAbort={(payload) => setSessionData((s) => ({ ...s, gds_aborted: payload }))}
-            onDone={() => setScreen({ name: "frageboegen_menu" })}
+            onDone={() => finishPipelineStep("gds", { name: "frageboegen_menu" })}
             onBack={() => setScreen({ name: "frageboegen_menu" })}
           />
         )}
@@ -5235,7 +5528,8 @@ export default function App() {
             sessionUUID={sessionUUID}
             onStateChange={(data)=> setSessionData((s)=>({ ...s, dcsr: data }))}
             onAbort={(payload)=> setSessionData((s)=>({ ...s, dcsr_aborted: payload }))}
-            onDone={() => setScreen({ name: "menu" })}
+            onDone={() => finishPipelineStep("dcsr")}
+            onReminderStarted={() => deferPipelineStep("dcsr")}
           />
         )}
           {screen.name === "cerad_wl" && (
@@ -5282,7 +5576,7 @@ export default function App() {
                 tmt_aborted: payload,
               }))
             }
-            onDone={() => setScreen({ name: "menu" })}
+            onDone={() => finishPipelineStep("tmt_ab")}
           />
         )}
 
@@ -5294,6 +5588,7 @@ export default function App() {
             onStateChange={(data)=> setSessionData((s)=>({ ...s, zahl_fwd: data }))}
             onAbort={(payload)=> setSessionData((s)=>({ ...s, zahl_fwd_aborted: payload }))}
             onBackToSpanMenu={() => setScreen({ name: "spannen_menu" })}
+            onDone={() => finishPipelineStep("zahl_fwd", { name: "spannen_menu" })}
           />
         )}
         {screen.name === "zahl_rev" && (
@@ -5306,6 +5601,7 @@ export default function App() {
             onAbort={(payload)=> setSessionData((s)=>({ ...s, zahl_rev_aborted: payload }))}
             onExtraAction={(longest)=> setSessionData((s)=>({ ...s, epi: { ...(s.epi||{}), inv_spanne: longest } }))}
             onBackToSpanMenu={() => setScreen({ name: "spannen_menu" })}
+            onDone={() => finishPipelineStep("zahl_rev", { name: "spannen_menu" })}
           />
         )}
 
@@ -5317,6 +5613,7 @@ export default function App() {
             onStateChange={(data)=> setSessionData((s)=>({ ...s, block_fwd: data }))}
             onAbort={(payload)=> setSessionData((s)=>({ ...s, block_fwd_aborted: payload }))}
             onBackToSpanMenu={() => setScreen({ name: "spannen_menu" })}
+            onDone={() => finishPipelineStep("block_fwd", { name: "spannen_menu" })}
           />
         )}
         {screen.name === "block_rev" && (
@@ -5327,6 +5624,7 @@ export default function App() {
             onStateChange={(data)=> setSessionData((s)=>({ ...s, block_rev: data }))}
             onAbort={(payload)=> setSessionData((s)=>({ ...s, block_rev_aborted: payload }))}
             onBackToSpanMenu={() => setScreen({ name: "spannen_menu" })}
+            onDone={() => finishPipelineStep("block_rev", { name: "spannen_menu" })}
           />
         )}
         {screen.name === "spannen_menu" && (
@@ -5354,6 +5652,7 @@ export default function App() {
                 rwt_aborted: payload,
               }))
             }
+            onDone={() => finishPipelineStep("rwt")}
           />
         )}
         {screen.name === "stroop" && (
@@ -5368,6 +5667,7 @@ export default function App() {
             onAbort={(key, payload) =>
               setSessionData((s) => ({ ...s, stroop_aborted: { ...((s.stroop_aborted)||{}), [key]: payload } }))
             }
+            onDone={() => finishPipelineStep("stroop")}
           />
         )}
         {screen.name === "epi" && (
@@ -5399,11 +5699,16 @@ export default function App() {
                   : payload,
               }))
             }
+            onDone={() => finishPipelineStep("epi")}
           />
         )}
         {screen.name === "gp" && (
           <GroovedPegboardWire
             sessionData={sessionData}
+            onAbort={(payload) => {
+              setSessionData((s) => ({ ...s, gp_aborted: payload }));
+              setScreen({ name: "menu" });
+            }}
             onPersistPanel={(panel, payload) =>
               setSessionData((s) => ({
                 ...s,
@@ -5418,6 +5723,7 @@ export default function App() {
                 },
               }))
             }
+            onDone={() => finishPipelineStep("gp")}
           />
         )}
         {screen.name === "uhr" && (
@@ -5425,6 +5731,7 @@ export default function App() {
             sessionData={sessionData}
             onPersist={(patch) => setSessionData((s) => ({ ...s, uhr: { ...(s.uhr||{}), ...patch } }))}
             onAbort={(payload) => setSessionData((s) => ({ ...s, uhr_aborted: payload }))}
+            onDone={() => finishPipelineStep("uhr")}
           />
         )}
 
@@ -5540,7 +5847,7 @@ export default function App() {
                   : payload,
               }))
             }
-            onDone={() => setScreen({ name: "cerad_menu" })}
+            onDone={() => finishPipelineStep("cerad", { name: "cerad_menu" })}
             onBackToMenu={() => setScreen({ name: "cerad_menu" })}
           />
         )}
@@ -5652,6 +5959,7 @@ export default function App() {
         open={showTestbereiche}
         onClose={() => setShowTestbereiche(false)}
         onOpenTest={(name) => setScreen({ name })}
+        onStartPipeline={startPipeline}
       />
       <SystemUpdateReminder open={showSystemUpdateReminder} onClose={() => setShowSystemUpdateReminder(false)} />
     </div>
@@ -5670,6 +5978,58 @@ function DevSelfTests() {
 
 // AbortButton now lives in components/abort-button
 
+function TestBatteryProgress({ pipeline, interruption, onResume, onStop }) {
+  const currentStep = pipeline.steps?.[pipeline.index] || null;
+  const pendingCount = pipeline.pendingReminders?.length || 0;
+  const interruptionLabel = interruption ? PIPELINE_STEP_LABELS[interruption.key] || interruption.key : null;
+  const canResume = !!interruption || !!currentStep;
+
+  return (
+    <div className="testbattery-progress mb-3 flex flex-col gap-2 rounded-2xl border border-indigo-200 bg-indigo-50/90 px-4 py-3 text-sm shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <div className="font-semibold text-indigo-950">Testbatterie: {pipeline.title}</div>
+        {interruption ? (
+          <div className="text-indigo-700">
+            Eingeschobener Abruf: {interruptionLabel}
+            {currentStep ? ` · anschließend weiter mit ${currentStep.label}` : ""}
+          </div>
+        ) : currentStep ? (
+          <div className="text-indigo-700">Schritt {pipeline.index + 1} von {pipeline.steps.length}: {currentStep.label}</div>
+        ) : (
+          <div className="text-amber-700">Reguläre Tests abgeschlossen · {pendingCount} {pendingCount === 1 ? "Abruf ausstehend" : "Abrufe ausstehend"}</div>
+        )}
+      </div>
+      <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+        <Button type="button" variant="primary" size="sm" onClick={onResume} disabled={!canResume}>
+          Testbatterie fortsetzen
+        </Button>
+        <Button type="button" variant="secondary" size="sm" onClick={onStop}>
+          Testbatterie beenden
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function OfflineTestBatteryStep({ step, onDone }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" role="dialog" aria-modal="true" aria-labelledby="offline-test-title">
+      <div className="w-full max-w-lg rounded-2xl border border-amber-200 bg-white p-5 shadow-xl">
+        <div className="text-xs font-semibold uppercase tracking-wide text-amber-700">Nicht digitaler Bestandteil</div>
+        <div id="offline-test-title" className="mt-1 text-lg font-semibold text-zinc-950">{step.label}</div>
+        <p className="mt-2 text-sm text-zinc-700">
+          Bitte diesen Teil der Testbatterie jetzt offline durchführen. Anschließend kann die Testbatterie mit dem nächsten Schritt fortgesetzt werden.
+        </p>
+        <div className="mt-4 flex justify-end">
+          <Button type="button" variant="primary" onClick={onDone}>
+            Offline-Test abgeschlossen – fortsetzen
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---------- Top Bar ----------
 function TopBar({
   onBackToMenu,
@@ -5679,7 +6039,9 @@ function TopBar({
   onNewSession,
   sessionData,
   onOpenCeradRecall,
+  onClearCeradRecall,
   onOpenCeradFigRecall,
+  onClearCeradFigRecall,
   onExportCsv,
   onExportPdf,
 }) {
@@ -5695,26 +6057,6 @@ function TopBar({
           Übersicht
         </Button>
         <div className="ml-auto flex items-center gap-2">
-          {sessionData?.cerad_wl?.recall_pending && (
-            <Button
-              variant="warning"
-              size="sm"
-              onClick={onOpenCeradRecall}
-              onTouchEnd={(e) => { e.preventDefault(); onOpenCeradRecall && onOpenCeradRecall(); }}
-            >
-              CERAD-Verbalgedächtnis – Abruf starten
-            </Button>
-          )}
-          {sessionData?.cerad_fig?.recall_pending && (
-            <Button
-              variant="warning"
-              size="sm"
-              onClick={onOpenCeradFigRecall}
-              onTouchEnd={(e) => { e.preventDefault(); onOpenCeradFigRecall && onOpenCeradFigRecall(); }}
-            >
-              CERAD Figuralgedächtnis – Abruf starten
-            </Button>
-          )}
           <Button
             variant="primary"
             size="sm"
@@ -5736,9 +6078,29 @@ function TopBar({
           >
             Neue Testung
           </Button>
-          <GlobalTimers timers={globalTimers} onClear={onClearTimer} onOpen={onOpenTimer} />
         </div>
       </div>
+      <GlobalTimers
+        timers={globalTimers}
+        onClear={onClearTimer}
+        onOpen={onOpenTimer}
+        ceradReminders={[
+          ...(sessionData?.cerad_wl?.recall_pending ? [{
+            id: "cerad-verbal",
+            label: "CERAD-V",
+            fullLabel: "CERAD-Verbalgedächtnis",
+            onOpen: onOpenCeradRecall,
+            onClear: onClearCeradRecall,
+          }] : []),
+          ...(sessionData?.cerad_fig?.recall_pending ? [{
+            id: "cerad-figural",
+            label: "CERAD-F",
+            fullLabel: "CERAD-Figuralgedächtnis",
+            onOpen: onOpenCeradFigRecall,
+            onClear: onClearCeradFigRecall,
+          }] : []),
+        ]}
+      />
     </div>
   );
 }
@@ -5859,44 +6221,82 @@ function DebugOverlay() {
   );
 }
 
-function GlobalTimers({ timers, onClear, onOpen }) {
+function GlobalTimers({ timers, onClear, onOpen, ceradReminders = [] }) {
+  if (!timers.length && !ceradReminders.length) return null;
+
   return (
-    <div className="flex gap-2">
-      {timers.map((t) => (
-        <ReminderPill
-          key={t.id}
-          timer={t}
-          onClear={() => onClear(t.id)}
-          onOpen={() => onOpen && onOpen(t)}
-        />
-      ))}
+    <div className="flex justify-end px-2 pb-2 sm:px-4">
+      <div
+        className="reminder-panel flex w-max max-w-full flex-col gap-1 rounded-xl border border-indigo-200 bg-indigo-50/95 p-1.5 shadow-xl backdrop-blur-sm"
+        aria-label="Erinnerungen"
+      >
+        {timers.map((t) => (
+          <ReminderPill
+            key={t.id}
+            timer={t}
+            onClear={() => onClear(t.id)}
+            onOpen={() => onOpen && onOpen(t)}
+          />
+        ))}
+        {ceradReminders.map((reminder) => (
+          <ReminderPill
+            key={reminder.id}
+            timer={{ ...reminder, untimed: true, nav: true }}
+            onClear={reminder.onClear}
+            onOpen={reminder.onOpen}
+          />
+        ))}
+      </div>
     </div>
   );
 }
 
 function ReminderPill({ timer, onClear, onOpen }) {
   const [now, setNow] = useState(Date.now);
-  useInterval(() => setNow(Date.now()), 250);
+  useInterval(() => setNow(Date.now()), timer.untimed ? null : 250);
   const remaining = Math.max(0, (timer.startTs + (timer.durationMs ?? 0)) - now);
   const mm = Math.floor(remaining / 60000);
   const ss = Math.floor((remaining % 60000) / 1000);
   const done = remaining <= 0;
+  const shortLabel = timer.nav?.name === "dcsr"
+    ? "DCS"
+    : timer.nav?.name === "vlmt"
+      ? "VLMT"
+      : timer.label;
   return (
     <div
       className={cls(
-        "px-3 py-1.5 rounded-xl border text-sm flex items-center gap-2",
-        done ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-zinc-100 border-zinc-200 text-zinc-700"
+        "reminder-row grid w-full items-center justify-items-end gap-1.5 rounded-lg border px-1.5 py-1 text-xs shadow-sm",
+        timer.untimed
+          ? "grid-cols-[minmax(4.5rem,1fr)_3.5rem_1.75rem]"
+          : "grid-cols-[minmax(2.75rem,1fr)_3.25rem_3.5rem_1.75rem]",
+        !timer.untimed && done
+          ? "reminder-row-done border-emerald-200 bg-emerald-50 text-emerald-700"
+          : "reminder-row-active border-indigo-100 bg-white/90 text-indigo-950"
       )}
     >
-      <span className="font-medium">{timer.label}</span>
-      <span>{done ? "fällig" : `${mm}:${ss.toString().padStart(2, "0")}`}</span>
+      <span className="text-right font-semibold">{shortLabel}</span>
+      {!timer.untimed && (
+        <span
+          className="w-full text-right font-mono tabular-nums"
+          aria-label={done ? "fällig" : `${mm} Minuten und ${ss} Sekunden verbleibend`}
+        >
+          {`${mm}:${ss.toString().padStart(2, "0")}`}
+        </span>
+      )}
       {timer.nav && (
-        <Button size="bare" onClick={onOpen} className="px-2 py-0.5 rounded-lg bg-white border text-xs">
+        <Button size="bare" onClick={onOpen} className={cls("reminder-open-button h-7 w-full rounded-md border border-indigo-200 bg-white px-1.5 py-0.5 text-xs font-medium text-indigo-800 hover:bg-indigo-100", timer.untimed ? "col-start-2" : "col-start-3")}>
           Öffnen
         </Button>
       )}
-      <Button size="bare" onClick={onClear} className="px-2 py-0.5 rounded-lg bg-white border text-xs">
-        Entfernen
+      <Button
+        size="bare"
+        onClick={onClear}
+        className={cls("flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-base leading-none text-rose-700 hover:border-rose-300 hover:bg-rose-100 hover:text-rose-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300", timer.untimed ? "col-start-3" : "col-start-4")}
+        aria-label={`${timer.fullLabel || shortLabel}-Erinnerung schließen`}
+        title="Erinnerung schließen"
+      >
+        <span aria-hidden="true">×</span>
       </Button>
     </div>
   );
@@ -6183,7 +6583,7 @@ function DemoCapture({ demographics, saved, onSave }) {
 }
 
 // ---------- VLMT Wireframe ----------
-function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, onStateChange, onAbort }) {
+function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, onReminderStarted, onStateChange, onAbort }) {
   const saved = savedState || {};
   const initialActiveIdx =
     saved.step === "score" ? Math.max(0, (saved.dg || 1) - 1)
@@ -6313,7 +6713,17 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
         })
       : []
   ), [list, materials]);
-  const [rekogSel, setRekogSel] = useState(() => ({ ...(saved.rekog?.sel || {}) })); // key: index -> boolean
+  const [rekogSel, setRekogSel] = useState(() => {
+    const selections = saved.rekog?.sel || {};
+    const savedItems = saved.rekog?.items;
+    if (list !== "D" || !Array.isArray(savedItems) || savedItems.length === 0) return { ...selections };
+    // Older VLMT-D sessions omitted the first five words; preserve selections by word, not index.
+    const selectionsByWord = new Map(savedItems.map((item, index) => [item.key || item.w, selections[index]]));
+    return Object.fromEntries(rekogItems.flatMap((item, index) => {
+      const selected = selectionsByWord.get(item.key || item.w);
+      return typeof selected === "boolean" ? [[index, selected]] : [];
+    }));
+  }); // key: index -> boolean
   const rekogHits = useMemo(() => rekogItems.reduce((a, it, i) => a + ((rekogSel[i] && it.t) ? 1 : 0), 0), [rekogItems, rekogSel]);
   const rekogFP = useMemo(() => rekogItems.reduce((a, it, i) => a + ((rekogSel[i] && !it.t) ? 1 : 0), 0), [rekogItems, rekogSel]);
 
@@ -6467,7 +6877,13 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
           />
           <div className="flex gap-2 mt-4">
             <Button size="bare"
-              onClick={() => { commitCurrent(5); addGlobalReminder("VLMT DG7", 30, { name: "vlmt", go: "dg7", list }); setStep("waiting"); }}
+              onClick={() => {
+                commitCurrent(5);
+                emitState();
+                addGlobalReminder("VLMT", 30, { name: "vlmt", go: "dg7", list });
+                setStep("waiting");
+                onReminderStarted?.();
+              }}
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
             >
               30-Min. Reminder starten
@@ -6713,7 +7129,7 @@ function DcsrFigureOverlay({ figure, onClose, onRate }) {
   );
 }
 
-function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateChange, onAbort, onDone }) {
+function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateChange, onAbort, onDone, onReminderStarted }) {
   const saved = savedState || {};
   const [step, setStep] = useState(saved.step || "choose"); // "dg" | "waiting" | "rekog"
   const [ver, setVer] = useState(saved.ver || null); // "V1"|"V2"
@@ -7114,8 +7530,10 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
               <Button
                 variant="primary"
                 onClick={() => {
-                  addGlobalReminder("DCS Rekognition", 30, { name: "dcsr", go: "rekog" });
+                  emitState();
+                  addGlobalReminder("DCS", 30, { name: "dcsr", go: "rekog" });
                   setStep("waiting");
+                  onReminderStarted?.();
                 }}
               >
                 30-Min. Reminder für Rekognition
@@ -7207,14 +7625,6 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
                   </div>
                 </div>
               ))}
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                onClick={() => setRekogResp({ korrekt: 0, falsch: 0, gedreht: 0 })}
-              >
-                Zurücksetzen
-              </Button>
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">

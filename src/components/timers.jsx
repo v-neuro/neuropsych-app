@@ -36,7 +36,7 @@ export const Stopwatch = forwardRef(function Stopwatch({ persisted, ...props }, 
   return <StopwatchState key={persistedKey} ref={ref} persisted={persisted} {...props} />;
 });
 
-const StopwatchState = forwardRef(function StopwatchState({ persisted, onPersist, autoAbortMs, onAutoAbort }, ref) {
+const StopwatchState = forwardRef(function StopwatchState({ persisted, onPersist, autoAbortMs, onAutoAbort, onStateChange }, ref) {
   const initialElapsed = typeof persisted === "number" && persisted >= 0 ? persisted : 0;
   const [state, setState] = useState(initialElapsed > 0 ? "stopped" : "idle"); // "idle" | "running" | "stopped" | "aborted"
   const [start, setStart] = useState(null);
@@ -56,6 +56,7 @@ const StopwatchState = forwardRef(function StopwatchState({ persisted, onPersist
       setState("aborted");
       setStart(null);
       setAborted(true);
+      onStateChange?.("aborted");
       onPersist?.(autoAbortMs);
       onAutoAbort?.({ at: now, elapsedMs: autoAbortMs });
       return;
@@ -64,19 +65,22 @@ const StopwatchState = forwardRef(function StopwatchState({ persisted, onPersist
   }, 50);
 
   const onStart = () => {
-    setStart(Date.now());
-    setElapsed(0);
+    // Treat `start` as the origin for the accumulated elapsed time so a
+    // stopped stopwatch resumes instead of beginning a new measurement.
+    setStart(Date.now() - elapsed);
     setState("running");
     setAborted(false);
     autoAbortFiredRef.current = false;
+    onStateChange?.("running");
   };
   const stopNow = useCallback(() => {
     const final = state === "running" && start !== null ? Date.now() - start : elapsed;
     setElapsed(final);
     setState("stopped");
     setStart(null);
+    onStateChange?.("stopped");
     if (onPersist) onPersist(final);
-  }, [elapsed, onPersist, start, state]);
+  }, [elapsed, onPersist, onStateChange, start, state]);
   const onStop = () => stopNow();
   const onReset = useCallback(() => {
     setState("idle");
@@ -84,13 +88,17 @@ const StopwatchState = forwardRef(function StopwatchState({ persisted, onPersist
     setElapsed(0);
     setAborted(false);
     autoAbortFiredRef.current = false;
+    onStateChange?.("idle");
     if (onPersist) onPersist(0);
-  }, [onPersist]);
+  }, [onPersist, onStateChange]);
 
   useImperativeHandle(ref, () => ({
     stop: () => stopNow(),
+    stopIfRunning: () => {
+      if (state === "running") stopNow();
+    },
     reset: () => onReset(),
-  }), [stopNow, onReset]);
+  }), [stopNow, onReset, state]);
 
   const limitSeconds = autoAbortMs ? Math.round(autoAbortMs / 1000) : null;
 
