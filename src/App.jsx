@@ -8,6 +8,8 @@ import { AbortButton } from "./components/abort-button";
 import { ErrorBoundary } from "./components/error-boundary";
 import { ReyCopyScreen } from "./components/rey-copy";
 import { getReySummary, getReyExportFields, switchReyVersion } from "./lib/rey-scoring";
+import { Qolie31Screen } from "./components/qolie31";
+import { getQolie31ExportFields } from "./lib/qolie31-scoring";
 
 const SESSION_BACKUP_STORAGE_KEY = "npt_session_backup";
 
@@ -487,11 +489,12 @@ const PIPELINE_STEP_LABELS = {
   phq9: "PHQ-9",
   gad7: "GAD-7",
   gds: "GDS",
+  qolie31: "QOLIE-31",
   ace: "ACE-III",
   moca: "MoCA",
   gp: "Grooved Pegboard",
   uhr: "Uhrentest",
-  rey_copy: "Rey-Figur – Kopie",
+  rey_copy: "Rey-Figur",
   cerad: "CERAD+",
 };
 
@@ -544,7 +547,7 @@ function TestbereicheModal({ open, onClose, onOpenTest, onStartPipeline }) {
         { name: "Blockspanne vorwärts und rückwärts", testRoute: "spannen_menu", pipelineRoutes: ["block_fwd", "block_rev"] },
         { name: "Wortflüssigkeit phonematisch (P, G-R) und semantisch (Tier, Sportarten + Früchte)", testRoute: "rwt" },
         { name: "PHQ-9 und GAD-7", testRoute: "frageboegen_menu", pipelineRoutes: ["phq9", "gad7"] },
-        { name: "QOLIE-31", testRoute: null },
+        { name: "QOLIE-31", testRoute: "qolie31" },
       ],
     },
     {
@@ -560,7 +563,7 @@ function TestbereicheModal({ open, onClose, onOpenTest, onStartPipeline }) {
       items: [
         { name: "Strukturierte Anamnese einschl. Screening-Fragen Depression/Ängste", testRoute: null },
         { name: "VLMT", testRoute: "vlmt" },
-        { name: "Rey-Figur – Kopie", testRoute: "rey_copy" },
+        { name: "Rey-Figur", testRoute: "rey_copy" },
         { name: "TMT A & B", testRoute: "tmt_ab" },
         { name: "Zahlenspanne vorwärts und rückwärts", testRoute: "spannen_menu", pipelineRoutes: ["zahl_fwd", "zahl_rev"] },
         { name: "Stroop (Farbwörter lesen, Farben benennen, Farb-Wort Interferenz)", testRoute: "stroop" },
@@ -652,7 +655,6 @@ function TestbereicheModal({ open, onClose, onOpenTest, onStartPipeline }) {
                   <div className="flex flex-col gap-2 rounded-xl border border-indigo-100 bg-indigo-50 p-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <div className="font-medium text-indigo-950">Testbatterie</div>
-                      <div className="text-xs text-indigo-700">Digitale Tests laufen in der aufgeführten Reihenfolge. Bei nicht digitalen Bestandteilen erscheint zum passenden Zeitpunkt ein Hinweis.</div>
                     </div>
                     <Button
                       type="button"
@@ -1374,6 +1376,7 @@ async function buildExportRow(sessionData, sessionUUID, opts = {}) {
 
   // Append new subtests to preserve the existing CSV column order.
   Object.assign(row, getReyExportFields(s.rey_copy, s.rey_copy_aborted));
+  Object.assign(row, getQolie31ExportFields(s.qolie31, s.qolie31_aborted));
   return row;
 }
 
@@ -4236,7 +4239,7 @@ function QuestionnaireMenu({ statusMap, onOpen }) {
   const items = Object.entries(QUESTIONNAIRE_DEFINITIONS).map(([key, definition]) => ({
     key,
     label: definition.title,
-  }));
+  })).concat({ key: "qolie31", label: "QOLIE-31" });
   return (
     <section className="py-6">
       <Header title="Fragebögen" subtitle="Fragebogen auswählen" />
@@ -5268,9 +5271,10 @@ export default function App() {
     else if (s.moca && (Object.keys(s.moca.scores || {}).length > 0 || Object.keys(s.moca.raw || {}).length > 0 || s.moca.notes)) set("moca", "erfasst");
 
     // Fragebögen
-    const questionnaireKeys = Object.keys(QUESTIONNAIRE_DEFINITIONS);
+    const questionnaireKeys = [...Object.keys(QUESTIONNAIRE_DEFINITIONS), "qolie31"];
     const hasQuestionnaireData = (key) => {
       const data = s[key] || {};
+      if (key === "qolie31") return Object.values(data.responses || {}).some((response) => response !== null && response !== undefined) || !!data.notes;
       const definition = QUESTIONNAIRE_DEFINITIONS[key];
       return data.entry_mode === "manual" || getQuestionnaireManualTotal(data, definition) !== null || Object.keys(data.responses || {}).length > 0 || !!data.notes;
     };
@@ -5522,6 +5526,24 @@ export default function App() {
             }))}
             onAbort={(payload) => setSessionData((s) => ({ ...s, gds_aborted: payload }))}
             onDone={() => finishPipelineStep("gds", { name: "frageboegen_menu" })}
+            onBack={() => setScreen({ name: "frageboegen_menu" })}
+          />
+        )}
+        {screen.name === "qolie31" && (
+          <Qolie31Screen
+            data={sessionData.qolie31}
+            aborted={sessionData.qolie31_aborted}
+            onPersist={(patch) => setSessionData((s) => ({
+              ...s,
+              qolie31: { ...(s.qolie31 || {}), ...patch },
+            }))}
+            onAbort={(payload) => setSessionData((s) => ({ ...s, qolie31_aborted: payload }))}
+            onResume={() => setSessionData((s) => {
+              const next = { ...s };
+              delete next.qolie31_aborted;
+              return next;
+            })}
+            onDone={() => finishPipelineStep("qolie31", { name: "frageboegen_menu" })}
             onBack={() => setScreen({ name: "frageboegen_menu" })}
           />
         )}
@@ -6308,7 +6330,7 @@ function TileMenu({ onOpen, onOpenCERAD, statusMap, disabled }) {
   const tiles = [
     { key: "vlmt", label: "VLMT", accent: "border-violet-200 bg-violet-50/80 hover:bg-violet-100/80", dot: "bg-violet-500" },
     { key: "dcsr", label: "DCS-R", accent: "border-cyan-200 bg-cyan-50/80 hover:bg-cyan-100/80", dot: "bg-cyan-500" },
-    { key: "rey_copy", label: "Rey-Figur – Kopie", accent: "border-teal-200 bg-teal-50/80 hover:bg-teal-100/80", dot: "bg-teal-500" },
+    { key: "rey_copy", label: "Rey-Figur", accent: "border-teal-200 bg-teal-50/80 hover:bg-teal-100/80", dot: "bg-teal-500" },
     { key: "epi", label: "Epi-Track", accent: "border-orange-200 bg-orange-50/80 hover:bg-orange-100/80", dot: "bg-orange-500" },
     { key: "tmt_ab", label: "TMT A und B", accent: "border-lime-200 bg-lime-50/80 hover:bg-lime-100/80", dot: "bg-lime-500" },
     { key: "spannen_menu", label: "Zahlen- und Blockspanne", accent: "border-sky-200 bg-sky-50/80 hover:bg-sky-100/80", dot: "bg-sky-500" },

@@ -109,10 +109,10 @@ try {
   await send("Page.navigate", { url: appUrl }, sessionId);
   await until(() => evaluate('!!document.querySelector(".tile-btn:not(:disabled)")'), "hydration");
   assert.equal(await evaluate('document.body.textContent.includes("Ruhiger Modus")'), false);
-  assert.equal(await evaluate('document.querySelector("[aria-label=\"Zwischen ruhigem und farbenfrohem Design umschalten\"]")'), null);
+  assert.equal(await evaluate(`document.querySelector('[aria-label="Zwischen ruhigem und farbenfrohem Design umschalten"]')`), null);
   assert.equal(await evaluate('getComputedStyle(document.body).backgroundImage.includes("radial-gradient")'), true);
   assert.equal(await evaluate('getComputedStyle(document.querySelector(".tile-accent")).display !== "none"'), true);
-  await click("Rey-Figur – Kopie");
+  await click("Rey-Figur");
   await assertVersionChoice();
   await click("Version 1 wählen");
   assert.equal(await completionDisabled(), true);
@@ -138,7 +138,7 @@ try {
   assert.equal(await evaluate('document.querySelector("[data-rey-progress]").textContent'), "1 / 18 bewertet");
   await click("Übersicht");
   assert.equal(await evaluate('[...document.querySelectorAll(".tile-btn")].find(node => node.textContent.includes("Rey-Figur")).textContent.includes("in Bearbeitung")'), true);
-  await click("Rey-Figur – Kopiein Bearbeitung");
+  await click("Rey-Figurin Bearbeitung");
   await send("Page.reload", {}, sessionId);
   await delay(300);
   await until(() => evaluate('!!document.querySelector("[data-rey-element]")'), "reload");
@@ -250,7 +250,10 @@ try {
   const v1Headers = headers;
   const firstReyColumn = headers.indexOf('rey_copy_version');
   assert.equal(headers[firstReyColumn - 1], 'gds_aborted');
-  assert.ok(headers.slice(firstReyColumn).every(header => header.startsWith('rey_copy_')));
+  const firstQolieColumn = headers.indexOf('qolie31_entry_mode');
+  assert.equal(headers[firstQolieColumn - 1], 'rey_copy_abort_note');
+  assert.ok(headers.slice(firstReyColumn, firstQolieColumn).every(header => header.startsWith('rey_copy_')));
+  assert.ok(headers.slice(firstQolieColumn).every(header => header.startsWith('qolie31_')));
   await click("Version wählen");
   await click("Version 2 wählen");
   await evaluate('globalThis.exportedCsv = null');
@@ -276,12 +279,12 @@ try {
   assert.equal(await evaluate('[...document.querySelectorAll(".tile-btn")].find(node => node.textContent.includes("Rey-Figur")).textContent.includes("erfasst")'), true);
   console.log("PASS: completed menu status and CSV/PDF exports include the validated raw total and safely rendered notes.");
 
-  await click("Rey-Figur – Kopieerfasst");
+  await click("Rey-Figurerfasst");
   await click("Testabbruch");
   await evaluate('document.querySelector("select").value = "Patientenwunsch"; document.querySelector("select").dispatchEvent(new Event("change", { bubbles: true }))');
   await click("Beenden");
   assert.equal((await snapshot()).sessionData.rey_copy_aborted.reason, "Patientenwunsch");
-  await click("Rey-Figur – Kopieabgebrochen");
+  await click("Rey-Figurabgebrochen");
   assert.equal(await completionDisabled(), true);
   await click("Bewertung fortsetzen");
   assert.equal(await completionDisabled(), false);
@@ -290,7 +293,7 @@ try {
     const state = JSON.parse(localStorage.getItem('npt_session_backup'));
     state.screen = { name: 'rey_copy' };
     state.activePipeline = { id: 'fixture', title: 'Regression', index: 0, pendingReminders: [], steps: [
-      { key: 'rey_copy', label: 'Rey-Figur – Kopie', route: { name: 'rey_copy' } },
+      { key: 'rey_copy', label: 'Rey-Figur', route: { name: 'rey_copy' } },
       { key: 'tmt_ab', label: 'TMT A und B', route: { name: 'tmt_ab' } }
     ] };
     localStorage.setItem('rey_pipeline_fixture', JSON.stringify(state));
