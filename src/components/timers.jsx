@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState, useImperativeHandle, forwardRef } from "react";
-import { useInterval } from "../lib/utils";
+import { useClockRefresh } from "../lib/utils";
+import { readStopwatch, remainingUntil } from "../lib/timer-clock";
 import { Button } from "./ui";
 
 function fmtMs(ms) {
@@ -45,24 +46,25 @@ const StopwatchState = forwardRef(function StopwatchState({ persisted, onPersist
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
   const autoAbortFiredRef = useRef(false);
 
-  useInterval(() => {
-    if (state !== "running" || start === null) return;
+  const abortAtLimit = useCallback((now) => {
+    if (autoAbortFiredRef.current) return;
+    autoAbortFiredRef.current = true;
+    setElapsed(autoAbortMs);
+    setState("aborted");
+    setStart(null);
+    setAborted(true);
+    onStateChange?.("aborted");
+    onPersist?.(autoAbortMs);
+    onAutoAbort?.({ at: now, elapsedMs: autoAbortMs });
+  }, [autoAbortMs, onStateChange, onPersist, onAutoAbort]);
 
+  useClockRefresh(() => {
+    if (state !== "running" || start === null || autoAbortFiredRef.current) return;
     const now = Date.now();
-    const nextElapsed = now - start;
-    if (autoAbortMs && !autoAbortFiredRef.current && nextElapsed >= autoAbortMs) {
-      autoAbortFiredRef.current = true;
-      setElapsed(autoAbortMs);
-      setState("aborted");
-      setStart(null);
-      setAborted(true);
-      onStateChange?.("aborted");
-      onPersist?.(autoAbortMs);
-      onAutoAbort?.({ at: now, elapsedMs: autoAbortMs });
-      return;
-    }
-    setElapsed(nextElapsed);
-  }, 50);
+    const sample = readStopwatch(start, now, autoAbortMs);
+    if (sample.limitReached) abortAtLimit(now);
+    else setElapsed(sample.elapsedMs);
+  }, state === "running" ? 50 : null);
 
   const onStart = () => {
     // Treat `start` as the origin for the accumulated elapsed time so a
@@ -74,13 +76,19 @@ const StopwatchState = forwardRef(function StopwatchState({ persisted, onPersist
     onStateChange?.("running");
   };
   const stopNow = useCallback(() => {
-    const final = state === "running" && start !== null ? Date.now() - start : elapsed;
+    if (autoAbortFiredRef.current) return;
+    const now = Date.now();
+    const sample = state === "running" && start !== null ? readStopwatch(start, now, autoAbortMs) : { elapsedMs: elapsed, limitReached: false };
+    // A late scheduled update must never allow a manual/imperative stop to
+    // bypass the automatic limit or save a measurement beyond that limit.
+    if (sample.limitReached) { abortAtLimit(now); return; }
+    const final = sample.elapsedMs;
     setElapsed(final);
     setState("stopped");
     setStart(null);
     onStateChange?.("stopped");
     if (onPersist) onPersist(final);
-  }, [elapsed, onPersist, onStateChange, start, state]);
+  }, [elapsed, onPersist, onStateChange, start, state, autoAbortMs, abortAtLimit]);
   const onStop = () => stopNow();
   const onReset = useCallback(() => {
     setState("idle");
@@ -138,14 +146,38 @@ export function Countdown60({ disabled = false }) {
   const [state, setState] = useState("idle"); // "idle" | "running" | "stopped"
   const [t, setT] = useState(60_000);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+  const deadlineRef = useRef(null);
+  const remainingRef = useRef(60_000);
 
-  useInterval(() => {
-    if (state === "running" && t > 0) setT((x) => Math.max(0, x - 100));
-  }, 100);
+  useClockRefresh(() => {
+    if (deadlineRef.current === null) return;
+    const remaining = remainingUntil(deadlineRef.current, Date.now());
+    remainingRef.current = remaining;
+    setT(remaining);
+    if (remaining === 0) {
+      deadlineRef.current = null;
+      setState("stopped");
+    }
+  }, state === "running" ? 100 : null);
 
-  const onStart = () => setState("running");
-  const onStop = () => setState("stopped");
-  const onReset = () => { setState("idle"); setT(60_000); };
+  const onStart = () => {
+    if (remainingRef.current <= 0 || deadlineRef.current !== null) return;
+    deadlineRef.current = Date.now() + remainingRef.current;
+    setState("running");
+  };
+  const onStop = () => {
+    // Recompute at the actual click, not from the last displayed value.
+    if (deadlineRef.current !== null) remainingRef.current = remainingUntil(deadlineRef.current, Date.now());
+    deadlineRef.current = null;
+    setT(remainingRef.current);
+    setState("stopped");
+  };
+  const onReset = () => {
+    deadlineRef.current = null;
+    remainingRef.current = 60_000;
+    setState("idle");
+    setT(60_000);
+  };
 
   return (
     <div className="p-4 rounded-2xl border bg-white max-w-md">

@@ -29,6 +29,18 @@ Webbasierte, interne Test-Suite für neuropsychologische Verfahren (VLMT, DCS-R,
 
 Die Browser-Regressionschecks benötigen Node.js 22+ und Chrome/Chromium mit aktiviertem Remote-Debugging. Vite mit `npm run dev -- --host 127.0.0.1 --port 5178 --strictPort` starten. Chrome/Chromium separat mit einem temporären Profil und `--headless=new --remote-debugging-address=127.0.0.1 --remote-debugging-port=9227 --user-data-dir=<temporärer Profilordner>` starten. Danach `node tests/session-safety.browser.mjs` ausführen. Abweichende URLs können über `NPT_APP_URL` und `NPT_CDP_URL` gesetzt werden. Der Test verwendet einen eigenen Browser-Kontext mit Testdaten und schließt diesen anschließend.
 
+## Performance und Speicherung
+
+VLMT, DCS-R und die vier Spannen-Tests verwenden stabile Speicher-Callbacks, damit unveränderte Eingaben keine Render-/Speicherschleifen auslösen. Stoppuhren und Countdowns besitzen nur während des Laufens ein Intervall; abgelaufene Erinnerungen beenden ihr Intervall, laufende Erinnerungen aktualisieren ihre Sekundenanzeige einmal pro Sekunde.
+
+`src/lib/session-persistence.js` erhält den sofortigen LocalStorage-Recovery-Backup bei tatsächlichen Änderungen. Debounce und Lifecycle-Flush verwenden denselben Snapshot und vermeiden doppelte Serialisierung und Schreibvorgänge. IndexedDB-Schreibvorgänge sind geordnet und nach Fehlern erneut möglich; das gespeicherte Schema bleibt unverändert.
+
+Der DrawPad verwendet Punktlisten für neue Striche und einen Rasterhintergrund für wiedergeöffnete Zeichnungen. Undo benötigt keine vollständigen PNG-Snapshots pro Strich. PNG-Blobs für Speicherung und Export bleiben unverändert kompatibel; überholte asynchrone Encodes können neuere Zeichnungen nicht überschreiben. Pointer Capture und skalierte Koordinaten unterstützen Touch/Stift und schmale Bildschirmbreiten.
+
+Tests: `node --test tests/session-persistence.test.mjs` und `node tests/performance.browser.mjs` (dieselbe Browser-Konfiguration wie oben, ausschließlich synthetische Daten). Für die Produktionsversion `npm run build`, `npm run preview -- --host 127.0.0.1 --port 5180` und `NPT_APP_URL=http://127.0.0.1:5180 node tests/performance.browser.mjs` verwenden. Geprüft werden alle sechs betroffenen Screens, echte Eingaben, Idle-Intervalle, Lifecycle-Speicherung, Undo, Wiederöffnung, asynchrone Encode-Reihenfolge, Touch, mobile Zeichnungskoordinaten und DCS-R-Galerien.
+
+Die 60-Sekunden-Countdowns berechnen Restzeit aus einer festen Deadline statt aus der Anzahl der Updates; Pause und Fortsetzung berücksichtigen die tatsächlichen Klickzeitpunkte. Stoppuhren berechnen die verstrichene Zeit aus Zeitstempeln und prüfen Zeitlimits auch beim manuellen bzw. programmgesteuerten Stoppen. `useClockRefresh` pausiert Anzeige-Updates bei ausgeblendeter Seite und synchronisiert bei Sichtbarkeit, Fokus oder Wiederherstellung sofort neu. Bei vollständig suspendiertem Browser können Anzeige und Abbruchhinweis erst nach der Rückkehr aktualisiert werden; die Zeitberechnung holt dann auf. Start/Reset, vorhandene Zeitlimits und Exportformate bleiben erhalten. Tests: `node --test tests/timer-clock.test.mjs` und `node tests/performance.browser.mjs` mit simulierten Update-Ausfällen.
+
 ## QOLIE-31
 
 QOLIE-31 ist zusätzlich im Testungsaufbau der vollständigen Epileptologie-Batterie direkt verfügbar und wird in deren digitalem Ablauf nach GAD-7 gestartet. „Fertig“ schließt diesen letzten Batterieschritt ab; Antworten bleiben wie beim Einzelstart gespeichert. Die übrigen Batteriezusammenstellungen bleiben unverändert.

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { cls, useInterval } from "./lib/utils";
+import { cls, useClockRefresh } from "./lib/utils";
 import { idbGet, idbSet, idbDel, idbSetDrawing, idbGetDrawing, idbDeleteDrawing, idbDeleteDrawingNamespace, idbPruneDrawingsExcept, idbPruneOldSessions } from "./lib/persist";
 import { Button, Card, Header, SectionTitle } from "./components/ui";
 import { DrawPad } from "./components/draw-pad";
@@ -10,6 +10,7 @@ import { ReyCopyScreen } from "./components/rey-copy";
 import { getReySummary, getReyExportFields, switchReyVersion } from "./lib/rey-scoring";
 import { Qolie31Screen } from "./components/qolie31";
 import { getQolie31ExportFields } from "./lib/qolie31-scoring";
+import { createSessionPersistence } from "./lib/session-persistence";
 
 const SESSION_BACKUP_STORAGE_KEY = "npt_session_backup";
 
@@ -4789,46 +4790,31 @@ export default function App() {
   };
 
   const [sessionData, setSessionData] = useState({});
+  // These callbacks participate in child effects; new functions every render
+  // would cause a child-save → parent-render → child-save feedback loop.
+  const saveTestState = useMemo(() => Object.fromEntries(
+    ["vlmt", "dcsr", "zahl_fwd", "zahl_rev", "block_fwd", "block_rev"].map((key) => [
+      key,
+      (data) => setSessionData((previous) => previous[key] === data ? previous : { ...previous, [key]: data }),
+    ])
+  ), []);
   const [hydrated, setHydrated] = useState(false);
   const latestStateRef = useRef({ screen, globalTimers, activePipeline, pipelineInterruption, sessionData, sessionUUID });
+  const sessionPersistence = useMemo(() => createSessionPersistence({
+    writeBackup: (snapshot) => localStorage.setItem(SESSION_BACKUP_STORAGE_KEY, JSON.stringify(snapshot)),
+    writeSession: idbSet,
+    onError: (error) => console.error("Persistenz speichern fehlgeschlagen", error),
+  }), []);
 
   useLayoutEffect(() => {
     latestStateRef.current = { screen, globalTimers, activePipeline, pipelineInterruption, sessionData, sessionUUID };
     if (!hydrated) return;
-    localStorage.setItem(SESSION_BACKUP_STORAGE_KEY, JSON.stringify({
-      screen,
-      globalTimers,
-      activePipeline,
-      pipelineInterruption,
-      sessionData,
-      sessionUUID,
-      lastUpdated: Date.now(),
-    }));
-  }, [hydrated, screen, globalTimers, activePipeline, pipelineInterruption, sessionData, sessionUUID]);
+    sessionPersistence.backup(latestStateRef.current);
+  }, [hydrated, screen, globalTimers, activePipeline, pipelineInterruption, sessionData, sessionUUID, sessionPersistence]);
 
   const persistNow = useCallback(() => {
-    const {
-      screen: s,
-      globalTimers: g,
-      activePipeline: pipeline,
-      pipelineInterruption: interruption,
-      sessionData: sd,
-      sessionUUID: id,
-    } = latestStateRef.current;
-    const snapshot = {
-      screen: s,
-      globalTimers: g,
-      activePipeline: pipeline,
-      pipelineInterruption: interruption,
-      sessionData: sd,
-      sessionUUID: id,
-      lastUpdated: Date.now(),
-    };
-    localStorage.setItem(SESSION_BACKUP_STORAGE_KEY, JSON.stringify(snapshot));
-    idbSet(id, snapshot).catch((e) => {
-      console.error("Persistenz speichern fehlgeschlagen", e);
-    });
-  }, []);
+    return sessionPersistence.flush(latestStateRef.current);
+  }, [sessionPersistence]);
   // hydrate on mount
   useEffect(() => {
     // purge sessions older than 7 days and their drawings
@@ -5432,7 +5418,7 @@ export default function App() {
               testLanguage={sessionData?.demographics?.test_language}
               onDone={() => finishPipelineStep("vlmt")}
               onReminderStarted={() => deferPipelineStep("vlmt")}
-              onStateChange={(data)=> setSessionData((s)=>({ ...s, vlmt: data }))}
+              onStateChange={saveTestState.vlmt}
               onAbort={(payload)=> setSessionData((s)=>({ ...s, vlmt_aborted: payload }))}
             />
           )}
@@ -5553,7 +5539,7 @@ export default function App() {
             route={screen}
             savedState={sessionData?.dcsr}
             sessionUUID={sessionUUID}
-            onStateChange={(data)=> setSessionData((s)=>({ ...s, dcsr: data }))}
+            onStateChange={saveTestState.dcsr}
             onAbort={(payload)=> setSessionData((s)=>({ ...s, dcsr_aborted: payload }))}
             onDone={() => finishPipelineStep("dcsr")}
             onReminderStarted={() => deferPipelineStep("dcsr")}
@@ -5612,7 +5598,7 @@ export default function App() {
             label="Zahlenspanne vorwärts"
             sequences={ZS_FWD}
             persisted={sessionData?.zahl_fwd}
-            onStateChange={(data)=> setSessionData((s)=>({ ...s, zahl_fwd: data }))}
+            onStateChange={saveTestState.zahl_fwd}
             onAbort={(payload)=> setSessionData((s)=>({ ...s, zahl_fwd_aborted: payload }))}
             onBackToSpanMenu={() => setScreen({ name: "spannen_menu" })}
             onDone={() => finishPipelineStep("zahl_fwd", { name: "spannen_menu" })}
@@ -5624,7 +5610,7 @@ export default function App() {
             sequences={ZS_REV}
             persisted={sessionData?.zahl_rev}
             extraActionLabel="→ an Epi-Track übernehmen"
-            onStateChange={(data)=> setSessionData((s)=>({ ...s, zahl_rev: data }))}
+            onStateChange={saveTestState.zahl_rev}
             onAbort={(payload)=> setSessionData((s)=>({ ...s, zahl_rev_aborted: payload }))}
             onExtraAction={(longest)=> setSessionData((s)=>({ ...s, epi: { ...(s.epi||{}), inv_spanne: longest } }))}
             onBackToSpanMenu={() => setScreen({ name: "spannen_menu" })}
@@ -5637,7 +5623,7 @@ export default function App() {
             label="Blockspanne vorwärts"
             sequences={BS_FWD}
             persisted={sessionData?.block_fwd}
-            onStateChange={(data)=> setSessionData((s)=>({ ...s, block_fwd: data }))}
+            onStateChange={saveTestState.block_fwd}
             onAbort={(payload)=> setSessionData((s)=>({ ...s, block_fwd_aborted: payload }))}
             onBackToSpanMenu={() => setScreen({ name: "spannen_menu" })}
             onDone={() => finishPipelineStep("block_fwd", { name: "spannen_menu" })}
@@ -5648,7 +5634,7 @@ export default function App() {
             label="Blockspanne rückwärts"
             sequences={BS_REV}
             persisted={sessionData?.block_rev}
-            onStateChange={(data)=> setSessionData((s)=>({ ...s, block_rev: data }))}
+            onStateChange={saveTestState.block_rev}
             onAbort={(payload)=> setSessionData((s)=>({ ...s, block_rev_aborted: payload }))}
             onBackToSpanMenu={() => setScreen({ name: "spannen_menu" })}
             onDone={() => finishPipelineStep("block_rev", { name: "spannen_menu" })}
@@ -6276,8 +6262,8 @@ function GlobalTimers({ timers, onClear, onOpen, ceradReminders = [] }) {
 
 function ReminderPill({ timer, onClear, onOpen }) {
   const [now, setNow] = useState(Date.now);
-  useInterval(() => setNow(Date.now()), timer.untimed ? null : 250);
   const remaining = Math.max(0, (timer.startTs + (timer.durationMs ?? 0)) - now);
+  useClockRefresh(() => setNow(Date.now()), timer.untimed || remaining <= 0 ? null : 1000);
   const mm = Math.floor(remaining / 60000);
   const ss = Math.floor((remaining % 60000) / 1000);
   const done = remaining <= 0;
@@ -7482,7 +7468,6 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
                     height={180}
                     initialData={drawings[dg - 1]}
                     onChange={handleDrawingChange}
-                    savedFigures={[]}
                     onSaveFigure={saveUnscoredFigureAndClear}
                     showSaveFigureButton={false}
                   />
