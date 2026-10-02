@@ -17,94 +17,6 @@ body {
     linear-gradient(150deg, #f5f9ff 0%, #f8fbff 45%, #f3f7ff 100%);
 }
 
-html[data-theme="legacy"] {
-  color: #18181b;
-  background: #fafafa;
-}
-
-html[data-theme="legacy"] body {
-  background: #fafafa;
-}
-
-html[data-theme="legacy"] .theme-modern-only,
-html[data-theme="legacy"] .tile-accent {
-  display: none;
-}
-
-html[data-theme="legacy"] #topbar-root {
-  border-color: #e4e4e7;
-  background-color: rgba(255, 255, 255, 0.9);
-  box-shadow: none;
-}
-
-html[data-theme="legacy"] .reminder-panel {
-  border-color: #d4d4d8;
-  background-color: rgba(250, 250, 250, 0.98);
-  box-shadow: 0 4px 12px rgba(24, 24, 27, 0.1);
-  backdrop-filter: none;
-}
-
-html[data-theme="legacy"] .reminder-row {
-  box-shadow: none;
-}
-
-html[data-theme="legacy"] .reminder-row-active {
-  border-color: #e4e4e7;
-  background-color: #fff;
-  color: #27272a;
-}
-
-html[data-theme="legacy"] .reminder-open-button {
-  border-color: #d4d4d8;
-  background-color: #fff;
-  color: #27272a;
-}
-
-html[data-theme="legacy"] .reminder-open-button:hover {
-  background-color: #f4f4f5;
-}
-
-html[data-theme="legacy"] .tile-btn {
-  background-color: #fff !important;
-  border-color: #e4e4e7 !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-html[data-theme="legacy"] :not(button).rounded-xl.border.bg-white,
-html[data-theme="legacy"] :not(button).rounded-2xl.border.bg-white,
-html[data-theme="legacy"] :not(button).rounded-3xl.border.bg-white,
-html[data-theme="legacy"] [class*="bg-white/90"] {
-  background-color: #fff !important;
-  border-color: #e4e4e7 !important;
-  backdrop-filter: none;
-}
-
-html[data-theme="legacy"] input,
-html[data-theme="legacy"] select,
-html[data-theme="legacy"] textarea {
-  border-color: #d4d4d8 !important;
-  background-color: #fff !important;
-}
-
-html[data-theme="legacy"] input:focus,
-html[data-theme="legacy"] select:focus,
-html[data-theme="legacy"] textarea:focus {
-  border-color: #71717a !important;
-  box-shadow: 0 0 0 3px rgba(113, 113, 122, 0.14) !important;
-}
-
-html[data-theme="legacy"] button.bg-zinc-900,
-html[data-theme="legacy"] button.bg-indigo-700 {
-  background-color: #18181b;
-  border-color: #18181b;
-}
-
-html[data-theme="legacy"] button.bg-zinc-900:hover,
-html[data-theme="legacy"] button.bg-indigo-700:hover {
-  background-color: #27272a;
-  border-color: #27272a;
-}
-
 /* Bestehende Inhaltskarten behalten ihre Abgrenzung, lassen den Hintergrund aber sanft durchscheinen. */
 :not(button).rounded-xl.border.bg-white,
 :not(button).rounded-2xl.border.bg-white,
@@ -146,6 +58,11 @@ button,
 .reminder-panel button {
   min-width: 0;
   min-height: 28px;
+}
+
+/* Match all top-bar actions, including reminder controls, to the main buttons. */
+#topbar-root button {
+  font-size: var(--text-sm, 0.875rem);
 }
 
 button:enabled:active {
