@@ -6,6 +6,8 @@ import { DrawPad } from "./components/draw-pad";
 import { Stopwatch, Countdown60 } from "./components/timers";
 import { AbortButton } from "./components/abort-button";
 import { ErrorBoundary } from "./components/error-boundary";
+import { ReyCopyScreen } from "./components/rey-copy";
+import { getReySummary, getReyExportFields, switchReyVersion } from "./lib/rey-scoring";
 
 const SESSION_BACKUP_STORAGE_KEY = "npt_session_backup";
 
@@ -489,6 +491,7 @@ const PIPELINE_STEP_LABELS = {
   moca: "MoCA",
   gp: "Grooved Pegboard",
   uhr: "Uhrentest",
+  rey_copy: "Rey-Figur – Kopie",
   cerad: "CERAD+",
 };
 
@@ -557,7 +560,7 @@ function TestbereicheModal({ open, onClose, onOpenTest, onStartPipeline }) {
       items: [
         { name: "Strukturierte Anamnese einschl. Screening-Fragen Depression/Ängste", testRoute: null },
         { name: "VLMT", testRoute: "vlmt" },
-        { name: "Rey-Figur – Copy", testRoute: null },
+        { name: "Rey-Figur – Kopie", testRoute: "rey_copy" },
         { name: "TMT A & B", testRoute: "tmt_ab" },
         { name: "Zahlenspanne vorwärts und rückwärts", testRoute: "spannen_menu", pipelineRoutes: ["zahl_fwd", "zahl_rev"] },
         { name: "Stroop (Farbwörter lesen, Farben benennen, Farb-Wort Interferenz)", testRoute: "stroop" },
@@ -1369,6 +1372,8 @@ async function buildExportRow(sessionData, sessionUUID, opts = {}) {
     row[`${key}_aborted`] = s[`${key}_aborted`] ? 1 : 0;
   });
 
+  // Append new subtests to preserve the existing CSV column order.
+  Object.assign(row, getReyExportFields(s.rey_copy, s.rey_copy_aborted));
   return row;
 }
 
@@ -4690,9 +4695,6 @@ function CERADWFWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu }) 
 // ---------- App Shell ----------
 export default function App() {
   const authDisabled = import.meta.env?.VITE_DISABLE_AUTH === "true";
-  const [designTheme, setDesignTheme] = useState(() => (
-    localStorage.getItem("npt_design_theme") === "legacy" ? "legacy" : "modern"
-  ));
   const [showSystemUpdateReminder, setShowSystemUpdateReminder] = useState(false);
   const systemUpdateReminderHandledRef = useRef(false);
   const [authOK, setAuthOK] = useState(() => {
@@ -4700,11 +4702,6 @@ export default function App() {
     if (authDisabled) return true;
     return localStorage.getItem("auth_ok") === "true" || sessionStorage.getItem("auth_temp_ok") === "true";
   });
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = designTheme;
-    localStorage.setItem("npt_design_theme", designTheme);
-  }, [designTheme]);
 
   useEffect(() => {
     const handleFirstInteraction = (event) => {
@@ -5035,7 +5032,7 @@ export default function App() {
   const authScreen = (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 text-slate-900">
       <div className="w-full max-w-md p-6 rounded-3xl border border-indigo-100 bg-white/90 shadow-[0_16px_45px_rgba(30,64,175,0.13)] backdrop-blur-sm">
-        <div className="theme-modern-only mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">Digitale Neuropsychologie</div>
+        <div className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">Digitale Neuropsychologie</div>
         <div className="mb-3 text-xl font-semibold">Zugang</div>
         <p className="text-sm text-zinc-600 mb-3">Bitte Passwort eingeben, um die Tests zu öffnen.</p>
         <PasswordPrompt onSubmit={handleAuth} error={authError} />
@@ -5127,7 +5124,9 @@ export default function App() {
       .dg-label { font-size: 14px; font-weight: 700; margin-top: 12px; margin-bottom: 6px; }
       img { max-width: 100%; height: auto; border: 1px solid #ddd; }
     `;
-    const formatValue = (v) => (v === null || v === undefined ? "" : v);
+    const formatValue = (v) => String(v ?? "").replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    })[char]);
     const demoRows = Object.entries(row)
       .filter(([k]) => k.startsWith("demographics_"));
     const dataRows = Object.entries(row)
@@ -5136,7 +5135,7 @@ export default function App() {
       .map(([k, v]) => `<tr><td>${k}</td><td>${formatValue(v)}</td></tr>`)
       .join("");
     const rowsHtml = dataRows
-      .map(([k, v]) => `<tr><td>${k}</td><td>${v === null || v === undefined ? "" : v}</td></tr>`)
+      .map(([k, v]) => `<tr><td>${k}</td><td>${formatValue(v)}</td></tr>`)
       .join("");
     const dcsrHtml = dcsrByDg
       .map(({ dg, images }) => {
@@ -5292,6 +5291,12 @@ export default function App() {
 
     // Uhrentest
     if (s.uhr_aborted) set("uhr","abgebrochen"); else if (s.uhr && (s.uhr.score !== undefined || s.uhr.note)) set("uhr","erfasst");
+
+    // Rey-Figur: incomplete scoring must remain distinct from a complete zero.
+    const reySummary = getReySummary(s.rey_copy);
+    if (s.rey_copy_aborted) set("rey_copy", "abgebrochen");
+    else if (reySummary.complete) set("rey_copy", "erfasst");
+    else if (reySummary.scoredCount > 0 || s.rey_copy?.duration_s != null || s.rey_copy?.notes) set("rey_copy", "in Bearbeitung");
 
     // CERAD
     if (s.cerad_wl_aborted) set("cerad_wl","abgebrochen"); else if (s.cerad_wl) set("cerad_wl","erfasst");
@@ -5726,6 +5731,24 @@ export default function App() {
             onDone={() => finishPipelineStep("gp")}
           />
         )}
+        {screen.name === "rey_copy" && (
+          <ReyCopyScreen
+            key={sessionUUID}
+            data={sessionData.rey_copy}
+            aborted={sessionData.rey_copy_aborted}
+            onPersist={(patch) => setSessionData((s) => ({ ...s, rey_copy: { ...(s.rey_copy || {}), ...patch } }))}
+            onSelectVersion={(version) => setSessionData((s) => {
+              const next = switchReyVersion(s.rey_copy, version, s.rey_copy_aborted);
+              return { ...s, rey_copy: next.data, rey_copy_aborted: next.aborted };
+            })}
+            onAbort={(payload) => {
+              setSessionData((s) => ({ ...s, rey_copy_aborted: payload }));
+              finishPipelineStep("rey_copy");
+            }}
+            onResume={() => setSessionData((s) => ({ ...s, rey_copy_aborted: null }))}
+            onDone={() => finishPipelineStep("rey_copy")}
+          />
+        )}
         {screen.name === "uhr" && (
           <UhrentestWire
             sessionData={sessionData}
@@ -5923,28 +5946,6 @@ export default function App() {
           >
             Testungsaufbau für verschiedene Fragestellungen
           </Button>
-          <label className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-indigo-100 bg-white/90 px-3 text-sm shadow-sm cursor-pointer select-none">
-            <span className={cls("font-medium", designTheme === "legacy" ? "text-zinc-900" : "text-zinc-500")}>
-              Ruhiger Modus
-            </span>
-            <input
-              type="checkbox"
-              role="switch"
-              className="peer sr-only"
-              checked={designTheme === "modern"}
-              onChange={() => setDesignTheme((theme) => (theme === "modern" ? "legacy" : "modern"))}
-              aria-label="Zwischen ruhigem und farbenfrohem Design umschalten"
-            />
-            <span className="relative h-6 w-11 rounded-full bg-zinc-300 transition-colors peer-checked:bg-indigo-600 peer-focus-visible:ring-3 peer-focus-visible:ring-indigo-300">
-              <span className={cls(
-                "absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
-                designTheme === "modern" && "translate-x-5"
-              )} />
-            </span>
-            <span className={cls("font-medium", designTheme === "modern" ? "text-indigo-700" : "text-zinc-500")}>
-              Party-Modus
-            </span>
-          </label>
         </div>
         <Button size="bare"
           type="button"
@@ -6307,6 +6308,7 @@ function TileMenu({ onOpen, onOpenCERAD, statusMap, disabled }) {
   const tiles = [
     { key: "vlmt", label: "VLMT", accent: "border-violet-200 bg-violet-50/80 hover:bg-violet-100/80", dot: "bg-violet-500" },
     { key: "dcsr", label: "DCS-R", accent: "border-cyan-200 bg-cyan-50/80 hover:bg-cyan-100/80", dot: "bg-cyan-500" },
+    { key: "rey_copy", label: "Rey-Figur – Kopie", accent: "border-teal-200 bg-teal-50/80 hover:bg-teal-100/80", dot: "bg-teal-500" },
     { key: "epi", label: "Epi-Track", accent: "border-orange-200 bg-orange-50/80 hover:bg-orange-100/80", dot: "bg-orange-500" },
     { key: "tmt_ab", label: "TMT A und B", accent: "border-lime-200 bg-lime-50/80 hover:bg-lime-100/80", dot: "bg-lime-500" },
     { key: "spannen_menu", label: "Zahlen- und Blockspanne", accent: "border-sky-200 bg-sky-50/80 hover:bg-sky-100/80", dot: "bg-sky-500" },
