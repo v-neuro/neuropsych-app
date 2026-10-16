@@ -11,6 +11,7 @@ import { getReySummary, getReyExportFields, switchReyVersion } from "./lib/rey-s
 import { Qolie31Screen } from "./components/qolie31";
 import { getQolie31ExportFields } from "./lib/qolie31-scoring";
 import { createSessionPersistence } from "./lib/session-persistence";
+import { PwaStatus } from "./components/pwa-status";
 
 const SESSION_BACKUP_STORAGE_KEY = "npt_session_backup";
 
@@ -1052,7 +1053,9 @@ async function buildExportRow(sessionData, sessionUUID, opts = {}) {
   // DCS-R
   const dcsr = s.dcsr || {};
   const dcsrCounts = Array.isArray(dcsr.counts) ? dcsr.counts : [];
-  const hasDcsr = !!dcsr.ver || dcsrCounts.some((c) =>
+  // Advancing beyond DG1 confirms a performed trial, even without awarded points.
+  const dcsrHasCompletedTrial = Number(dcsr.dg) > 1 || ["waiting", "rekog"].includes(dcsr.step);
+  const hasDcsr = !!dcsr.ver || dcsrHasCompletedTrial || dcsrCounts.some((c) =>
     ["richtig", "falsch", "gedreht", "perseveration"].some((f) => (c?.[f] || 0) > 0)
   );
   if (hasDcsr) {
@@ -5938,6 +5941,7 @@ export default function App() {
         <DevSelfTests />
       </main>
       <div className="max-w-5xl mx-auto px-4 pb-6 -mt-4 flex flex-col items-start gap-3">
+        {import.meta.env.PROD && <PwaStatus />}
         <div className="flex flex-wrap gap-2">
           <Button
             variant="secondary"
@@ -6371,6 +6375,8 @@ function DemoCapture({ demographics, saved, onSave }) {
     education_training_code = "none",
     education_training_label = "",
     education_dissertation_years = 0,
+    education_years = "",
+    education_years_manual = false,
   } = demographics;
 
   const trainingCodeToYears = (code, dissertationYears = 0) => {
@@ -6409,6 +6415,8 @@ function DemoCapture({ demographics, saved, onSave }) {
     education_training_code,
     education_training_label: education_training_label || trainingCodeToLabel(education_training_code),
     education_dissertation_years,
+    education_years,
+    education_years_manual,
   });
 
   useEffect(() => {
@@ -6423,13 +6431,19 @@ function DemoCapture({ demographics, saved, onSave }) {
       education_training_code,
       education_training_label: education_training_label || trainingCodeToLabel(education_training_code),
       education_dissertation_years,
+      education_years,
+      education_years_manual,
     }));
     return () => cancelAnimationFrame(frameId);
-  }, [patient_initials, patient_age, patient_gender, test_language, examiner_initials, education_school_years, education_school_label, education_training_code, education_training_label, education_dissertation_years]);
+  }, [patient_initials, patient_age, patient_gender, test_language, examiner_initials, education_school_years, education_school_label, education_training_code, education_training_label, education_dissertation_years, education_years, education_years_manual]);
 
   const schoolYears = Number(local.education_school_years) || 0;
   const trainingYears = trainingCodeToYears(local.education_training_code, local.education_dissertation_years);
-  const educationYears = schoolYears + trainingYears;
+  const calculatedEducationYears = schoolYears + trainingYears;
+  const educationYears = local.education_years_manual ? Number(local.education_years) : calculatedEducationYears;
+  const validEducationYears = !local.education_years_manual || (
+    String(local.education_years).trim() !== "" && Number.isFinite(educationYears) && educationYears >= 0
+  );
 
   if (saved) return null;
 
@@ -6483,6 +6497,109 @@ function DemoCapture({ demographics, saved, onSave }) {
               />
             </div>
           </div>
+          {!local.education_years_manual && (
+            <>
+              <div>
+                <label className="block text-sm text-zinc-700">Schulabschluss (Jahre, ohne Wiederholung)</label>
+                <select
+                  className="mt-1 w-full rounded-xl border p-2 bg-white"
+                  value={local.education_school_years}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setLocal((l) => ({
+                      ...l,
+                      education_school_years: value,
+                      education_school_label: schoolYearsToLabel(value),
+                    }));
+                  }}
+                >
+                  <option value="">Bitte wählen …</option>
+                  <option value="9">9 Jahre (Haupt-/Volksschulabschluss)</option>
+                  <option value="10">10 Jahre (Realschulabschluss)</option>
+                  <option value="12">12 Jahre (Fachhochschulreife)</option>
+                  <option value="13">13 Jahre (Abitur/Hochschulreife)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-zinc-700">Längste absolvierte Ausbildung</label>
+                <select
+                  className="mt-1 w-full rounded-xl border p-2 bg-white"
+                  value={local.education_training_code}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setLocal((l) => ({
+                      ...l,
+                      education_training_code: next,
+                      education_training_label: trainingCodeToLabel(next),
+                      education_dissertation_years: next === "promotion" ? (l.education_dissertation_years || 0) : 0,
+                    }));
+                  }}
+                >
+                  <option value="">Bitte wählen …</option>
+                  <option value="none">Keine</option>
+                  <option value="lehre_3">Ausbildung/Lehre: 3 Jahre</option>
+                  <option value="bachelor">Bachelor</option>
+                  <option value="master">Master (Bachelor+Master)</option>
+                  <option value="promotion">Promotion</option>
+                </select>
+              </div>
+              {local.education_training_code === "promotion" && (
+                <div>
+                  <label className="block text-sm text-zinc-700">Promotionsdauer (max. 3 Jahre)</label>
+                  <select
+                    className="mt-1 w-full rounded-xl border p-2 bg-white"
+                    value={local.education_dissertation_years}
+                    onChange={(e) => setLocal((l) => ({ ...l, education_dissertation_years: e.target.value }))}
+                  >
+                    <option value="0">0</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                  </select>
+                </div>
+              )}
+            </>
+          )}
+          <div className="space-y-2 text-sm">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={local.education_years_manual}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setLocal((l) => ({
+                    ...l,
+                    education_years_manual: checked,
+                    education_years: checked ? educationYears : l.education_years,
+                  }));
+                }}
+              />
+              Bildungsjahre manuell eingeben
+            </label>
+            {local.education_years_manual ? (
+              <div>
+                <label htmlFor="education-years-total" className="block text-zinc-700">Bildungsjahre gesamt</label>
+                <input
+                  id="education-years-total"
+                  className="mt-1 w-full rounded-xl border p-2"
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="any"
+                  value={local.education_years}
+                  onChange={(e) => setLocal((l) => ({ ...l, education_years: e.target.value }))}
+                  aria-describedby="education-years-help"
+                  aria-invalid={!validEducationYears}
+                />
+                <p id="education-years-help" className="mt-1 text-xs text-zinc-600">
+                  Für andere Bildungssysteme: Die manuelle Angabe ersetzt die berechnete Summe aus Schule und Ausbildung.
+                </p>
+                {!validEducationYears && <p role="alert" className="mt-1 text-xs text-red-700">Bitte eine Zahl ab 0 eingeben.</p>}
+              </div>
+            ) : (
+              <span className="font-medium">Berechnete Bildungsjahre: {calculatedEducationYears}</span>
+            )}
+          </div>
           <div>
             <label className="block text-sm text-zinc-700">Testsprache</label>
             <select
@@ -6497,73 +6614,13 @@ function DemoCapture({ demographics, saved, onSave }) {
               ))}
             </select>
           </div>
-          <div>
-            <label className="block text-sm text-zinc-700">Schulabschluss (Jahre, ohne Wiederholung)</label>
-            <select
-              className="mt-1 w-full rounded-xl border p-2 bg-white"
-              value={local.education_school_years}
-              onChange={(e) => {
-                const value = e.target.value;
-                setLocal((l) => ({
-                  ...l,
-                  education_school_years: value,
-                  education_school_label: schoolYearsToLabel(value),
-                }));
-              }}
-            >
-              <option value="">Bitte wählen …</option>
-              <option value="9">9 Jahre (Haupt-/Volksschulabschluss)</option>
-              <option value="10">10 Jahre (Realschulabschluss)</option>
-              <option value="12">12 Jahre (Fachhochschulreife)</option>
-              <option value="13">13 Jahre (Abitur/Hochschulreife)</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm text-zinc-700">Längste absolvierte Ausbildung</label>
-            <select
-              className="mt-1 w-full rounded-xl border p-2 bg-white"
-              value={local.education_training_code}
-              onChange={(e) => {
-                const next = e.target.value;
-                setLocal((l) => ({
-                  ...l,
-                  education_training_code: next,
-                  education_training_label: trainingCodeToLabel(next),
-                  education_dissertation_years: next === "promotion" ? (l.education_dissertation_years || 0) : 0,
-                }));
-              }}
-            >
-              <option value="">Bitte wählen …</option>
-              <option value="none">Keine</option>
-              <option value="lehre_3">Ausbildung/Lehre: 3 Jahre</option>
-              <option value="bachelor">Bachelor</option>
-              <option value="master">Master (Bachelor+Master)</option>
-              <option value="promotion">Promotion</option>
-            </select>
-          </div>
-          {local.education_training_code === "promotion" && (
-            <div>
-              <label className="block text-sm text-zinc-700">Promotionsdauer (max. 3 Jahre)</label>
-              <select
-                className="mt-1 w-full rounded-xl border p-2 bg-white"
-                value={local.education_dissertation_years}
-                onChange={(e) => setLocal((l) => ({ ...l, education_dissertation_years: e.target.value }))}
-              >
-                <option value="0">0</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-              </select>
-            </div>
-          )}
-          <div className="text-sm">
-            <span className="font-medium">Berechnete Bildungsjahre: {educationYears}</span>
-          </div>
         </div>
         <div className="flex justify-end">
           <Button size="bare"
             type="button"
+            disabled={!validEducationYears}
             onClick={() => {
+              if (!validEducationYears) return;
               const dissertation = local.education_training_code === "promotion"
                 ? Math.max(0, Math.min(3, Number(local.education_dissertation_years || 0)))
                 : 0;
@@ -6579,7 +6636,7 @@ function DemoCapture({ demographics, saved, onSave }) {
                 education_training_code: local.education_training_code || "none",
                 education_dissertation_years: dissertation,
                 education_training_years: trainingCodeToYears(local.education_training_code, dissertation),
-                education_years: schoolYears + trainingCodeToYears(local.education_training_code, dissertation),
+                education_years: educationYears,
               });
             }}
             className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
@@ -8421,7 +8478,13 @@ function CERADFiguralWire({ sessionData, route, onPersist, onAbort, onDone, onBa
             <Button size="bare"
               type="button"
               onClick={() => {
-                onPersist && onPersist({ recall_pending: false });
+                // Finishing confirms that unscored figures earned zero points.
+                onPersist && onPersist({
+                  recall_pending: false,
+                  recall_scores: Object.fromEntries(
+                    CERAD_FIGS.map((fig) => [fig.key, scoresRecall[fig.key] ?? 0])
+                  ),
+                });
                 if (onAfterRecall) onAfterRecall();
                 else if (onDone) onDone();
               }}

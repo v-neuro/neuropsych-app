@@ -29,6 +29,18 @@ Webbasierte, interne Test-Suite für neuropsychologische Verfahren (VLMT, DCS-R,
 
 Die Browser-Regressionschecks benötigen Node.js 22+ und Chrome/Chromium mit aktiviertem Remote-Debugging. Vite mit `npm run dev -- --host 127.0.0.1 --port 5178 --strictPort` starten. Chrome/Chromium separat mit einem temporären Profil und `--headless=new --remote-debugging-address=127.0.0.1 --remote-debugging-port=9227 --user-data-dir=<temporärer Profilordner>` starten. Danach `node tests/session-safety.browser.mjs` ausführen. Abweichende URLs können über `NPT_APP_URL` und `NPT_CDP_URL` gesetzt werden. Der Test verwendet einen eigenen Browser-Kontext mit Testdaten und schließt diesen anschließend.
 
+## Installation auf dem iPad und Offlinebetrieb
+
+Die Produktionsversion ist eine installierbare Progressive Web App. Auf dem iPad die bereitgestellte HTTPS-Adresse in Safari öffnen, „Teilen“ → „Zum Home-Bildschirm“ wählen, gegebenenfalls „Als Web-App öffnen“ aktivieren und „Hinzufügen“ antippen. Die installierte App einmal online öffnen und im unteren Bereich auf „Für Offlinebetrieb bereit“ warten. Anschließend lassen sich App und Testmaterialien ohne Internetverbindung öffnen. Eine Erstinstallation ohne Internetverbindung ist nicht möglich.
+
+`npm run build` erzeugt automatisch eine versionierte `dist/sw.js` aus den tatsächlich gebauten JS-/CSS-Dateien, dem HTML, Manifest, Icons und sämtlichen Dateien in `public/material`. Ein Release wird nur dann für offline freigegeben, wenn alle Ressourcen erfolgreich gespeichert wurden. Der Cache enthält ausschließlich App-Ressourcen; Sessiondaten und Zeichnungen bleiben in der vorhandenen lokalen Speicherung, CSV/PDF werden weiter lokal erzeugt. Offlinebetrieb ändert die bestehenden Aufbewahrungsregeln und Timer nicht; Erinnerungen sind weiterhin an die geöffnete App gebunden.
+
+Neue Versionen werden im Hintergrund heruntergeladen und warten, bis **alle** Fenster/Tabs dieser Anwendung geschlossen sind. Die App lädt sich während einer Testung nicht automatisch neu. Bei einem verfügbaren Update zeigt der untere App-Bereich den Hinweis zum Schließen und erneuten Öffnen nach der Testung. Fehlgeschlagene Updates behalten die bisherige Offlineversion. Beim Aktivieren werden nur ältere `npt-static-*`-Caches bereinigt.
+
+Hosting: den vollständigen Inhalt von `dist/` unter der Domainwurzel per HTTPS bereitstellen; localhost ist für Tests ebenfalls zulässig. `sw.js` und `index.html` ohne langfristigen HTTP-Cache ausliefern (z. B. `Cache-Control: no-cache`), Manifest als `application/manifest+json`. Alle Dateien eines Releases gemeinsam bereitstellen. Der Vite-Entwicklungsserver registriert keinen Service Worker; für eine lokale Produktionsvorschau einen separaten Port verwenden: `npm run preview -- --host 127.0.0.1 --port 5180`.
+
+Prüfung: Nach `npm run build` den Browser wie oben mit Remote-Debugging starten, dann `node tests/pwa.browser.mjs` (abweichende Debugging-Adresse über `NPT_CDP_URL`). Der Test startet einen eigenen lokalen Server und verwendet isolierte synthetische Daten. Er prüft Installation/Downloadfehler, vollständige Offline-Ressourcen, erneutes Öffnen ohne Netzwerk, Zeichnen/Scoring, CSV/PDF-Erzeugung und Updates mit mehreren Fenstern einschließlich Erhalt der Sessiondaten/Zeichnungen. Installation über Safari, Apple Pencil und das iPad-Druck-/Teilen-Menü zusätzlich auf einem physischen iPad prüfen.
+
 ## Performance und Speicherung
 
 VLMT, DCS-R und die vier Spannen-Tests verwenden stabile Speicher-Callbacks, damit unveränderte Eingaben keine Render-/Speicherschleifen auslösen. Stoppuhren und Countdowns besitzen nur während des Laufens ein Intervall; abgelaufene Erinnerungen beenden ihr Intervall, laufende Erinnerungen aktualisieren ihre Sekundenanzeige einmal pro Sekunde.
