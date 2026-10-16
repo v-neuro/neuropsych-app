@@ -6032,7 +6032,6 @@ export default function App() {
         <DevSelfTests />
       </main>
       <div className="max-w-5xl mx-auto px-4 pb-6 -mt-4 flex flex-col items-start gap-3">
-        {import.meta.env.PROD && <PwaStatus />}
         <div className="flex flex-wrap gap-2">
           <Button
             variant="secondary"
@@ -6053,6 +6052,7 @@ export default function App() {
             <AssessmentBackup onCreate={prepareCompleteBackup} onRestore={restoreCompleteBackup} />
           </React.Suspense>
         </div>
+        {import.meta.env.PROD && <PwaStatus />}
         <Button size="bare"
           type="button"
           onClick={() => setShowImpressum(true)}
