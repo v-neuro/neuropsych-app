@@ -111,7 +111,7 @@ const StopwatchState = forwardRef(function StopwatchState({ persisted, onPersist
   const limitSeconds = autoAbortMs ? Math.round(autoAbortMs / 1000) : null;
 
   return (
-    <div className={`p-4 rounded-2xl border max-w-md ${aborted ? "border-rose-300 bg-rose-50" : "bg-white"}`}>
+    <div data-running-timer={state === "running" ? "true" : undefined} className={`p-4 rounded-2xl border max-w-md ${aborted ? "border-rose-300 bg-rose-50" : "bg-white"}`}>
       <div className="text-4xl font-mono tabular-nums">{fmtMs(elapsed)}</div>
       {limitSeconds && (
         <div className="text-xs text-zinc-600 mt-1">Auto-Abbruch bei {limitSeconds}s</div>
@@ -180,7 +180,7 @@ export function Countdown60({ disabled = false }) {
   };
 
   return (
-    <div className="p-4 rounded-2xl border bg-white max-w-md">
+    <div data-running-timer={state === "running" ? "true" : undefined} className="p-4 rounded-2xl border bg-white max-w-md">
       <div className="text-4xl font-mono tabular-nums">{fmtMs(t)}</div>
       <div className="flex gap-2 mt-3">
         {t > 0 ? (

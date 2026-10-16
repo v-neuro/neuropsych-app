@@ -16,7 +16,7 @@ function idbOpen() {
   });
 }
 
-export async function idbSet(key, val) {
+async function idbSetImpl(key, val) {
   const db = await idbOpen();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(DB_STORE, "readwrite");
@@ -36,7 +36,7 @@ export async function idbGet(key) {
   });
 }
 
-export async function idbDel(key) {
+async function idbDelImpl(key) {
   const db = await idbOpen();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(DB_STORE, "readwrite");
@@ -47,7 +47,7 @@ export async function idbDel(key) {
 }
 
 // ----- Drawings (large payloads kept out of session store) -----
-export async function idbSetDrawing(key, val) {
+async function idbSetDrawingImpl(key, val) {
   const db = await idbOpen();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(DB_DRAW_STORE, "readwrite");
@@ -67,7 +67,7 @@ export async function idbGetDrawing(key) {
   });
 }
 
-export async function idbDeleteDrawing(key) {
+async function idbDeleteDrawingImpl(key) {
   const db = await idbOpen();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(DB_DRAW_STORE, "readwrite");
@@ -77,7 +77,7 @@ export async function idbDeleteDrawing(key) {
   });
 }
 
-export async function idbDeleteDrawingNamespace(prefix) {
+async function idbDeleteDrawingNamespaceImpl(prefix) {
   const db = await idbOpen();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(DB_DRAW_STORE, "readwrite");
@@ -98,7 +98,7 @@ export async function idbDeleteDrawingNamespace(prefix) {
 }
 
 // Delete all drawings not matching allowed prefixes (array of strings)
-export async function idbPruneDrawingsExcept(prefixes = []) {
+async function idbPruneDrawingsExceptImpl(prefixes = []) {
   const db = await idbOpen();
   const allowed = Array.isArray(prefixes) ? prefixes : [];
   return new Promise((resolve, reject) => {
@@ -119,7 +119,7 @@ export async function idbPruneDrawingsExcept(prefixes = []) {
 }
 
 // Remove sessions with lastUpdated older than cutoffMs. Optional onDeleteKey callback.
-export async function idbPruneOldSessions(cutoffMs, onDeleteKey) {
+async function idbPruneOldSessionsImpl(cutoffMs, onDeleteKey) {
   if (typeof cutoffMs !== "number" || cutoffMs <= 0) return;
   const db = await idbOpen();
   return new Promise((resolve, reject) => {
@@ -143,6 +143,80 @@ export async function idbPruneOldSessions(cutoffMs, onDeleteKey) {
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+}
+
+const pendingWrites = new Set();
+function trackWrite(operation) {
+  const promise = operation();
+  pendingWrites.add(promise);
+  const finished = () => pendingWrites.delete(promise);
+  promise.then(finished, finished);
+  return promise;
+}
+export async function waitForPendingStorageWrites() {
+  while (pendingWrites.size) await Promise.all([...pendingWrites]);
+}
+export function idbSet(...args) { return trackWrite(() => idbSetImpl(...args)); }
+export function idbDel(...args) { return trackWrite(() => idbDelImpl(...args)); }
+export function idbSetDrawing(...args) { return trackWrite(() => idbSetDrawingImpl(...args)); }
+export function idbDeleteDrawing(...args) { return trackWrite(() => idbDeleteDrawingImpl(...args)); }
+export function idbDeleteDrawingNamespace(...args) { return trackWrite(() => idbDeleteDrawingNamespaceImpl(...args)); }
+export function idbPruneDrawingsExcept(...args) { return trackWrite(() => idbPruneDrawingsExceptImpl(...args)); }
+export function idbPruneOldSessions(...args) { return trackWrite(() => idbPruneOldSessionsImpl(...args)); }
+
+export async function idbReadAssessmentDrawings(sessionUUID) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_DRAW_STORE, "readonly");
+    const drawings = [];
+    const request = tx.objectStore(DB_DRAW_STORE).openCursor();
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (!cursor) return;
+      if (typeof cursor.key === "string" && cursor.key.startsWith(`${sessionUUID}:dcsr:`)) drawings.push({ key: cursor.key, value: cursor.value });
+      cursor.continue();
+    };
+    tx.oncomplete = () => { db.close(); resolve(drawings); };
+    tx.onerror = tx.onabort = () => { db.close(); reject(tx.error || new Error("Zeichnungen konnten nicht gelesen werden.")); };
+  });
+}
+
+async function replaceStoredAssessment(sessionUUID, snapshot, drawings) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([DB_STORE, DB_DRAW_STORE], "readwrite");
+    const sessions = tx.objectStore(DB_STORE);
+    const images = tx.objectStore(DB_DRAW_STORE);
+    const previous = { snapshot: undefined, drawings: [] };
+    let failure;
+    const saved = sessions.get(sessionUUID);
+    saved.onsuccess = () => { previous.snapshot = saved.result; };
+    const cursorRequest = images.openCursor();
+    cursorRequest.onsuccess = () => {
+      try {
+        const cursor = cursorRequest.result;
+        if (cursor) {
+          if (typeof cursor.key === "string" && cursor.key.startsWith(`${sessionUUID}:dcsr:`)) {
+            previous.drawings.push({ key: cursor.key, value: cursor.value });
+            cursor.delete();
+          }
+          cursor.continue();
+        } else {
+          for (const drawing of drawings) images.put(drawing.value, drawing.key);
+          if (snapshot) sessions.put(snapshot, sessionUUID);
+          else sessions.delete(sessionUUID);
+        }
+      } catch (error) { failure = error; tx.abort(); }
+    };
+    tx.oncomplete = () => { db.close(); resolve(previous); };
+    tx.onerror = tx.onabort = () => { db.close(); reject(failure || tx.error || new Error("Backup konnte nicht gespeichert werden.")); };
+  });
+}
+
+// Both stores commit together. The caller can roll back if the active-session pointer fails.
+export async function idbRestoreAssessment(snapshot, drawings) {
+  const previous = await replaceStoredAssessment(snapshot.sessionUUID, snapshot, drawings);
+  return () => replaceStoredAssessment(snapshot.sessionUUID, previous.snapshot, previous.drawings);
 }
 
 // RWT CSV key definitions + helper

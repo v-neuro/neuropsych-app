@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "./ui";
+import { registerDrawingFlush } from "../lib/drawing-flush";
 
 const EMPTY_FIGURES = [];
 
@@ -139,6 +140,19 @@ export function DrawPad({ width = 800, height = 400, initialData, onChange, save
       onChange(blob);
     }, "image/png");
   };
+
+  useEffect(() => registerDrawingFlush(async () => {
+    // A loading raster already exists in storage; do not replace it with a blank canvas.
+    if (loadingRef.current || !onChange) return;
+    if (activeStrokeRef.current) throw new Error("Bitte die Zeichnung vor dem Backup beenden.");
+    const revision = ++revisionRef.current;
+    const blob = !baseHasInkRef.current && strokesRef.current.length === 0 ? null
+      : await new Promise((resolve) => canvasRef.current.toBlob(resolve, "image/png"));
+    if (revision !== revisionRef.current) throw new Error("Die Zeichnung wurde während des Backups verändert. Bitte erneut versuchen.");
+    if (!blob && (baseHasInkRef.current || strokesRef.current.length)) throw new Error("Die Zeichnung konnte nicht gesichert werden.");
+    lastEmittedBlobRef.current = blob;
+    await onChange(blob, { requirePersistence: true });
+  }), [onChange]);
 
   const point = (event) => {
     const rect = canvasRef.current.getBoundingClientRect();

@@ -14,6 +14,10 @@ import { createSessionPersistence } from "./lib/session-persistence";
 import { PwaStatus } from "./components/pwa-status";
 import { PdfExportPreview } from "./components/pdf-export-preview";
 import { CsvExportPreview } from "./components/csv-export-preview";
+import { flushMountedDrawings } from "./lib/drawing-flush";
+import { idbReadAssessmentDrawings, idbRestoreAssessment, waitForPendingStorageWrites } from "./lib/persist";
+
+const AssessmentBackup = React.lazy(() => import("./components/assessment-backup").then((module) => ({ default: module.AssessmentBackup })));
 
 const SESSION_BACKUP_STORAGE_KEY = "npt_session_backup";
 
@@ -4812,6 +4816,7 @@ export default function App() {
     ])
   ), []);
   const [hydrated, setHydrated] = useState(false);
+  const restoringBackupRef = useRef(false);
   const latestStateRef = useRef({ screen, globalTimers, activePipeline, pipelineInterruption, sessionData, sessionUUID });
   const sessionPersistence = useMemo(() => createSessionPersistence({
     writeBackup: (snapshot) => localStorage.setItem(SESSION_BACKUP_STORAGE_KEY, JSON.stringify(snapshot)),
@@ -4821,13 +4826,60 @@ export default function App() {
 
   useLayoutEffect(() => {
     latestStateRef.current = { screen, globalTimers, activePipeline, pipelineInterruption, sessionData, sessionUUID };
-    if (!hydrated) return;
+    if (!hydrated || restoringBackupRef.current) return;
     sessionPersistence.backup(latestStateRef.current);
   }, [hydrated, screen, globalTimers, activePipeline, pipelineInterruption, sessionData, sessionUUID, sessionPersistence]);
 
   const persistNow = useCallback(() => {
+    if (restoringBackupRef.current) return Promise.resolve();
     return sessionPersistence.flush(latestStateRef.current);
   }, [sessionPersistence]);
+
+  const prepareCompleteBackup = async () => {
+    if (!hydrated) throw new Error("Bitte warten, bis die Testung geladen ist.");
+    if (document.querySelector('[data-running-timer="true"]')) throw new Error("Bitte laufende Stoppuhren und Kurzzeitmessungen vor dem Backup beenden.");
+    await flushMountedDrawings();
+    await new Promise(requestAnimationFrame);
+    await persistNow();
+    await waitForPendingStorageWrites();
+    const snapshot = structuredClone(latestStateRef.current);
+    const drawings = await idbReadAssessmentDrawings(snapshot.sessionUUID);
+    const { createAssessmentBackup } = await import("./lib/assessment-backup");
+    const json = await createAssessmentBackup(snapshot, drawings);
+    const initials = (snapshot.sessionData.demographics?.patient_initials || "Testung").replace(/[^A-Za-z0-9_-]/g, "");
+    return { json, name: `${new Date().toISOString().slice(0, 10)}_${initials}` };
+  };
+
+  const restoreCompleteBackup = async (backup) => {
+    if (!hydrated) throw new Error("Bitte warten, bis die Testung geladen ist.");
+    if (document.querySelector('[data-running-timer="true"]')) throw new Error("Bitte laufende Stoppuhren und Kurzzeitmessungen vor dem Wiederherstellen beenden.");
+    await flushMountedDrawings();
+    await new Promise(requestAnimationFrame);
+    await persistNow();
+    let rollback;
+    const previousBackup = localStorage.getItem(SESSION_BACKUP_STORAGE_KEY);
+    const previousId = localStorage.getItem("sessionUUID");
+    restoringBackupRef.current = true;
+    try {
+      await waitForPendingStorageWrites();
+      const snapshot = { ...backup.snapshot, lastUpdated: Date.now() };
+      rollback = await idbRestoreAssessment(snapshot, backup.drawings);
+      localStorage.setItem(SESSION_BACKUP_STORAGE_KEY, JSON.stringify(snapshot));
+      localStorage.setItem("sessionUUID", snapshot.sessionUUID);
+      window.location.reload();
+    } catch (error) {
+      try {
+        if (rollback) {
+          await rollback();
+          if (previousBackup === null) localStorage.removeItem(SESSION_BACKUP_STORAGE_KEY);
+          else localStorage.setItem(SESSION_BACKUP_STORAGE_KEY, previousBackup);
+          if (previousId === null) localStorage.removeItem("sessionUUID");
+          else localStorage.setItem("sessionUUID", previousId);
+        }
+      } finally { restoringBackupRef.current = false; }
+      throw error;
+    }
+  };
   // hydrate on mount
   useEffect(() => {
     // purge sessions older than 7 days and their drawings
@@ -5997,6 +6049,9 @@ export default function App() {
           >
             Testungsaufbau für verschiedene Fragestellungen
           </Button>
+          <React.Suspense fallback={<p className="text-sm">Backup-Funktionen werden geladen …</p>}>
+            <AssessmentBackup onCreate={prepareCompleteBackup} onRestore={restoreCompleteBackup} />
+          </React.Suspense>
         </div>
         <Button size="bare"
           type="button"
@@ -7396,7 +7451,7 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
     emitState();
   }, [emitState, drawingKeysVersion]);
 
-  const handleDrawingChange = useCallback(async (data) => {
+  const handleDrawingChange = useCallback(async (data, { requirePersistence = false } = {}) => {
     const hadKey = !!drawingKeysRef.current[dg - 1];
     const key = drawingKeysRef.current[dg - 1] || `${drawingNamespace}dg${dg}`;
     drawingKeysRef.current[dg - 1] = key;
@@ -7411,6 +7466,7 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
       else await idbDeleteDrawing(key);
     } catch (e) {
       console.error("Zeichnung speichern fehlgeschlagen", e);
+      if (requirePersistence) throw new Error("Die aktuelle Zeichnung konnte nicht vollständig gespeichert werden. Bitte das Backup erneut versuchen.", { cause: e });
     }
   }, [dg, drawingNamespace]);
 

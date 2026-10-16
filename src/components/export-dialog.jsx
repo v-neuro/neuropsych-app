@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Button } from "./ui";
 import "./export-preview.css";
 
-export function ExportDialog({ id, title, filename, printable = false, onClose, actions, children }) {
+export function ExportDialog({ id, title, filename, printable = false, canClose = true, onClose, actions, children }) {
   const dialogRef = useRef(null);
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -24,11 +24,11 @@ export function ExportDialog({ id, title, filename, printable = false, onClose, 
   return createPortal(
     <dialog id={id} className="npt-export-preview" ref={dialogRef} aria-label={title} onCancel={(event) => {
       event.preventDefault();
-      onClose();
+      if (canClose) onClose();
     }}>
       <div className="npt-export-layout">
         <div className="npt-export-toolbar">
-          <Button onClick={onClose}>← Zurück zur Testung</Button>
+          <Button disabled={!canClose} onClick={onClose}>← Zurück zur Testung</Button>
           {actions}
         </div>
         <div className="npt-export-scroll">{children}</div>

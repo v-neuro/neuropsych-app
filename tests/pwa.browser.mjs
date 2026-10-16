@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { setTimeout as delay } from "node:timers/promises";
 import { createServer } from "node:http";
-import { readFile, readdir } from "node:fs/promises";
+import { readFile, readdir, writeFile, mkdtemp, rm } from "node:fs/promises";
+import { createHash } from "node:crypto";
 
 // Run npm run build first. This server simulates offline operation and two deployments.
 const files = new Map();
@@ -26,6 +27,11 @@ const server = createServer((request, response) => {
   let content = files.get(file);
   if (!content) { response.writeHead(404).end(); return; }
   if (file === "/sw.js" && release !== "initial") content = worker.replace(version, `${version}-${release}`);
+  if (file === "/sw.js" && release === "updated") {
+    const html = files.get("/index.html").toString();
+    const updated = html.replace("</head>", '<meta name="npt-test-release" content="updated"></head>');
+    content = content.replace(createHash("sha256").update(html).digest("hex"), createHash("sha256").update(updated).digest("hex"));
+  }
   if (file === "/index.html" && release === "updated") {
     content = content.toString().replace("</head>", '<meta name="npt-test-release" content="updated"></head>');
   }
@@ -81,13 +87,14 @@ socket.addEventListener("message", ({ data }) => {
   const message = JSON.parse(data);
   if (message.method === "Runtime.exceptionThrown") browserErrors.push(message.params.exceptionDetails);
 });
-async function page() {
+async function page({ persistent = true } = {}) {
   const { targetId } = await send("Target.createTarget", { url: "about:blank", browserContextId });
   const { sessionId } = await send("Target.attachToTarget", { targetId, flatten: true });
   await send("Page.enable", {}, sessionId);
   await send("Page.bringToFront", {}, sessionId);
   await send("Runtime.enable", {}, sessionId);
   await send("Network.enable", {}, sessionId);
+  await send("Network.setCacheDisabled", { cacheDisabled: true }, sessionId);
   const evaluate = async (expression) => {
     const result = await send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true }, sessionId);
     if (result.exceptionDetails) throw new Error(JSON.stringify(result.exceptionDetails));
@@ -99,6 +106,9 @@ async function page() {
     button.click();
   })()`);
   await send("Page.addScriptToEvaluateOnNewDocument", { source: `
+    window.persistenceRequests = 0;
+    Object.defineProperty(navigator.storage, 'persisted', { configurable: true, value: async () => false });
+    Object.defineProperty(navigator.storage, 'persist', { configurable: true, value: async () => { window.persistenceRequests++; return ${persistent}; } });
     if (location.origin === ${JSON.stringify(appUrl)} && !localStorage.getItem('pwa_fixture_seeded')) {
       localStorage.setItem('pwa_fixture_seeded', 'true');
       localStorage.setItem('auth_ok', 'true');
@@ -252,6 +262,175 @@ async function checkStandaloneCsv(p) {
   await p.evaluate('delete navigator.standalone');
 }
 
+async function checkFullBackup(p) {
+  const directory = await mkdtemp('/private/tmp/npt-backup-test-');
+  try {
+    assert.equal(await p.evaluate(`!![...document.querySelectorAll('button')].find(node => node.textContent === 'Backup erstellen')`), false);
+    assert.equal(await p.evaluate(`(() => {
+      const button = [...document.querySelectorAll('button')].find(node => node.textContent === 'Vollständiges Backup');
+      return button.previousElementSibling.textContent.trim();
+    })()`), 'Testungsaufbau für verschiedene Fragestellungen');
+    await p.evaluate(`[...document.querySelectorAll('button')].find(node => node.textContent === 'Vollständiges Backup').focus()`);
+    await p.click('Vollständiges Backup');
+    await until(() => p.evaluate('!!document.querySelector("dialog[open][aria-labelledby=backup-menu-title]")'), 'compact backup menu');
+    assert.equal(await p.evaluate(`document.querySelector('dialog[aria-labelledby=backup-menu-title]').getBoundingClientRect().width < innerWidth`), true);
+    await p.click('Schließen');
+    assert.equal(await p.evaluate('!!document.querySelector("dialog[open]")'), false);
+    assert.equal(await p.evaluate('document.activeElement.textContent'), 'Vollständiges Backup');
+    await p.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+    const rect = await p.evaluate(`(() => {
+      const canvas = document.querySelector('canvas'); canvas.scrollIntoView({ block: 'center' });
+      const r = canvas.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height };
+    })()`);
+    const start = { x: rect.x + rect.width * 0.2, y: rect.y + rect.height * 0.3 };
+    const finish = { x: rect.x + rect.width * 0.5, y: rect.y + rect.height * 0.6 };
+    await send('Input.dispatchMouseEvent', { type: 'mousePressed', ...start, button: 'left', buttons: 1, clickCount: 1 }, p.sessionId);
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...finish, button: 'left', buttons: 1 }, p.sessionId);
+    await send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...finish, button: 'left', buttons: 0, clickCount: 1 }, p.sessionId);
+    await p.evaluate(`(() => {
+      Object.defineProperty(navigator, 'standalone', { configurable: true, value: true });
+      Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => true });
+      Object.defineProperty(navigator, 'share', { configurable: true, value: async ({ files }) => { window.sharedBackupName = files[0].name; window.sharedBackup = await files[0].text(); } });
+    })()`);
+    await p.evaluate(`(() => {
+      const original = IDBObjectStore.prototype.put;
+      window.failDrawingWrites = 2;
+      IDBObjectStore.prototype.put = function(...args) {
+        if (this.name === 'drawings' && window.failDrawingWrites > 0) {
+          window.failDrawingWrites--; throw new DOMException('Synthetic drawing failure', 'QuotaExceededError');
+        }
+        return original.apply(this, args);
+      };
+    })()`);
+    await p.click('Vollständiges Backup');
+    await p.click('Backup erstellen');
+    await until(() => p.evaluate('document.getElementById("npt-backup")?.textContent.includes("aktuelle Zeichnung konnte nicht vollständig")'), 'failed draft flush rejects backup');
+    assert.equal(await p.evaluate('!!document.querySelector("#npt-backup textarea")'), false);
+    await p.evaluate('window.failDrawingWrites = 0');
+    await p.click('← Zurück zur Testung');
+    await p.click('Vollständiges Backup');
+    await p.click('Backup erstellen');
+    await until(() => p.evaluate('!!document.querySelector("#npt-backup textarea")'), 'complete backup with active sketch');
+    const text = await p.evaluate('document.querySelector("#npt-backup textarea").value');
+    const backup = JSON.parse(text);
+    assert.equal(backup.drawings.length, 2);
+    assert.equal(backup.snapshot.sessionData.demographics.education_years, 11.5);
+    assert.equal(backup.snapshot.sessionData.dcsr.counts[1].richtig, 1);
+    assert.equal(backup.snapshot.screen.name, 'dcsr');
+    assert.equal(backup.appVersion, await p.evaluate('document.querySelector("[data-app-version]").dataset.appVersion'));
+    await p.click('Backup teilen / In Dateien sichern');
+    await until(() => p.evaluate('!!window.sharedBackup'), 'share full backup');
+    assert.equal(await p.evaluate('window.sharedBackup'), text);
+    await writeFile(`${directory}/valid.npt-backup.json`, text);
+    const damaged = JSON.parse(text); damaged.snapshot.sessionData.demographics.education_years = 12;
+    await writeFile(`${directory}/damaged.npt-backup.json`, JSON.stringify(damaged));
+    await p.click('← Zurück zur Testung');
+    await p.evaluate(`Object.defineProperty(navigator, 'canShare', { configurable: true, value: ({ files }) => files[0].type === 'text/plain' }); window.sharedBackup = null;`);
+    await p.click('Vollständiges Backup');
+    await p.click('Backup erstellen');
+    await until(() => p.evaluate('!!document.querySelector("#npt-backup textarea")'), 'plain-text share fallback');
+    await p.click('Backup teilen / In Dateien sichern');
+    await until(() => p.evaluate('!!window.sharedBackup'), 'plain-text backup shared');
+    assert.ok((await p.evaluate('window.sharedBackupName')).endsWith('.npt-backup.txt'));
+    assert.deepEqual(JSON.parse(await p.evaluate('window.sharedBackup')).snapshot.sessionData, backup.snapshot.sessionData);
+    await p.click('← Zurück zur Testung');
+    await p.evaluate(`Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => false }); window.copyFails = true;`);
+    await p.click('Vollständiges Backup');
+    await p.click('Backup erstellen');
+    await until(() => p.evaluate('!!document.querySelector("#npt-backup textarea")'), 'copy backup fallback');
+    await p.click('Backup kopieren');
+    await until(() => p.evaluate('document.querySelector("#npt-backup details").open'), 'manual backup copy exposed');
+    assert.equal(await p.evaluate('document.activeElement === document.querySelector("#npt-backup textarea")'), true);
+    assert.equal(await p.evaluate('document.querySelector("#npt-backup textarea").selectionEnd === document.querySelector("#npt-backup textarea").value.length'), true);
+    await p.click('← Zurück zur Testung');
+    await p.evaluate(`(() => {
+      delete navigator.standalone;
+      const original = URL.createObjectURL;
+      URL.createObjectURL = file => { if (file.name?.endsWith('.npt-backup.json')) window.downloadedBackup = file.text(); return original(file); };
+      HTMLAnchorElement.prototype.click = function() { window.downloadedBackupName = this.download; };
+    })()`);
+    await p.click('Vollständiges Backup');
+    await p.click('Backup erstellen');
+    await until(() => p.evaluate('!!document.querySelector("#npt-backup textarea")'), 'browser backup');
+    await p.click('Backup herunterladen');
+    await until(() => p.evaluate('!!window.downloadedBackup'), 'browser backup download');
+    assert.deepEqual(JSON.parse(await p.evaluate('window.downloadedBackup')).snapshot.sessionData, backup.snapshot.sessionData);
+    assert.ok((await p.evaluate('window.downloadedBackupName')).endsWith('.npt-backup.json'));
+    await p.click('← Zurück zur Testung');
+    await p.click('Übersicht');
+    await p.click('Basisdaten bearbeiten');
+    await until(() => p.evaluate('!!document.getElementById("education-years-total")'), 'education form');
+    await p.evaluate(`(() => {
+      const input = document.getElementById('education-years-total');
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, '99');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+    await p.click('Speichern');
+    await until(async () => (await p.snapshot()).sessionData.demographics.education_years === 99, 'changed live assessment');
+    const loadFile = async (name) => {
+      await p.click('Vollständiges Backup');
+      await until(() => p.evaluate('!!document.querySelector("dialog[open][aria-labelledby=backup-menu-title]")'), 'backup import menu');
+      const { root } = await send('DOM.getDocument', {}, p.sessionId);
+      const { nodeId } = await send('DOM.querySelector', { nodeId: root.nodeId, selector: 'input[aria-label="Backup-Datei laden"]' }, p.sessionId);
+      await send('DOM.setFileInputFiles', { nodeId, files: [`${directory}/${name}`] }, p.sessionId);
+    };
+    await loadFile('damaged.npt-backup.json');
+    await until(() => p.evaluate('document.getElementById("npt-backup")?.textContent.includes("beschädigt")'), 'damaged backup rejected');
+    assert.equal((await p.snapshot()).sessionData.demographics.education_years, 99);
+    assert.equal(await p.evaluate(`[...document.querySelectorAll('#npt-backup button')].find(node => node.textContent === 'Backup wiederherstellen').disabled`), true);
+    await p.click('← Zurück zur Testung');
+    await loadFile('valid.npt-backup.json');
+    await until(() => p.evaluate(`[...document.querySelectorAll('#npt-backup button')].some(node => node.textContent === 'Backup wiederherstellen' && !node.disabled)`), 'valid restore reviewed');
+    await p.evaluate(`(() => {
+      const original = IDBObjectStore.prototype.put;
+      window.failRestoreOnce = true;
+      IDBObjectStore.prototype.put = function(...args) {
+        if (this.name === 'drawings' && window.failRestoreOnce) {
+          window.failRestoreOnce = false; throw new DOMException('Synthetic restore failure', 'QuotaExceededError');
+        }
+        return original.apply(this, args);
+      };
+    })()`);
+    await p.click('Backup wiederherstellen');
+    await until(() => p.evaluate('document.getElementById("npt-backup")?.textContent.includes("Synthetic restore failure")'), 'atomic failed restore');
+    assert.equal((await p.snapshot()).sessionData.demographics.education_years, 99);
+    assert.equal(await p.evaluate(`new Promise(resolve => {
+      const open = indexedDB.open('npt-db', 2);
+      open.onsuccess = () => { const db = open.result; const read = db.transaction('sessions').objectStore('sessions').get('pwa-regression'); read.onsuccess = () => { resolve(read.result.sessionData.demographics.education_years); db.close(); }; };
+    })`), 99);
+    await p.evaluate(`(() => {
+      const original = Storage.prototype.setItem;
+      window.failPointerOnce = true;
+      Storage.prototype.setItem = function(key, value) {
+        if (key === 'sessionUUID' && window.failPointerOnce) {
+          window.failPointerOnce = false; throw new DOMException('Synthetic pointer failure', 'QuotaExceededError');
+        }
+        return original.call(this, key, value);
+      };
+    })()`);
+    await p.click('Backup wiederherstellen');
+    await until(() => p.evaluate('document.getElementById("npt-backup")?.textContent.includes("Synthetic pointer failure")'), 'restore pointer rollback');
+    assert.equal((await p.snapshot()).sessionData.demographics.education_years, 99);
+    assert.equal(await p.evaluate(`new Promise(resolve => {
+      const open = indexedDB.open('npt-db', 2);
+      open.onsuccess = () => { const db = open.result; const read = db.transaction('sessions').objectStore('sessions').get('pwa-regression'); read.onsuccess = () => { resolve(read.result.sessionData.demographics.education_years); db.close(); }; };
+    })`), 99);
+    await p.click('Backup wiederherstellen');
+    await delay(300);
+    await hydrated(p);
+    await until(() => p.evaluate('!!document.querySelector("canvas")'), 'restored assessment screen');
+    const restored = await p.snapshot();
+    assert.deepEqual(restored.sessionData, backup.snapshot.sessionData);
+    assert.deepEqual(restored.globalTimers, backup.snapshot.globalTimers);
+    assert.deepEqual(restored.screen, backup.snapshot.screen);
+    await until(() => p.evaluate(`(() => {
+      const canvas = document.querySelector('canvas');
+      return canvas && canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data.some((byte, index) => index % 4 === 3 && byte > 0);
+    })()`), 'restored sketch');
+    await p.evaluate('delete navigator.standalone');
+  } finally { await rm(directory, { recursive: true, force: true }); }
+}
+
 try {
   release = "broken";
   let editor = await page();
@@ -261,7 +440,12 @@ try {
   assert.deepEqual(await editor.evaluate('caches.keys()'), []);
   release = "initial";
   await editor.click("Erneut herunterladen");
-  await until(() => editor.evaluate('!!navigator.serviceWorker.controller && document.body.textContent.includes("Für Offlinebetrieb bereit")'), "retry initial download");
+  await until(() => editor.evaluate('!!navigator.serviceWorker.controller && document.querySelector("[data-offline-status]")?.textContent.includes("Für Offlinebetrieb bereit")'), "retry initial download");
+  assert.match(await editor.evaluate('document.querySelector("[data-app-version]").dataset.appVersion'), /^[a-f0-9]{12}$/);
+  assert.equal(await editor.evaluate('window.persistenceRequests'), 1);
+  assert.equal(await editor.evaluate('document.body.textContent.includes("Dauerhafter Gerätespeicher aktiviert")'), true);
+  await editor.click('Nach Updates suchen');
+  await until(() => editor.evaluate('document.body.textContent.includes("Die App ist auf dem neuesten Stand")'), 'manual update check');
   console.log("PASS: failed initial download is reported and retry installs the complete app");
   const { data, errors } = await send("Page.getAppManifest", {}, editor.sessionId);
   assert.deepEqual(errors, []);
@@ -288,12 +472,24 @@ try {
       const image = new Image(); image.onload = () => resolve(image.naturalWidth > 0); image.onerror = () => resolve(false); image.src = ${JSON.stringify(path)};
     })`), true, path);
   }
+  await editor.evaluate(`(async () => {
+    const cache = await caches.open(${JSON.stringify(staticCache[0])});
+    await cache.delete('/material/DCS-2.png');
+    await cache.put('/material/DCS-1.png', new Response('damaged', { headers: { 'Content-Type': 'image/png' } }));
+  })()`);
+  await editor.click('Nach Updates suchen');
+  await until(() => editor.evaluate('document.body.textContent.includes("Offline-Version nicht verfügbar")'), 'missing/corrupt cache detected offline');
+  assert.equal(await editor.evaluate('document.body.textContent.includes("Offline – Testung und Export sind verfügbar")'), false);
+  await setOffline(editor, false);
+  await until(() => editor.evaluate('document.querySelector("[data-offline-status]")?.textContent.includes("Für Offlinebetrieb bereit")'), 'matching cache repaired online');
+  await setOffline(editor, true);
   // Close the document entirely, then reopen offline with the same installation/storage.
   await send("Target.closeTarget", { targetId: editor.targetId });
-  editor = await page();
+  editor = await page({ persistent: false });
   await setOffline(editor, true);
   await navigate(editor);
   await hydrated(editor);
+  await until(() => editor.evaluate('document.body.textContent.includes("Gerätespeicher wird vom Browser verwaltet")'), 'persistent storage refusal handled');
   await editor.evaluate('[...document.querySelectorAll(".tile-btn")].find(node => node.textContent.includes("DCS-R")).click()');
   await until(() => editor.evaluate('!!document.querySelector("canvas")'), "offline DCS");
   await until(() => editor.evaluate('[...document.querySelectorAll("main img")].every(img => img.complete && img.naturalWidth > 0)'), "DCS image layout");
@@ -321,9 +517,23 @@ try {
   await checkStandalonePdf(editor, "ios");
   await checkStandalonePdf(editor, "display-mode");
   await checkStandaloneCsv(editor);
+  await checkFullBackup(editor);
   await editor.click("Übersicht");
+  await editor.click('TMT A und B');
+  await until(() => editor.evaluate('!!document.querySelector("main .text-4xl")'), 'timed assessment');
+  await editor.click('Start');
+  await until(() => editor.evaluate('!!document.querySelector("[data-running-timer=true]")'), 'running stopwatch');
+  await editor.click('Vollständiges Backup');
+  await editor.click('Backup erstellen');
+  await until(() => editor.evaluate('document.getElementById("npt-backup")?.textContent.includes("vor dem Backup beenden")'), 'running measurement backup blocked');
+  await editor.click('← Zurück zur Testung');
+  await editor.click('Stopp');
+  await until(() => editor.evaluate('!document.querySelector("[data-running-timer=true]")'), 'stopwatch saved');
+  assert.ok((await editor.snapshot()).sessionData.tmt_a > 0);
+  await editor.click('Übersicht');
   console.log("PASS: iOS/standalone PDF stays in-app, prints only the report, and returns to the same assessment offline");
   console.log("PASS: standalone CSV shares/copies exact content, handles cancellation/failure/fallback, and returns without navigation");
+  console.log("PASS: complete backup restores sketches, scored figures, data and screen; damaged files and failed writes preserve the current assessment");
 
   await setOffline(editor, false);
   await editor.evaluate(`window.pwaBoot = 'original'; window.controllerChanges = 0; navigator.serviceWorker.addEventListener('controllerchange', () => window.controllerChanges++);`);
@@ -342,15 +552,29 @@ try {
   console.log("PASS: incomplete release fails installation and preserves the working offline version");
 
   release = "updated";
-  await editor.evaluate('navigator.serviceWorker.getRegistration().then(reg => reg.update())');
+  await editor.click('Nach Updates suchen');
   await until(() => editor.evaluate('navigator.serviceWorker.getRegistration().then(reg => !!reg.waiting)'), "update waiting");
   await until(() => editor.evaluate('document.body.textContent.includes("Eine neue App-Version ist bereit")'), "update status");
   assert.equal(await editor.evaluate('window.pwaBoot'), "original");
   assert.equal(await editor.evaluate('window.controllerChanges'), 0);
   assert.equal(await editor.evaluate('fetch("/index.html").then(r => r.text()).then(html => html.includes("npt-test-release"))'), false);
+  // Newer unversioned HTML must not be used to repair an older release's cache.
+  await editor.evaluate(`caches.open(${JSON.stringify(staticCache[0])}).then(cache => cache.delete('/index.html'))`);
+  await editor.click('Nach Updates suchen');
+  await until(() => editor.evaluate('document.body.textContent.includes("Offline-Version nicht verfügbar")'), 'missing old release index detected');
+  await editor.click('Erneut herunterladen');
+  await until(() => editor.evaluate('document.body.textContent.includes("Offline-Version nicht verfügbar") && !document.querySelector("[data-offline-status]").textContent.includes("geprüft")'), 'newer HTML repair rejected');
+  const oldRelease = await editor.evaluate(`new Promise(resolve => {
+    const channel = new MessageChannel();
+    channel.port1.onmessage = ({ data }) => { channel.port1.close(); resolve(data); };
+    navigator.serviceWorker.controller.postMessage({ type: 'VERIFY_OFFLINE', repair: true }, [channel.port2]);
+  })`);
+  assert.equal(oldRelease.ready, false);
+  assert.ok(oldRelease.missing.includes('/index.html'));
+  assert.equal(await editor.evaluate(`caches.open(${JSON.stringify(staticCache[0])}).then(cache => cache.match('/index.html')).then(Boolean)`), false);
   const second = await page();
   await navigate(second);
-  await until(() => second.evaluate('document.body.textContent.includes("Testung bereits geöffnet")'), "second tab locked");
+  await until(() => second.evaluate('document.body?.textContent.includes("Testung bereits geöffnet")'), "second tab locked");
   await send("Target.closeTarget", { targetId: editor.targetId });
   assert.equal(await second.evaluate('navigator.serviceWorker.getRegistration().then(reg => !!reg.waiting)'), true);
   await send("Target.closeTarget", { targetId: second.targetId });

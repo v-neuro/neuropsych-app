@@ -1,9 +1,10 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { getPwaStatus, retryPwa, subscribePwa } from "../lib/pwa";
+import { checkForUpdates, getPwaStatus, retryPwa, subscribePwa } from "../lib/pwa";
+import { APP_VERSION } from "../lib/app-version";
 import { Button } from "./ui";
 
 export function PwaStatus() {
-  const { ready, updateAvailable, error } = useSyncExternalStore(subscribePwa, getPwaStatus);
+  const { ready, checkingOffline, updateAvailable, error, checkingUpdate, updateMessage, persistence } = useSyncExternalStore(subscribePwa, getPwaStatus);
   const [online, setOnline] = useState(() => navigator.onLine);
   const [installed] = useState(() => window.matchMedia("(display-mode: standalone)").matches || !!navigator.standalone);
 
@@ -19,13 +20,21 @@ export function PwaStatus() {
 
   return (
     <div className="w-full space-y-2 rounded-xl border border-indigo-100 bg-white/80 p-3 text-sm" aria-label="App und Offlinebetrieb">
-      <p role="status">
-        {ready
+      <p data-app-version={APP_VERSION}>App-Version: {APP_VERSION}</p>
+      <p role="status" data-offline-status>
+        {checkingOffline ? "Offline-Dateien werden geprüft …" : ready
           ? online ? "Für Offlinebetrieb bereit." : "Offline – Testung und Export sind verfügbar."
           : error ? "Offline-Version nicht verfügbar. Bitte mit Internetverbindung erneut versuchen."
             : "Offline-Version wird vorbereitet … Bitte die App geöffnet lassen."}
       </p>
       {error && <Button size="sm" onClick={() => void retryPwa()}>Erneut herunterladen</Button>}
+      <Button size="sm" disabled={checkingUpdate} onClick={() => void checkForUpdates()}>
+        {checkingUpdate ? "Updates werden geprüft …" : "Nach Updates suchen"}
+      </Button>
+      {updateMessage && <p role="status">{updateMessage}</p>}
+      <p className="text-xs text-zinc-600">{persistence === "persistent"
+        ? "Dauerhafter Gerätespeicher aktiviert."
+        : persistence === "checking" ? "Gerätespeicher wird geprüft …" : "Gerätespeicher wird vom Browser verwaltet. Ein vollständiges Backup kann zusätzlich gesichert werden."}</p>
       {updateAvailable && (
         <div className="space-y-2">
           <p>Eine neue App-Version ist bereit. Die laufende Testung bleibt in der aktuellen Version.</p>
