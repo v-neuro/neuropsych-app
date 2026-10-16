@@ -47,7 +47,7 @@ Im installierten App-Modus öffnet „PDF Export“ eine Vorschau innerhalb der 
 
 ### Vollständige Backups
 
-Die Schaltfläche „Vollständiges Backup“ im unteren App-Bereich, rechts neben „Testungsaufbau für verschiedene Fragestellungen“, öffnet ein Pop-up mit „Backup erstellen“ und „Backup laden“.
+Die Schaltfläche „Backup“ im unteren App-Bereich, rechts neben „Testungsaufbau für Fragestellungen“, öffnet ein Pop-up mit „Backup erstellen“ und „Backup laden“.
 
 „Backup erstellen“ sichert die aktuelle Testung mit Rohdaten, Notizen, Zeichnungen einschließlich unbewerteter Skizzen und Galerien, aktueller Ansicht, Erinnerungen und Testbatterie-Fortschritt. Vor der Sicherung werden offene Zeichnungs-Encodes und Speicherzugriffe abgeschlossen. Laufende Stoppuhren/Kurzzeitmessungen müssen vorher beendet werden; globale Abruf-Erinnerungen werden mit ihren ursprünglichen Fristen gesichert und laufen zeitlich weiter.
 

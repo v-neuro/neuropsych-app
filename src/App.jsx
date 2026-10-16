@@ -6047,7 +6047,7 @@ export default function App() {
             variant="secondary"
             onClick={() => setShowTestbereiche(true)}
           >
-            Testungsaufbau für verschiedene Fragestellungen
+            Testungsaufbau für Fragestellungen
           </Button>
           <React.Suspense fallback={<p className="text-sm">Backup-Funktionen werden geladen …</p>}>
             <AssessmentBackup onCreate={prepareCompleteBackup} onRestore={restoreCompleteBackup} />

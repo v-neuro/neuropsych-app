@@ -267,16 +267,16 @@ async function checkFullBackup(p) {
   try {
     assert.equal(await p.evaluate(`!![...document.querySelectorAll('button')].find(node => node.textContent === 'Backup erstellen')`), false);
     assert.equal(await p.evaluate(`(() => {
-      const button = [...document.querySelectorAll('button')].find(node => node.textContent === 'Vollständiges Backup');
+      const button = [...document.querySelectorAll('button')].find(node => node.textContent === 'Backup');
       return button.previousElementSibling.textContent.trim();
-    })()`), 'Testungsaufbau für verschiedene Fragestellungen');
-    await p.evaluate(`[...document.querySelectorAll('button')].find(node => node.textContent === 'Vollständiges Backup').focus()`);
-    await p.click('Vollständiges Backup');
+    })()`), 'Testungsaufbau für Fragestellungen');
+    await p.evaluate(`[...document.querySelectorAll('button')].find(node => node.textContent === 'Backup').focus()`);
+    await p.click('Backup');
     await until(() => p.evaluate('!!document.querySelector("dialog[open][aria-labelledby=backup-menu-title]")'), 'compact backup menu');
     assert.equal(await p.evaluate(`document.querySelector('dialog[aria-labelledby=backup-menu-title]').getBoundingClientRect().width < innerWidth`), true);
     await p.click('Schließen');
     assert.equal(await p.evaluate('!!document.querySelector("dialog[open]")'), false);
-    assert.equal(await p.evaluate('document.activeElement.textContent'), 'Vollständiges Backup');
+    assert.equal(await p.evaluate('document.activeElement.textContent'), 'Backup');
     await p.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
     const rect = await p.evaluate(`(() => {
       const canvas = document.querySelector('canvas'); canvas.scrollIntoView({ block: 'center' });
@@ -302,13 +302,13 @@ async function checkFullBackup(p) {
         return original.apply(this, args);
       };
     })()`);
-    await p.click('Vollständiges Backup');
+    await p.click('Backup');
     await p.click('Backup erstellen');
     await until(() => p.evaluate('document.getElementById("npt-backup")?.textContent.includes("aktuelle Zeichnung konnte nicht vollständig")'), 'failed draft flush rejects backup');
     assert.equal(await p.evaluate('!!document.querySelector("#npt-backup textarea")'), false);
     await p.evaluate('window.failDrawingWrites = 0');
     await p.click('← Zurück zur Testung');
-    await p.click('Vollständiges Backup');
+    await p.click('Backup');
     await p.click('Backup erstellen');
     await until(() => p.evaluate('!!document.querySelector("#npt-backup textarea")'), 'complete backup with active sketch');
     const text = await p.evaluate('document.querySelector("#npt-backup textarea").value');
@@ -326,7 +326,7 @@ async function checkFullBackup(p) {
     await writeFile(`${directory}/damaged.npt-backup.json`, JSON.stringify(damaged));
     await p.click('← Zurück zur Testung');
     await p.evaluate(`Object.defineProperty(navigator, 'canShare', { configurable: true, value: ({ files }) => files[0].type === 'text/plain' }); window.sharedBackup = null;`);
-    await p.click('Vollständiges Backup');
+    await p.click('Backup');
     await p.click('Backup erstellen');
     await until(() => p.evaluate('!!document.querySelector("#npt-backup textarea")'), 'plain-text share fallback');
     await p.click('Backup teilen / In Dateien sichern');
@@ -335,7 +335,7 @@ async function checkFullBackup(p) {
     assert.deepEqual(JSON.parse(await p.evaluate('window.sharedBackup')).snapshot.sessionData, backup.snapshot.sessionData);
     await p.click('← Zurück zur Testung');
     await p.evaluate(`Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => false }); window.copyFails = true;`);
-    await p.click('Vollständiges Backup');
+    await p.click('Backup');
     await p.click('Backup erstellen');
     await until(() => p.evaluate('!!document.querySelector("#npt-backup textarea")'), 'copy backup fallback');
     await p.click('Backup kopieren');
@@ -349,7 +349,7 @@ async function checkFullBackup(p) {
       URL.createObjectURL = file => { if (file.name?.endsWith('.npt-backup.json')) window.downloadedBackup = file.text(); return original(file); };
       HTMLAnchorElement.prototype.click = function() { window.downloadedBackupName = this.download; };
     })()`);
-    await p.click('Vollständiges Backup');
+    await p.click('Backup');
     await p.click('Backup erstellen');
     await until(() => p.evaluate('!!document.querySelector("#npt-backup textarea")'), 'browser backup');
     await p.click('Backup herunterladen');
@@ -368,7 +368,7 @@ async function checkFullBackup(p) {
     await p.click('Speichern');
     await until(async () => (await p.snapshot()).sessionData.demographics.education_years === 99, 'changed live assessment');
     const loadFile = async (name) => {
-      await p.click('Vollständiges Backup');
+      await p.click('Backup');
       await until(() => p.evaluate('!!document.querySelector("dialog[open][aria-labelledby=backup-menu-title]")'), 'backup import menu');
       const { root } = await send('DOM.getDocument', {}, p.sessionId);
       const { nodeId } = await send('DOM.querySelector', { nodeId: root.nodeId, selector: 'input[aria-label="Backup-Datei laden"]' }, p.sessionId);
@@ -523,7 +523,7 @@ try {
   await until(() => editor.evaluate('!!document.querySelector("main .text-4xl")'), 'timed assessment');
   await editor.click('Start');
   await until(() => editor.evaluate('!!document.querySelector("[data-running-timer=true]")'), 'running stopwatch');
-  await editor.click('Vollständiges Backup');
+  await editor.click('Backup');
   await editor.click('Backup erstellen');
   await until(() => editor.evaluate('document.getElementById("npt-backup")?.textContent.includes("vor dem Backup beenden")'), 'running measurement backup blocked');
   await editor.click('← Zurück zur Testung');

@@ -94,7 +94,7 @@ const assertCompactAnswers = async () => {
 };
 const epilepsySection = `[...document.querySelectorAll('section')].find(node => node.querySelector('button')?.textContent.includes('Epileptologie – Lokalisationsdiagnostik'))`;
 const openEpilepsyOverview = async () => {
-  await click("Testungsaufbau für verschiedene Fragestellungen");
+  await click("Testungsaufbau für Fragestellungen");
   await evaluate(`(() => {
     const section = ${epilepsySection};
     if (!section) throw new Error('Full epilepsy battery missing');

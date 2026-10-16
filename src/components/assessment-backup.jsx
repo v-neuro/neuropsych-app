@@ -108,7 +108,7 @@ export function AssessmentBackup({ onCreate, onRestore }) {
 
   return (
     <>
-      <Button variant="secondary" aria-haspopup="dialog" onClick={() => setMode("menu")}>Vollständiges Backup</Button>
+      <Button variant="secondary" aria-haspopup="dialog" onClick={() => setMode("menu")}>Backup</Button>
       <input ref={inputRef} type="file" accept=".json,.txt,application/json,text/plain" hidden aria-label="Backup-Datei laden" onChange={(event) => {
         const file = event.target.files[0]; event.target.value = ""; void load(file);
       }} />
