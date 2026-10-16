@@ -12,6 +12,8 @@ import { Qolie31Screen } from "./components/qolie31";
 import { getQolie31ExportFields } from "./lib/qolie31-scoring";
 import { createSessionPersistence } from "./lib/session-persistence";
 import { PwaStatus } from "./components/pwa-status";
+import { PdfExportPreview } from "./components/pdf-export-preview";
+import { CsvExportPreview } from "./components/csv-export-preview";
 
 const SESSION_BACKUP_STORAGE_KEY = "npt_session_backup";
 
@@ -4739,6 +4741,14 @@ export default function App() {
   const [authError, setAuthError] = useState("");
   const [showImpressum, setShowImpressum] = useState(false);
   const [showTestbereiche, setShowTestbereiche] = useState(false);
+  const [pdfPreview, setPdfPreview] = useState(null);
+  const [csvPreview, setCsvPreview] = useState(null);
+  const pdfPreviewRequestRef = useRef(0);
+  const closePdfPreview = () => {
+    pdfPreviewRequestRef.current += 1;
+    for (const url of pdfPreview?.imageUrls || []) URL.revokeObjectURL(url);
+    setPdfPreview(null);
+  };
   const [editingDemographics, setEditingDemographics] = useState(false);
   const [screen, setScreen] = useState(
     { name: "menu" } // many names: "vlmt","dcsr","cerad_wl","tmt_a","tmt_b","zahl_fwd","zahl_rev","block_fwd","block_rev","rwt","stroop","epi","gp","uhr","cerad_menu","cerad_mmst","cerad_benennen","cerad_wf"
@@ -5052,10 +5062,6 @@ export default function App() {
         return `"${s}"`;
       }).join(";"),
     ].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
     const pat = (sessionData?.demographics?.patient_initials || "Pat").replace(/[^A-Za-z0-9_-]/g, "");
     const startedAt = typeof sessionData?.testing_started_at === "number" ? sessionData.testing_started_at : Date.now();
     const started = new Date(startedAt);
@@ -5064,7 +5070,16 @@ export default function App() {
     const dd = String(started.getDate()).padStart(2, "0");
     const hh = String(started.getHours()).padStart(2, "0");
     const min = String(started.getMinutes()).padStart(2, "0");
-    a.download = `${yyyy}-${mm}-${dd}_${hh}-${min}_${pat}_${sessionUUID}.csv`;
+    const filename = `${yyyy}-${mm}-${dd}_${hh}-${min}_${pat}_${sessionUUID}.csv`;
+    if (window.matchMedia("(display-mode: standalone)").matches || navigator.standalone) {
+      setCsvPreview({ csv, filename });
+      return;
+    }
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -5079,24 +5094,32 @@ export default function App() {
     const hh = String(started.getHours()).padStart(2, "0");
     const min = String(started.getMinutes()).padStart(2, "0");
     const filename = `${yyyy}-${mm}-${dd}_${hh}-${min}_${pat}_${sessionUUID}`;
-    // iPad/Safari may block popups if window.open happens after awaited work.
-    const win = window.open("", "_blank");
-    if (!win) {
+    const standalone = window.matchMedia("(display-mode: standalone)").matches || !!navigator.standalone;
+    const requestId = ++pdfPreviewRequestRef.current;
+    // Installed apps retain their own navigation; browsers open before awaited work.
+    const win = standalone ? null : window.open("", "_blank");
+    if (standalone) setPdfPreview({ filename });
+    else if (!win) {
       window.alert("PDF-Export konnte nicht geöffnet werden. Bitte Pop-ups für diese Seite erlauben.");
       return;
     }
-    win.document.write(`
+    if (win) {
+      win.document.write(`
       <html>
         <head><title>${filename}.pdf</title></head>
         <body style="font-family: Arial, sans-serif; padding: 20px;">PDF-Export wird vorbereitet…</body>
       </html>
     `);
-    win.document.close();
+      win.document.close();
+    }
 
+    const imageUrls = [];
     try {
       const row = await buildExportRow(sessionData, sessionUUID, { includeDrawings: false });
       const drawingsData = await loadDcsrDrawings(sessionUUID, sessionData);
+      imageUrls.push(...drawingsData.filter((url) => url?.startsWith("blob:")));
       const figureGalleries = await loadDcsrFigureGalleries(sessionData);
+      imageUrls.push(...Object.values(figureGalleries).flat().map((figure) => figure.src).filter((url) => url?.startsWith("blob:")));
       const dcsrByDg = Array.from({ length: 5 }, (_, idx) => {
         const main = drawingsData[idx] ? { src: drawingsData[idx], rating: null } : null;
         const gallery = Array.isArray(figureGalleries[idx]) ? figureGalleries[idx].filter(Boolean) : [];
@@ -5105,16 +5128,16 @@ export default function App() {
       }).filter((x) => x.images.length > 0);
       // Simple HTML print view
     const style = `
-      body { font-family: Arial, sans-serif; padding: 20px; color: #111; }
-      h1 { font-size: 20px; margin-bottom: 4px; }
-      h2 { font-size: 16px; margin-top: 16px; margin-bottom: 8px; }
-      table { border-collapse: collapse; width: 100%; font-size: 12px; }
-      th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
-      .meta { font-size: 12px; color: #555; margin-bottom: 12px; }
-      .draw-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
-      .draw-card { border: 1px solid #ccc; padding: 8px; }
-      .dg-label { font-size: 14px; font-weight: 700; margin-top: 12px; margin-bottom: 6px; }
-      img { max-width: 100%; height: auto; border: 1px solid #ddd; }
+      .npt-pdf-report { font-family: Arial, sans-serif; padding: 20px; color: #111; }
+      .npt-pdf-report h1 { font-size: 20px; margin-bottom: 4px; }
+      .npt-pdf-report h2 { font-size: 16px; margin-top: 16px; margin-bottom: 8px; }
+      .npt-pdf-report table { border-collapse: collapse; width: 100%; font-size: 12px; }
+      .npt-pdf-report th, .npt-pdf-report td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
+      .npt-pdf-report .meta { font-size: 12px; color: #555; margin-bottom: 12px; }
+      .npt-pdf-report .draw-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+      .npt-pdf-report .draw-card { border: 1px solid #ccc; padding: 8px; }
+      .npt-pdf-report .dg-label { font-size: 14px; font-weight: 700; margin-top: 12px; margin-bottom: 6px; }
+      .npt-pdf-report img { max-width: 100%; height: auto; border: 1px solid #ddd; }
     `;
     const formatValue = (v) => String(v ?? "").replace(/[&<>"']/g, (char) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -5141,6 +5164,23 @@ export default function App() {
       })
       .join("");
 
+    const content = `
+      <h1>Neuropsychologische Testung</h1>
+      <div class="meta">Export: ${new Date().toLocaleString()} · Session: ${sessionUUID}</div>
+      <h2>Basisdaten</h2>
+      <table><tbody>${demoRowsHtml}</tbody></table>
+      <h2>Messwerte</h2>
+      <table><tbody>${rowsHtml}</tbody></table>
+      ${dcsrHtml ? `<h2>DCS-R Zeichnungen</h2>${dcsrHtml}` : ""}
+    `;
+    if (standalone) {
+      if (pdfPreviewRequestRef.current !== requestId) {
+        imageUrls.forEach((url) => URL.revokeObjectURL(url));
+        return;
+      }
+      setPdfPreview({ filename, content, style, imageUrls });
+      return;
+    }
     win.document.write(`
       <html>
         <head>
@@ -5151,13 +5191,7 @@ export default function App() {
           <div style="margin-bottom:12px;">
             <button onclick="window.print()" style="padding:8px 12px;">Drucken / Als PDF sichern</button>
           </div>
-          <h1>Neuropsychologische Testung</h1>
-          <div class="meta">Export: ${new Date().toLocaleString()} · Session: ${sessionUUID}</div>
-          <h2>Basisdaten</h2>
-          <table><tbody>${demoRowsHtml}</tbody></table>
-          <h2>Messwerte</h2>
-          <table><tbody>${rowsHtml}</tbody></table>
-          ${dcsrHtml ? `<h2>DCS-R Zeichnungen</h2>${dcsrHtml}` : ""}
+          <div class="npt-pdf-report">${content}</div>
           <script>
             window.onload = function(){
               try { setTimeout(function(){ window.print(); }, 50); } catch (e) {}
@@ -5169,6 +5203,11 @@ export default function App() {
     win.document.close();
     } catch (e) {
       console.error("PDF-Export fehlgeschlagen", e);
+      if (standalone) {
+        imageUrls.forEach((url) => URL.revokeObjectURL(url));
+        if (pdfPreviewRequestRef.current === requestId) setPdfPreview({ filename, error: true });
+        return;
+      }
       try {
         win.document.open();
         win.document.write(`
@@ -5968,6 +6007,8 @@ export default function App() {
         </Button>
       </div>
       <ImpressumModal open={showImpressum} onClose={() => setShowImpressum(false)} />
+      {pdfPreview && <PdfExportPreview preview={pdfPreview} onClose={closePdfPreview} />}
+      {csvPreview && <CsvExportPreview preview={csvPreview} onClose={() => setCsvPreview(null)} />}
       <TestbereicheModal
         open={showTestbereiche}
         onClose={() => setShowTestbereiche(false)}

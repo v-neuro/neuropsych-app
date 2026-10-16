@@ -138,6 +138,120 @@ async function checkExports(p) {
   await until(() => p.evaluate('window.offlinePdf?.includes("demographics_education_years")'), "offline PDF");
 }
 
+async function checkStandalonePdf(p, mode) {
+  const before = await p.snapshot();
+  const previousTitle = await p.evaluate('document.title');
+  await p.evaluate(`(() => {
+    window.originalMatchMedia = window.matchMedia;
+    if (${JSON.stringify(mode)} === 'ios') Object.defineProperty(navigator, 'standalone', { configurable: true, value: true });
+    else window.matchMedia = query => {
+      const result = window.originalMatchMedia.call(window, query);
+      if (query === '(display-mode: standalone)') Object.defineProperty(result, 'matches', { value: true });
+      return result;
+    };
+    window.open = () => { throw new Error('Standalone PDF must not open another window'); };
+    window.printCalls = 0;
+    window.print = () => { window.printCalls++; window.dispatchEvent(new Event('afterprint')); };
+  })()`);
+  await p.click("PDF Export");
+  await until(() => p.evaluate('!!document.querySelector("#npt-pdf-export[open] .npt-pdf-report") && ![...document.querySelectorAll("#npt-pdf-export button")].find(node => node.textContent.includes("Drucken")).disabled'), "in-app PDF preview");
+  assert.equal(await p.evaluate('document.querySelector("#npt-pdf-export").contains(document.activeElement)'), true);
+  assert.equal(await p.evaluate('document.querySelector("#npt-pdf-export").textContent.includes("demographics_education_years")'), true);
+  assert.equal(await p.evaluate('document.querySelectorAll("#npt-pdf-export img").length > 0'), true);
+  assert.equal(await p.evaluate('[...document.querySelectorAll("#npt-pdf-export img")].every(image => image.complete && image.naturalWidth > 0)'), true);
+  await p.evaluate('document.querySelector(".npt-export-scroll").scrollTop = 100000');
+  assert.equal(await p.evaluate('document.querySelector(".npt-export-toolbar").getBoundingClientRect().top >= 0'), true);
+  await send("Emulation.setEmulatedMedia", { media: "print" }, p.sessionId);
+  assert.equal(await p.evaluate('getComputedStyle(document.getElementById("root")).display'), "none");
+  assert.equal(await p.evaluate('getComputedStyle(document.querySelector(".npt-export-toolbar")).display'), "none");
+  assert.equal(await p.evaluate('getComputedStyle(document.querySelector(".npt-pdf-report")).display'), "block");
+  const pdf = await send("Page.printToPDF", { printBackground: true }, p.sessionId);
+  assert.equal(Buffer.from(pdf.data, "base64").subarray(0, 4).toString(), "%PDF");
+  assert.ok(Buffer.from(pdf.data, "base64").length > 1000);
+  await send("Emulation.setEmulatedMedia", { media: "screen" }, p.sessionId);
+  await p.click("Drucken / Als PDF sichern");
+  assert.equal(await p.evaluate('window.printCalls'), 1);
+  assert.equal(await p.evaluate('!!document.querySelector("#npt-pdf-export[open]")'), true);
+  await p.click("← Zurück zur Testung");
+  await until(() => p.evaluate('!document.getElementById("npt-pdf-export")'), "return to assessment");
+  assert.equal(await p.evaluate('document.title'), previousTitle);
+  assert.equal(await p.evaluate('document.body.classList.contains("npt-print-preview")'), false);
+  assert.deepEqual((await p.snapshot()).sessionData, before.sessionData);
+  assert.deepEqual((await p.snapshot()).screen, before.screen);
+  assert.equal(await p.evaluate('!!document.querySelector("canvas")'), true);
+  await p.click("PDF Export");
+  await until(() => p.evaluate('!!document.querySelector("#npt-pdf-export[open]")'), "reopened preview");
+  await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 }, p.sessionId);
+  await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 }, p.sessionId);
+  await until(() => p.evaluate('!document.getElementById("npt-pdf-export")'), "escape preview");
+  await delay(100);
+  assert.equal(await p.evaluate('!!document.getElementById("npt-pdf-export")'), false);
+  await p.evaluate(`delete navigator.standalone; window.matchMedia = window.originalMatchMedia;`);
+}
+
+async function checkStandaloneCsv(p) {
+  const before = await p.snapshot();
+  const previousTitle = await p.evaluate('document.title');
+  const previousUrl = await p.evaluate('location.href');
+  await p.evaluate(`(() => {
+    Object.defineProperty(navigator, 'standalone', { configurable: true, value: true });
+    Object.defineProperty(navigator, 'canShare', { configurable: true, value: ({ files }) => window.shareOutcome !== 'unsupported' && files.length === 1 && files[0].type === 'text/csv' });
+    Object.defineProperty(navigator, 'share', { configurable: true, value: async ({ files }) => {
+      window.sharedFile = { name: files[0].name, type: files[0].type, activated: navigator.userActivation.isActive, text: await files[0].text() };
+      if (window.shareOutcome === 'cancel') throw new DOMException('Cancelled', 'AbortError');
+      if (window.shareOutcome === 'error') throw new DOMException('Failed', 'DataError');
+    } });
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async text => {
+      if (window.copyFails) throw new DOMException('Denied', 'NotAllowedError');
+      window.copiedCsv = text;
+    } } });
+    HTMLAnchorElement.prototype.click = () => { throw new Error('Standalone CSV must not navigate to a download'); };
+  })()`);
+  for (const outcome of ['success', 'cancel', 'error', 'unsupported']) {
+    await p.evaluate(`window.shareOutcome = ${JSON.stringify(outcome)}; window.copyFails = false; window.copiedCsv = null;`);
+    await p.click('CSV Export');
+    await until(() => p.evaluate('!!document.querySelector("#npt-csv-export[open] textarea")'), 'in-app CSV preview');
+    const csv = await p.evaluate('document.getElementById("npt-csv-content").value');
+    assert.ok(csv.startsWith('session_uuid;'));
+    if (outcome !== 'unsupported') {
+      const rect = await p.evaluate(`(() => {
+        const button = [...document.querySelectorAll('#npt-csv-export button')].find(node => node.textContent === 'CSV teilen / In Dateien sichern');
+        const rect = button.getBoundingClientRect(); return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+      })()`);
+      // A real click verifies that file sharing retains the required user activation.
+      await send('Input.dispatchMouseEvent', { type: 'mousePressed', ...rect, button: 'left', buttons: 1, clickCount: 1 }, p.sessionId);
+      await send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...rect, button: 'left', buttons: 0, clickCount: 1 }, p.sessionId);
+      await until(() => p.evaluate(`!!window.sharedFile && ![...document.querySelectorAll('#npt-csv-export button')].find(node => node.textContent.includes('CSV teilen')).disabled`), 'share result');
+      const shared = await p.evaluate('window.sharedFile');
+      assert.equal(shared.text, csv);
+      assert.equal(shared.activated, true);
+      assert.ok(shared.name.endsWith('_TEST_pwa-regression.csv'));
+      assert.equal(shared.type, 'text/csv');
+      assert.equal(await p.evaluate('!!document.querySelector("#npt-csv-export[open]")'), true);
+      if (outcome === 'error') assert.equal(await p.evaluate('document.getElementById("npt-csv-export").textContent.includes("Teilen nicht möglich")'), true);
+    } else {
+      assert.equal(await p.evaluate(`[...document.querySelectorAll('#npt-csv-export button')].some(node => node.textContent.includes('CSV teilen'))`), false);
+    }
+    await p.click('CSV kopieren');
+    await until(() => p.evaluate('!!window.copiedCsv'), 'copy CSV');
+    assert.equal(await p.evaluate('window.copiedCsv'), csv);
+    if (outcome === 'unsupported') {
+      await p.evaluate('window.copyFails = true');
+      await p.click('CSV kopieren');
+      await until(() => p.evaluate('document.getElementById("npt-csv-export").textContent.includes("ausgewählten CSV-Inhalt")'), 'manual copy fallback');
+      assert.equal(await p.evaluate('document.getElementById("npt-csv-content").selectionEnd'), csv.length);
+    }
+    await p.click('← Zurück zur Testung');
+    await until(() => p.evaluate('!document.getElementById("npt-csv-export")'), 'return from CSV');
+    assert.equal(await p.evaluate('location.href'), previousUrl);
+    assert.equal(await p.evaluate('document.title'), previousTitle);
+    assert.deepEqual((await p.snapshot()).sessionData, before.sessionData);
+    assert.deepEqual((await p.snapshot()).screen, before.screen);
+    await p.evaluate('window.sharedFile = null');
+  }
+  await p.evaluate('delete navigator.standalone');
+}
+
 try {
   release = "broken";
   let editor = await page();
@@ -202,6 +316,14 @@ try {
   await editor.click("Übersicht");
   await checkExports(editor);
   console.log("PASS: offline reload, cold reopen, all figure/icon assets, drawing, scoring, and CSV/PDF generation");
+  await editor.evaluate('[...document.querySelectorAll(".tile-btn")].find(node => node.textContent.includes("DCS-R")).click()');
+  await until(() => editor.evaluate('!!document.querySelector("canvas")'), "assessment before standalone PDF");
+  await checkStandalonePdf(editor, "ios");
+  await checkStandalonePdf(editor, "display-mode");
+  await checkStandaloneCsv(editor);
+  await editor.click("Übersicht");
+  console.log("PASS: iOS/standalone PDF stays in-app, prints only the report, and returns to the same assessment offline");
+  console.log("PASS: standalone CSV shares/copies exact content, handles cancellation/failure/fallback, and returns without navigation");
 
   await setOffline(editor, false);
   await editor.evaluate(`window.pwaBoot = 'original'; window.controllerChanges = 0; navigator.serviceWorker.addEventListener('controllerchange', () => window.controllerChanges++);`);

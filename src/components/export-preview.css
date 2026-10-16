@@ -1,0 +1,50 @@
+.npt-export-preview {
+  position: fixed;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  height: 100dvh;
+  max-height: none;
+  border: 0;
+  background: #f1f5f9;
+  color: #111;
+  color-scheme: light;
+}
+
+.npt-export-layout { display: flex; flex-direction: column; height: 100%; }
+.npt-export-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 12px;
+  padding-top: max(12px, env(safe-area-inset-top));
+  padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
+  border-bottom: 1px solid #cbd5e1;
+  background: white;
+}
+.npt-export-scroll { flex: 1; min-height: 0; overflow: auto; padding: 16px; }
+.npt-pdf-report { background: white; overflow-wrap: anywhere; }
+
+@media print {
+  body.npt-print-preview { overflow: visible !important; background: white !important; }
+  body.npt-print-preview > :not(#npt-pdf-export) { display: none !important; }
+  body.npt-print-preview #npt-pdf-export {
+    position: static;
+    display: block;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    background: white;
+  }
+  #npt-pdf-export::backdrop { display: none; }
+  #npt-pdf-export .npt-export-toolbar { display: none; }
+  #npt-pdf-export .npt-export-layout { display: block; height: auto; }
+  #npt-pdf-export .npt-export-scroll { overflow: visible; padding: 0; }
+  #npt-pdf-export .npt-pdf-report { padding: 0; }
+}
