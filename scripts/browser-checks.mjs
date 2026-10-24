@@ -35,6 +35,12 @@ async function ready(url, child) {
   }
   throw new Error(`Local test service did not start: ${url}\n${child?.log || ''}`);
 }
+function requireLoopback(url) {
+  const parsed = new URL(url);
+  if (!['127.0.0.1', 'localhost', '[::1]'].includes(parsed.hostname) || !['http:', 'https:'].includes(parsed.protocol)) {
+    throw new Error('Browser regression tests require a local loopback URL.');
+  }
+}
 async function stop(child) {
   if (!child || child.exitCode != null) return;
   child.kill('SIGTERM');
@@ -55,6 +61,7 @@ try {
     debugUrl = `http://127.0.0.1:${port}`;
     chrome = start(executable, ['--headless=new', '--disable-gpu', '--disable-background-networking', '--no-first-run', '--no-default-browser-check', '--remote-debugging-address=127.0.0.1', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, 'about:blank']);
   }
+  requireLoopback(debugUrl);
   await ready(`${debugUrl}/json/version`, chrome);
   let appUrl = process.env.NPT_APP_URL;
   if (!appUrl) {
@@ -62,6 +69,7 @@ try {
     appUrl = `http://127.0.0.1:${port}`;
     vite = start(process.execPath, [resolve('node_modules/vite/bin/vite.js'), ...(production ? ['preview'] : []), '--host', '127.0.0.1', '--port', String(port), '--strictPort']);
   }
+  requireLoopback(appUrl);
   await ready(appUrl, vite);
   for (const suite of suites) {
     if (production && suite === 'dev.browser.mjs') continue;

@@ -1,6 +1,6 @@
 # Update-Folge für Digitale NPT
 
-Stand: **24.10.2026**. Ausgangscommit: `9dea321`. Status: geprüfter Umsetzungsplan; die Paket- und Laufzeitupdates wurden noch nicht ausgeführt.
+Stand: **24.10.2026**. Ausgangscommit: `9dea321`. Status: umgesetzt; Ergebnisse und verbleibende Geräteprüfung siehe [UPDATE-REPORT.md](UPDATE-REPORT.md).
 
 Ziel sind die neuesten stabil veröffentlichten direkten Pakete und **Node 26.12.1 / npm 12.2.1**. Die Node-/Peer-Anforderungen aller 15 direkten Zielpakete sowie von npm wurden gegen Node 26.12.1 und untereinander geprüft: keine Konflikte und keine fehlenden erforderlichen direkten Peers. Das belegt die installierbare Versionskombination, noch keine getestete App-Funktion.
 

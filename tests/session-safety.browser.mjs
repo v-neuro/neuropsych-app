@@ -51,6 +51,7 @@ async function until(check, label) {
 const snapshot = (page) => evaluate(page, 'JSON.parse(localStorage.getItem("npt_session_backup"))');
 const isEditor = (page) => evaluate(page, '!!document.getElementById("topbar-root")');
 const isBlocked = (page) => evaluate(page, '!!document.body?.textContent.includes("Testung bereits geöffnet")');
+const editorReleased = (page) => evaluate(page, 'navigator.locks.query().then(({ held }) => !held.some(lock => lock.name === "npt-session-editor"))');
 async function assertNoWrites(page, before) {
   const after = await snapshot(page);
   // Focusing a different tab can legitimately trigger the owner's visibility flush.
@@ -179,6 +180,7 @@ try {
   await click(waiting, "Erneut versuchen");
   await until(() => isBlocked(waiting), "ownership after reload");
   await send("Target.closeTarget", { targetId: owner.targetId });
+  await until(() => editorReleased(waiting), "closed owner's lock released");
   await click(waiting, "Erneut versuchen");
   await until(() => isEditor(waiting), "handoff after close");
   await until(async () => (await snapshot(waiting))?.sessionData?.gp_aborted?.note === "Browser regression abort", "handoff hydration");
@@ -193,6 +195,7 @@ try {
   await navigate(next);
   await until(() => isBlocked(next), "new tab blocked after session reset");
   await send("Target.closeTarget", { targetId: waiting.targetId });
+  await until(() => editorReleased(next), "new session editor lock released");
   await click(next, "Erneut versuchen");
   await until(() => isEditor(next), "new session handoff");
   await delay(400);
