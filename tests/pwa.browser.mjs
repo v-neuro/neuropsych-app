@@ -461,7 +461,8 @@ async function checkRealBuildUpgrade() {
     assert.equal(await old.evaluate('document.querySelector("[data-app-version]").dataset.appVersion'), oldVersion);
     await old.evaluate('[...document.querySelectorAll(".tile-btn")].find(node => node.textContent.includes("DCS-R")).click()');
     await until(() => old.evaluate('!!document.querySelector("canvas") && [...document.querySelectorAll("main img")].every(img => img.complete && img.naturalWidth > 0)'), 'baseline drawing screen');
-    const rect = await old.evaluate('(() => { const canvas = document.querySelector("canvas"); canvas.scrollIntoView({ block: "center" }); const r = canvas.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()');
+    await old.evaluate('document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))');
+    const rect = await old.evaluate('(async () => { const canvas = document.querySelector("canvas"); canvas.scrollIntoView({ block: "center" }); await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))); const r = canvas.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()');
     await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: rect.x + rect.width * .2, y: rect.y + rect.height * .3, button: 'left', buttons: 1, clickCount: 1 }, old.sessionId);
     await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: rect.x + rect.width * .6, y: rect.y + rect.height * .6, button: 'left', buttons: 1 }, old.sessionId);
     await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: rect.x + rect.width * .6, y: rect.y + rect.height * .6, button: 'left', buttons: 0, clickCount: 1 }, old.sessionId);

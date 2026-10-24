@@ -4027,29 +4027,18 @@ function StroopWire({ sessionData, onPersistTime, onPersistNote, onAbort, onDone
   ];
   const maxRows = Math.max(col1.length, col2.length, col3.length);
 
-  const initialFails = useMemo(
-    () => sessionData?.stroop_notes?.interferenz_fails || {},
-    [sessionData?.stroop_notes?.interferenz_fails]
-  );
+  const fails = sessionData?.stroop_notes?.interferenz_fails || {};
   const generalNote = sessionData?.stroop_notes?.general
     ?? sessionData?.stroop_notes?.woerter
     ?? sessionData?.stroop_notes?.farbstriche
     ?? sessionData?.stroop_notes?.interferenz
     ?? "";
-  const [fails, setFails] = useState(initialFails);
-  useEffect(() => {
-    setFails(initialFails);
-  }, [initialFails]);
-
   const toggleFail = (key) => {
-    setFails((prev) => {
-      const cur = prev[key] ?? 0;
-      const nextState = (cur + 1) % 3; // 0 ok, 1 fehler, 2 korrigiert
-      const next = { ...prev, [key]: nextState };
-      if (nextState === 0) delete next[key];
-      onPersistNote && onPersistNote("interferenz_fails", next);
-      return next;
-    });
+    const cur = fails[key] ?? 0;
+    const nextState = (cur + 1) % 3; // 0 ok, 1 fehler, 2 korrigiert
+    const next = { ...fails, [key]: nextState };
+    if (nextState === 0) delete next[key];
+    onPersistNote && onPersistNote("interferenz_fails", next);
   };
 
   const interferenzTimerRef = useRef(null);
@@ -7284,7 +7273,14 @@ function DcsrFigureOverlay({ figure, onClose, onRate }) {
 
 function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateChange, onAbort, onDone, onReminderStarted }) {
   const saved = savedState || {};
-  const [step, setStep] = useState(saved.step || "choose"); // "dg" | "waiting" | "rekog"
+  const opensRecall = route?.name === "dcsr" && route.go === "rekog";
+  const [step, setStep] = useState(opensRecall ? "rekog" : saved.step || "choose"); // "dg" | "waiting" | "rekog"
+  const [previousRoute, setPreviousRoute] = useState(route);
+  // Apply a reminder navigation before rendering/persisting the next screen.
+  if (route !== previousRoute) {
+    setPreviousRoute(route);
+    if (opensRecall) setStep("rekog");
+  }
   const [ver, setVer] = useState(saved.ver || null); // "V1"|"V2"
   const [dg, setDG] = useState(saved.dg || 1);
   const [counts, setCounts] = useState(() =>
@@ -7352,12 +7348,6 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
     });
     setDG(5);
   }
-
-  useEffect(() => {
-    if (route && route.name === "dcsr" && route.go === "rekog") {
-      setStep("rekog");
-    }
-  }, [route]);
 
   // Migrate legacy embedded drawings into the drawings store
   useEffect(() => {
@@ -8150,7 +8140,7 @@ function MMSTWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu }) {
 function BenennenWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu }) {
   const base = sessionData?.cerad_benennen || {};
 
-  const initialItems = React.useMemo(() => {
+  const items = React.useMemo(() => {
     const fromSession = Array.isArray(base.items) ? base.items : null;
     if (fromSession && fromSession.length === CERAD_BENENNEN_LABELS.length) {
       // sicherstellen, dass alle Felder vorhanden sind
@@ -8169,24 +8159,15 @@ function BenennenWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu })
     }));
   }, [base.items]);
 
-  const [items, setItems] = useState(initialItems);
-
-  useEffect(() => {
-    setItems(initialItems);
-  }, [initialItems]);
-
   const total = useMemo(
     () => items.reduce((acc, it) => acc + (it.correct === true ? 1 : 0), 0),
     [items]
   );
 
   const updateItems = (updater) => {
-    setItems((prev) => {
-      const next = typeof updater === "function" ? updater(prev) : updater;
-      const newTotal = next.reduce((acc, it) => acc + (it.correct === true ? 1 : 0), 0);
-      onPersist && onPersist({ items: next, total: newTotal });
-      return next;
-    });
+    const next = typeof updater === "function" ? updater(items) : updater;
+    const newTotal = next.reduce((acc, it) => acc + (it.correct === true ? 1 : 0), 0);
+    onPersist && onPersist({ items: next, total: newTotal });
   };
 
   const handleToggle = (idx, value) => {

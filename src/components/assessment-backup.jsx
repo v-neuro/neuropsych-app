@@ -36,6 +36,19 @@ function BackupMenu({ onClose, onCreate, onLoad }) {
   );
 }
 
+function prepareBackupFile(exported) {
+  if (!exported) return { file: null, share: false };
+  const files = [
+    new File([exported.json], `${exported.name}.npt-backup.json`, { type: "application/json" }),
+    new File([exported.json], `${exported.name}.npt-backup.txt`, { type: "text/plain" }),
+  ];
+  for (const file of files) {
+    try { if (navigator.share && navigator.canShare?.({ files: [file] })) return { file, share: true }; }
+    catch { /* Try a plain-text backup if JSON sharing is unavailable. */ }
+  }
+  return { file: files[0], share: false };
+}
+
 export function AssessmentBackup({ onCreate, onRestore }) {
   const inputRef = useRef(null);
   const textRef = useRef(null);
@@ -47,18 +60,7 @@ export function AssessmentBackup({ onCreate, onRestore }) {
   const [candidate, setCandidate] = useState(null);
   const [feedback, setFeedback] = useState("");
   const standalone = window.matchMedia("(display-mode: standalone)").matches || !!navigator.standalone;
-  const prepared = useMemo(() => {
-    if (!exported) return { file: null, share: false };
-    const files = [
-      new File([exported.json], `${exported.name}.npt-backup.json`, { type: "application/json" }),
-      new File([exported.json], `${exported.name}.npt-backup.txt`, { type: "text/plain" }),
-    ];
-    for (const file of files) {
-      try { if (navigator.share && navigator.canShare?.({ files: [file] })) return { file, share: true }; }
-      catch { /* Try a plain-text backup if JSON sharing is unavailable. */ }
-    }
-    return { file: files[0], share: false };
-  }, [exported]);
+  const prepared = useMemo(() => prepareBackupFile(exported), [exported]);
 
   const close = () => { requestRef.current++; setMode(null); setBusy(false); };
   const create = async () => {
