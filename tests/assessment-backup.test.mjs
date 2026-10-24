@@ -85,3 +85,30 @@ test('legacy embedded drawing blobs are preserved as raster data URLs', async ()
   const backup = await parseAssessmentBackup(await createAssessmentBackup(snapshot, drawings()));
   assert.equal(backup.snapshot.sessionData.dcsr.drawings[0], 'data:image/png;base64,AP+A');
 });
+
+test('raster URLs cannot smuggle attributes or trailing comma-separated HTML, even with a valid checksum', async () => {
+  const original = JSON.parse(await createAssessmentBackup(fixture(), drawings()));
+  for (const payload of [
+    'data:image/png;base64,AP+A," onerror="globalThis.backupXss=true',
+    'data:image/png;base64,AP+A,https://example.invalid/leak',
+    'data:image/svg+xml;base64,PHN2Zz4=',
+    'https://example.invalid/figure.png',
+    'javascript:alert(1)',
+  ]) {
+    const backup = structuredClone(original);
+    backup.drawings[1].data = payload;
+    await assert.rejects(parseAssessmentBackup(await resign(backup)), /Zeichnung/);
+    const legacy = structuredClone(original);
+    legacy.snapshot.sessionData.dcsr.drawings = [payload];
+    await assert.rejects(parseAssessmentBackup(await resign(legacy)), /Zeichnung/);
+  }
+});
+
+test('backup imports cannot refer to drawings from another session through either key format', async () => {
+  const original = JSON.parse(await createAssessmentBackup(fixture(), drawings()));
+  for (const field of ['drawingKeys', 'drawingGalleryKeys']) {
+    const backup = structuredClone(original);
+    backup.snapshot.sessionData.dcsr[field] = field === 'drawingKeys' ? ['other:dcsr:dg1'] : [[{ key: 'other:dcsr:fig1' }]];
+    await assert.rejects(parseAssessmentBackup(await resign(backup)), /Zeichnungs/);
+  }
+});

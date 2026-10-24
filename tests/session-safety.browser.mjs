@@ -170,8 +170,12 @@ try {
   assert.equal(values[headers.indexOf("gp_aborted")], '"1"');
   console.log("PASS: GP abort stops the running timer, leaves untouched timer empty, saves reason/note, updates menu and CSV.");
 
+  const previousDocument = await evaluate(owner, "performance.timeOrigin");
   await send("Page.reload", {}, owner.sessionId);
-  await until(async () => await isEditor(owner) && (await snapshot(owner))?.sessionData?.gp_aborted?.note === "Browser regression abort", "owner reload");
+  // Page.reload resolves before the old document has necessarily unloaded.
+  // Wait for the new document to acquire ownership before retrying the other tab.
+  await until(async () => await evaluate(owner, "performance.timeOrigin") !== previousDocument
+    && await isEditor(owner) && (await snapshot(owner))?.sessionData?.gp_aborted?.note === "Browser regression abort", "owner reload");
   await click(waiting, "Erneut versuchen");
   await until(() => isBlocked(waiting), "ownership after reload");
   await send("Target.closeTarget", { targetId: owner.targetId });

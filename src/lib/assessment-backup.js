@@ -1,4 +1,5 @@
 import { APP_VERSION } from "./app-version.js";
+import { isRasterDataUrl } from "./raster-image.js";
 export const MAX_BACKUP_BYTES = 128 * 1024 * 1024;
 const FORMAT = "digitale-npt-assessment";
 const isObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
@@ -38,6 +39,11 @@ function validateSnapshot(snapshot) {
     || !Number.isInteger(snapshot.activePipeline.index) || snapshot.activePipeline.index < 0
     || snapshot.activePipeline.index >= snapshot.activePipeline.steps.length)) fail("Ungültiger Testbatterie-Fortschritt im Backup.");
   validateJson(snapshot);
+  const legacyDrawings = snapshot.sessionData.dcsr?.drawings;
+  if (legacyDrawings != null && (!Array.isArray(legacyDrawings)
+    || legacyDrawings.some((image) => image != null && image !== "" && !isRasterDataUrl(image)))) {
+    fail("Ungültige Zeichnung im Backup.");
+  }
 }
 function expectedDrawingKeys(snapshot) {
   const dcsr = snapshot.sessionData.dcsr || {};
@@ -100,7 +106,7 @@ export async function parseAssessmentBackup(text) {
     if (drawing.kind === "blob" && ["image/png", "image/jpeg", "image/webp"].includes(drawing.mime)) {
       return { key: drawing.key, value: new Blob([decodeBase64(drawing.data)], { type: drawing.mime }) };
     }
-    if (drawing.kind === "string" && typeof drawing.data === "string" && /^data:image\/(png|jpeg|webp);base64,/.test(drawing.data)) {
+    if (drawing.kind === "string" && isRasterDataUrl(drawing.data)) {
       decodeBase64(drawing.data.split(",")[1]);
       return { key: drawing.key, value: drawing.data };
     }

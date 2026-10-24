@@ -10,7 +10,7 @@ Webbasierte, interne Test-Suite für neuropsychologische Verfahren (VLMT, DCS-R,
 - Ein bearbeitender Tab pro Browserprofil: Weitere Tabs warten, bevor Session-Daten geladen oder verändert werden. Nach dem Schließen des bearbeitenden Tabs ist „Erneut versuchen“ möglich. Voraussetzung: Browser mit Web Locks API und HTTPS (oder localhost für die Entwicklung).
 - Dark-/Light-Mode Toggle
 - Basisdaten-Card pro Session (Patienten-Initialen, Geschlecht, Neuropsycholog:in-Initialen)
-- Auth-Gate mit Passwort-Hash (SHA-256) und optionaler „Angemeldet bleiben“-Flag
+- Lokales Passwortfenster mit SHA-256 und optionaler „Angemeldet bleiben“-Flag; im Browser umgehbar, daher kein Schutz für Testdaten oder öffentliches Hosting
 - Robots/Meta-Tags, um Indexierung und AI-Crawling zu unterbinden
 
 ## Wichtige Dateien
@@ -26,6 +26,18 @@ Webbasierte, interne Test-Suite für neuropsychologische Verfahren (VLMT, DCS-R,
 - `tests/session-safety.browser.mjs` – Browser-Regressionschecks für Tab-Sperre, Session-Wechsel und Grooved-Pegboard-Abbruch
 - `tests/rey-scoring.test.mjs` – Rohwert- und Exportprüfungen: `node --test tests/rey-scoring.test.mjs`
 - `tests/rey-copy.browser.mjs` – Browserchecks für Rey-Bewertung, Persistenz, Export, Abbruch, Testbatterie und Session-Wechsel; verwendet dieselben Vite-/Chrome-Adressen wie die Session-Safety-Checks
+
+## Sicherheitsstand und Entwicklungslaufzeit
+
+Die Sicherheitsprüfung vom 24.10.2026 mit Befunden, Quellen, Versionsänderungen und noch erforderlichen Hosting-Schritten steht in [SECURITY-REVIEW.md](SECURITY-REVIEW.md). Die Änderungen wurden lokal getestet; eine produktive Bereitstellung wurde nicht vorgenommen.
+
+Für Entwicklung und Build die geprüfte Node-Version aus `.nvmrc` verwenden: `nvm install` und `nvm use`, dann `npm ci`, `npm test`, `npm run lint` und `npm run build`. Alternativ sind korrigierte Releases der Linien 24 ab 24.22.1 und 26 ab 26.12.1 zugelassen. Installations-, Entwicklungs-, Build- und Preview-Befehle prüfen die Laufzeit. Für die Produktion ausschließlich den Inhalt von `dist/` verwenden; Vite dient der lokalen Entwicklung bzw. Vorschau.
+
+Produktionsbuilds enthalten eine Content Security Policy ohne Inline-JavaScript und ohne externe Netzwerkquellen. Die Inline-Stile der Oberfläche bleiben erlaubt. HTTP-Sicherheitsheader, HTTPS und tatsächlichen Zugriffsschutz muss das Hosting zusätzlich setzen; [deploy/nginx-security.conf.example](deploy/nginx-security.conf.example) enthält eine anzupassende Vorlage. Sie wurde nicht auf dem produktiven Webserver geprüft. Eine eigene vertrauenswürdige Origin und geschützte Geräte/Browserprofile sind erforderlich: Passwortfenster und Robots-Regeln verhindern weder den Zugriff auf lokale Browserdaten noch auf Offline-Kopien. Backups, CSV und PDF enthalten unverschlüsselte Testdaten und gehören in geschützte Ablagen.
+
+Der Build veröffentlicht aus `public/` nur die zugelassenen App-Ressourcen und bricht bei unerwarteten Dateien oder symbolischen Links ab. Finder-Metadaten werden ausgelassen. Backups und Konfigurationsdateien nie dort ablegen. CSV-Text, der als Tabellenformel interpretiert werden könnte, erhält ein führendes Apostroph; die interne Testung und numerische Scores bleiben unverändert. Beim Weiterverarbeiten als Text und beim erneuten Speichern in Tabellenprogrammen muss diese Kennzeichnung erhalten bleiben.
+
+Sicherheitsregressionen: `npm test` und nach dem Build `node tests/security.browser.mjs` mit Chrome-Remote-Debugging wie unten beschrieben. Der Browsertest verwendet nur synthetische Daten auf einem temporären lokalen HTTP-Port und bestätigt auch die weiterhin bestehende Umgehbarkeit des lokalen Passwortfensters.
 
 Die Browser-Regressionschecks benötigen Node.js 22+ und Chrome/Chromium mit aktiviertem Remote-Debugging. Vite mit `npm run dev -- --host 127.0.0.1 --port 5178 --strictPort` starten. Chrome/Chromium separat mit einem temporären Profil und `--headless=new --remote-debugging-address=127.0.0.1 --remote-debugging-port=9227 --user-data-dir=<temporärer Profilordner>` starten. Danach `node tests/session-safety.browser.mjs` ausführen. Abweichende URLs können über `NPT_APP_URL` und `NPT_CDP_URL` gesetzt werden. Der Test verwendet einen eigenen Browser-Kontext mit Testdaten und schließt diesen anschließend.
 

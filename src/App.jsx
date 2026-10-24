@@ -16,6 +16,8 @@ import { PdfExportPreview } from "./components/pdf-export-preview";
 import { CsvExportPreview } from "./components/csv-export-preview";
 import { flushMountedDrawings } from "./lib/drawing-flush";
 import { idbReadAssessmentDrawings, idbRestoreAssessment, waitForPendingStorageWrites } from "./lib/persist";
+import { csvCell, escapeHtml } from "./lib/export-safety";
+import { drawingImageUrl } from "./lib/raster-image";
 
 const AssessmentBackup = React.lazy(() => import("./components/assessment-backup").then((module) => ({ default: module.AssessmentBackup })));
 
@@ -950,11 +952,7 @@ async function loadDcsrDrawings(sessionUUID, sessionData) {
   if (!keys.length) return [];
   const data = await Promise.all(keys.map((k) => (k ? idbGetDrawing(k) : null)));
   // Convert blobs to object URLs for img src
-  return data.map((val) => {
-    if (!val) return null;
-    if (val instanceof Blob) return URL.createObjectURL(val);
-    return val;
-  });
+  return data.map(drawingImageUrl);
 }
 
 async function loadDcsrFigureGalleries(sessionData) {
@@ -970,11 +968,11 @@ async function loadDcsrFigureGalleries(sessionData) {
         const val = data[idx];
         if (!val) return null;
         return {
-          src: val instanceof Blob ? URL.createObjectURL(val) : val,
+          src: drawingImageUrl(val),
           rating: entry.rating,
         };
       })
-      .filter(Boolean);
+      .filter((figure) => figure?.src);
   }));
   return out;
 }
@@ -5107,12 +5105,7 @@ export default function App() {
     const keys = Object.keys(row);
     const csv = [
       keys.join(";"),
-      keys.map((k) => {
-        const v = row[k];
-        if (v === null || v === undefined) return "";
-        const s = String(v).replace(/"/g, '""');
-        return `"${s}"`;
-      }).join(";"),
+      keys.map((k) => csvCell(row[k])).join(";"),
     ].join("\n");
     const pat = (sessionData?.demographics?.patient_initials || "Pat").replace(/[^A-Za-z0-9_-]/g, "");
     const startedAt = typeof sessionData?.testing_started_at === "number" ? sessionData.testing_started_at : Date.now();
@@ -5158,7 +5151,7 @@ export default function App() {
     if (win) {
       win.document.write(`
       <html>
-        <head><title>${filename}.pdf</title></head>
+        <head><title>${escapeHtml(filename)}.pdf</title></head>
         <body style="font-family: Arial, sans-serif; padding: 20px;">PDF-Export wird vorbereitet…</body>
       </html>
     `);
@@ -5191,25 +5184,23 @@ export default function App() {
       .npt-pdf-report .dg-label { font-size: 14px; font-weight: 700; margin-top: 12px; margin-bottom: 6px; }
       .npt-pdf-report img { max-width: 100%; height: auto; border: 1px solid #ddd; }
     `;
-    const formatValue = (v) => String(v ?? "").replace(/[&<>"']/g, (char) => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-    })[char]);
+    const formatValue = escapeHtml;
     const demoRows = Object.entries(row)
       .filter(([k]) => k.startsWith("demographics_"));
     const dataRows = Object.entries(row)
       .filter(([k]) => !k.startsWith("demographics_"));
     const demoRowsHtml = demoRows
-      .map(([k, v]) => `<tr><td>${k}</td><td>${formatValue(v)}</td></tr>`)
+      .map(([k, v]) => `<tr><td>${formatValue(k)}</td><td>${formatValue(v)}</td></tr>`)
       .join("");
     const rowsHtml = dataRows
-      .map(([k, v]) => `<tr><td>${k}</td><td>${formatValue(v)}</td></tr>`)
+      .map(([k, v]) => `<tr><td>${formatValue(k)}</td><td>${formatValue(v)}</td></tr>`)
       .join("");
     const dcsrHtml = dcsrByDg
       .map(({ dg, images }) => {
         const cards = images
           .map((figure, figIdx) => {
             const ratingText = figure.rating ? DCSR_RATING_LABELS[figure.rating] : "ohne Bewertung";
-            return `<div class="draw-card"><div style="font-size:12px;margin-bottom:4px;">DG${dg} – Zeichnung ${figIdx + 1} · ${ratingText}</div><img src="${figure.src}" alt="DCS-R DG${dg} Zeichnung ${figIdx + 1}"/></div>`;
+            return `<div class="draw-card"><div style="font-size:12px;margin-bottom:4px;">DG${dg} – Zeichnung ${figIdx + 1} · ${formatValue(ratingText)}</div><img src="${formatValue(figure.src)}" alt="DCS-R DG${dg} Zeichnung ${figIdx + 1}"/></div>`;
           })
           .join("");
         return `<div class="dg-label">DG${dg}</div><div class="draw-grid">${cards}</div>`;
@@ -5218,7 +5209,7 @@ export default function App() {
 
     const content = `
       <h1>Neuropsychologische Testung</h1>
-      <div class="meta">Export: ${new Date().toLocaleString()} · Session: ${sessionUUID}</div>
+      <div class="meta">Export: ${new Date().toLocaleString()} · Session: ${formatValue(sessionUUID)}</div>
       <h2>Basisdaten</h2>
       <table><tbody>${demoRowsHtml}</tbody></table>
       <h2>Messwerte</h2>
@@ -5236,22 +5227,21 @@ export default function App() {
     win.document.write(`
       <html>
         <head>
-          <title>${filename}.pdf</title>
+          <title>${escapeHtml(filename)}.pdf</title>
           <style>${style}</style>
         </head>
         <body>
           <div style="margin-bottom:12px;">
-            <button onclick="window.print()" style="padding:8px 12px;">Drucken / Als PDF sichern</button>
+            <button id="npt-print" style="padding:8px 12px;">Drucken / Als PDF sichern</button>
           </div>
           <div class="npt-pdf-report">${content}</div>
-          <script>
-            window.onload = function(){
-              try { setTimeout(function(){ window.print(); }, 50); } catch (e) {}
-            };
-          </script>
         </body>
       </html>
     `);
+    win.document.getElementById?.("npt-print")?.addEventListener("click", () => win.print());
+    win.addEventListener?.("load", () => {
+      setTimeout(() => { if (!win.closed) win.print(); }, 50);
+    }, { once: true });
     win.document.close();
     } catch (e) {
       console.error("PDF-Export fehlgeschlagen", e);
@@ -5264,7 +5254,7 @@ export default function App() {
         win.document.open();
         win.document.write(`
           <html>
-            <head><title>${filename}.pdf</title></head>
+            <head><title>${escapeHtml(filename)}.pdf</title></head>
             <body style="font-family: Arial, sans-serif; padding: 20px;">
               <h1>PDF-Export fehlgeschlagen</h1>
               <p>Bitte erneut versuchen. Wenn das Problem auf dem iPad bleibt, Seite neu laden und Pop-ups erlauben.</p>

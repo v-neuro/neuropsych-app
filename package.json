@@ -3,10 +3,18 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=22.23.4 <23 || >=24.22.1 <25 || >=26.12.1 <27"
+  },
   "scripts": {
+    "preinstall": "node scripts/check-node.mjs",
+    "predev": "node scripts/check-node.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/check-node.mjs",
     "build": "vite build",
     "lint": "eslint .",
+    "test": "node --test tests/*.test.mjs",
+    "prepreview": "node scripts/check-node.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -24,8 +32,8 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
-    "postcss": "^8.5.6",
+    "postcss": "^8.5.31",
     "tailwindcss": "^4.1.18",
-    "vite": "^7.2.7"
+    "vite": "^7.3.7"
   }
 }

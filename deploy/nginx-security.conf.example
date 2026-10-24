@@ -1,0 +1,35 @@
+# Include inside the EXISTING HTTPS server block after adapting root and access control.
+# This is a review template, not an applied or production-tested configuration.
+# Keep the existing TLS certificate/listen directives and MIME types configuration.
+root /srv/digitale-npt/current;
+autoindex off;
+
+# Provision named users outside the document root, or replace with your existing SSO.
+# This protects network access; offline caches and browser data require device protection.
+auth_basic "Digitale NPT";
+auth_basic_user_file /etc/nginx/npt.htpasswd;
+
+add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; frame-ancestors 'none'" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-Frame-Options "DENY" always;
+add_header Referrer-Policy "no-referrer" always;
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+# Begin with one day; increase after checking HTTPS and operational recovery.
+add_header Strict-Transport-Security "max-age=86400" always;
+# Conservative policy for HTML, worker and assets; content hashes still isolate releases.
+add_header Cache-Control "no-cache" always;
+
+location = / { try_files /index.html =404; }
+location = /index.html { try_files $uri =404; }
+location = /sw.js { try_files $uri =404; }
+location = /robots.txt { try_files $uri =404; }
+location = /vite.svg { try_files $uri =404; }
+location = /manifest.webmanifest {
+    types { application/manifest+json webmanifest; }
+    try_files $uri =404;
+}
+location ~ ^/(?:assets/[A-Za-z0-9_-]+\.(?:js|css)|icons/[A-Za-z0-9_-]+\.(?:png|svg)|material/[A-Za-z0-9_-]+\.(?:png|jpe?g|webp))$ {
+    try_files $uri =404;
+}
+# No SPA fallback for dotfiles, source/config files, database dumps or backup URLs.
+location / { return 404; }

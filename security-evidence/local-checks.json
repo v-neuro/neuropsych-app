@@ -1,0 +1,117 @@
+{
+  "reviewDate": "2026-10-24",
+  "branch": "security/review-2026-10-24",
+  "baseCommit": "4227db7",
+  "initialGitStatus": "clean",
+  "baselineTests": 41,
+  "finalUnitTests": 48,
+  "testNode": "22.23.4",
+  "originalSystemNode": "22.18.0",
+  "isolatedNodeArchive": {
+    "url": "https://nodejs.org/dist/v22.23.4/node-v22.23.4-darwin-arm64.tar.gz",
+    "sha256": "c9e1dbc748b33ed2d14f42445191ecaf14c56259c7a9a26d0042c49ec2b66428",
+    "verifiedAgainst": "https://nodejs.org/dist/v22.23.4/SHASUMS256.txt"
+  },
+  "browserTests": {
+    "tests/cerad-figural.browser.mjs": {
+      "exitCode": 0,
+      "output": [
+        "PASS: unfinished recall persists and exports correctly",
+        "PASS: zero recall persists and exports correctly",
+        "PASS: partial recall persists and exports correctly",
+        "PASS: cleared recall persists and exports correctly"
+      ]
+    },
+    "tests/dcsr-zero.browser.mjs": {
+      "exitCode": 0,
+      "output": [
+        "PASS: not performed",
+        "PASS: advance without points",
+        "PASS: saved progression without version",
+        "PASS: saved awarded points"
+      ]
+    },
+    "tests/demographics-education.browser.mjs": {
+      "exitCode": 0,
+      "output": [
+        "PASS: manual fractional total survives saving/reload/editing and CSV/PDF exports",
+        "PASS: zero is valid; blank and negative manual totals cannot be saved",
+        "PASS: disabling manual input restores automatic calculation and exports",
+        "PASS: manual total works without compatible school/training dropdown selections"
+      ]
+    },
+    "tests/performance.browser.mjs": {
+      "exitCode": 0,
+      "output": [
+        "PASS: VLMT, DCS-R and all four span screens stop saving at idle; real edits still persist.",
+        "PASS: delayed countdown/stopwatch updates, click-time pause/stop, resume, reset, hidden-page catch-up and both time limits without scheduled ticks.",
+        "PASS: late scheduled auto-abort and programmatic stop on Fertig enforce limits and preserve abort markers.",
+        "PASS: idle/stopped/completed stopwatches, countdowns and reminders release their intervals.",
+        "PASS: immediate zero-answer backup is retained without duplicate debounce/lifecycle backup writes.",
+        "PASS: stroke undo, undo-to-blank, async encode ordering, reopened base, touch, mobile coordinates and unscored/scored galleries; zero synchronous PNG snapshots."
+      ]
+    },
+    "tests/pwa.browser.mjs": {
+      "exitCode": 0,
+      "output": [
+        "PASS: failed initial download is reported and retry installs the complete app",
+        "PASS: installable manifest, iPad icon, complete static cache, and offline readiness",
+        "PASS: offline reload, cold reopen, all figure/icon assets, drawing, scoring, and CSV/PDF generation",
+        "PASS: iOS/standalone PDF stays in-app, prints only the report, and returns to the same assessment offline",
+        "PASS: standalone CSV shares/copies exact content, handles cancellation/failure/fallback, and returns without navigation",
+        "PASS: complete backup restores sketches, scored figures, data and screen; damaged files and failed writes preserve the current assessment",
+        "PASS: incomplete release fails installation and preserves the working offline version",
+        "PASS: updates wait for all windows, activate on next launch offline, and retain session data/drawings"
+      ]
+    },
+    "tests/qolie31.browser.mjs": {
+      "exitCode": 0,
+      "output": [
+        "PASS: uniform top-bar button font size, including timed and untimed reminder controls.",
+        "PASS: compact examiner headings/shared answer labels, single-row numeric controls, removed text, unanswered zero-position slider, ten-point keyboard increments, clearing, explicit zero selection, draft persistence and desktop/mobile layout.",
+        "PASS: seven subscales and overall, unrounded matching CSV/PDF exports appended after all prior columns, health independence, missing items/scales and abort/resume.",
+        "PASS: QOLIE direct access from the overview, actual full epilepsy battery configuration, GAD-7 \u2192 QOLIE transition, persisted answers and final battery completion.",
+        "PASS: invalid stored codes, legacy health values preserved without rounding, pipeline completion and clean new assessment; no browser exceptions."
+      ]
+    },
+    "tests/rey-copy.browser.mjs": {
+      "exitCode": 0,
+      "output": [
+        "PASS: version choice, independent draft preservation, version 2 mapping/reload, manual navigation, and compact selection without scrolling.",
+        "PASS: copy-only scoring, highlights, keyboard selection, clearing, reload, fractional total, legacy notes, and simplified responsive layout.",
+        "PASS: completed menu status and CSV/PDF exports include the validated raw total and safely rendered notes.",
+        "PASS: abort/resume preserves scores, pipeline advances, and a new patient starts without previous Rey data."
+      ]
+    },
+    "tests/security.browser.mjs": {
+      "exitCode": 0,
+      "coverage": "CSP, CSV, PDF popup and print handler, malicious backup rejection; client access gate bypass confirmed as open"
+    },
+    "tests/session-safety.browser.mjs": {
+      "exitCode": 0,
+      "output": [
+        "PASS: simultaneous tabs, blocked retry, background ownership, and no backup/drawing writes from waiting tab.",
+        "PASS: GP abort stops the running timer, leaves untouched timer empty, saves reason/note, updates menu and CSV.",
+        "PASS: reload and close/retry handoff restore the latest saved record.",
+        "PASS: starting a new session retains ownership and handoff never revives the old patient's data.",
+        "PASS: browser navigation and history return respect current ownership.",
+        "PASS: missing or rejected lock API never mounts the editing app or changes the backup."
+      ]
+    }
+  },
+  "otherChecks": {
+    "lint": "passed",
+    "build": "passed",
+    "diffCheck": "passed",
+    "oldRuntimeGuard": "exit 1 as expected",
+    "productionDeployment": "not performed"
+  },
+  "incidentReview": {
+    "trackedFilesInitiallyModified": false,
+    "commitsSince20261017": 0,
+    "secretPatternMatchesTrackedFilesAndHistory": 0,
+    "manualCredentialVerifierFinding": "src/App.jsx; client-side access gate; no value included",
+    "productionLogs": "not accessible",
+    "compromiseConclusion": "not established; no assurance of absence"
+  }
+}
