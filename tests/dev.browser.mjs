@@ -47,6 +47,7 @@ try {
   ` }, sessionId);
   await send('Page.navigate', { url: appUrl }, sessionId);
   await until('!!document.querySelector(".tile-btn:not(:disabled)")', 'React development app');
+  await until('!document.body.textContent.includes("Backup-Funktionen werden geladen")', 'lazy backup controls ready');
   const before = await evaluate('JSON.parse(localStorage.npt_session_backup).sessionData');
   const source = marker => `export const marker = ${JSON.stringify(marker)}; globalThis.nptHmrValue = marker; if (import.meta.hot) import.meta.hot.accept(next => { globalThis.nptHmrValue = next.marker; });\n`;
   await writeFile(modulePath, source('before'), { flag: 'wx' });

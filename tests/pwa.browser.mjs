@@ -6,14 +6,16 @@ import { createHash } from "node:crypto";
 
 // Run npm run build first. This server simulates offline operation and two deployments.
 const files = new Map();
-async function collect(directory, prefix = "") {
+async function collect(directory, prefix = "", target = files) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     const relative = `${prefix}${entry.name}`;
-    if (entry.isDirectory()) await collect(`${directory}/${entry.name}`, `${relative}/`);
-    else files.set(`/${relative}`, await readFile(`${directory}/${entry.name}`));
+    if (entry.isDirectory()) await collect(`${directory}/${entry.name}`, `${relative}/`, target);
+    else target.set(`/${relative}`, await readFile(`${directory}/${entry.name}`));
   }
 }
 await collect(new URL("../dist", import.meta.url).pathname);
+const baselineFiles = new Map();
+if (process.env.NPT_BASELINE_DIST) await collect(process.env.NPT_BASELINE_DIST, "", baselineFiles);
 const worker = files.get("/sw.js").toString();
 const version = worker.match(/CACHE_PREFIX\}([a-f0-9]+)/)[1];
 let release = "initial";
@@ -24,9 +26,9 @@ const server = createServer((request, response) => {
   if (!online || (release === "broken" && file === "/material/DCS-2.png")) {
     response.writeHead(503).end("Offline test"); return;
   }
-  let content = files.get(file);
+  let content = (release === "baseline" ? baselineFiles : files).get(file);
   if (!content) { response.writeHead(404).end(); return; }
-  if (file === "/sw.js" && release !== "initial") content = worker.replace(version, `${version}-${release}`);
+  if (file === "/sw.js" && ["broken", "updated"].includes(release)) content = worker.replace(version, `${version}-${release}`);
   if (file === "/sw.js" && release === "updated") {
     const html = files.get("/index.html").toString();
     const updated = html.replace("</head>", '<meta name="npt-test-release" content="updated"></head>');
@@ -87,8 +89,8 @@ socket.addEventListener("message", ({ data }) => {
   const message = JSON.parse(data);
   if (message.method === "Runtime.exceptionThrown") browserErrors.push(message.params.exceptionDetails);
 });
-async function page({ persistent = true } = {}) {
-  const { targetId } = await send("Target.createTarget", { url: "about:blank", browserContextId });
+async function page({ persistent = true, contextId = browserContextId } = {}) {
+  const { targetId } = await send("Target.createTarget", { url: "about:blank", browserContextId: contextId });
   const { sessionId } = await send("Target.attachToTarget", { targetId, flatten: true });
   await send("Page.enable", {}, sessionId);
   await send("Page.bringToFront", {}, sessionId);
@@ -431,7 +433,89 @@ async function checkFullBackup(p) {
   } finally { await rm(directory, { recursive: true, force: true }); }
 }
 
+async function checkRealBuildUpgrade() {
+  if (!baselineFiles.size) return;
+  const oldVersion = baselineFiles.get('/sw.js').toString().match(/const APP_VERSION = "([^"]+)"/)[1];
+  const newVersion = worker.match(/const APP_VERSION = "([^"]+)"/)[1];
+  assert.notEqual(oldVersion, newVersion, 'baseline must be a different actual app build');
+  const { browserContextId: contextId } = await send('Target.createBrowserContext');
+  const drawingSnapshot = (p) => p.evaluate(`new Promise((resolve, reject) => {
+    const request = indexedDB.open('npt-db', 2);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result, tx = db.transaction('drawings'), store = tx.objectStore('drawings');
+      const keys = store.getAllKeys(), values = store.getAll();
+      tx.oncomplete = async () => {
+        db.close();
+        resolve(await Promise.all(values.result.map(async (value, index) => ({ key: keys.result[index],
+          bytes: [...new Uint8Array(value instanceof Blob ? await value.arrayBuffer() : new TextEncoder().encode(value))] }))));
+      };
+      tx.onerror = () => reject(tx.error);
+    };
+  })`);
+  try {
+    release = 'baseline'; online = true;
+    const old = await page({ contextId });
+    await navigate(old); await hydrated(old);
+    await until(() => old.evaluate('!!navigator.serviceWorker.controller && document.querySelector("[data-offline-status]")?.textContent.includes("Für Offlinebetrieb bereit")'), 'baseline installation');
+    assert.equal(await old.evaluate('document.querySelector("[data-app-version]").dataset.appVersion'), oldVersion);
+    await old.evaluate('[...document.querySelectorAll(".tile-btn")].find(node => node.textContent.includes("DCS-R")).click()');
+    await until(() => old.evaluate('!!document.querySelector("canvas") && [...document.querySelectorAll("main img")].every(img => img.complete && img.naturalWidth > 0)'), 'baseline drawing screen');
+    const rect = await old.evaluate('(() => { const canvas = document.querySelector("canvas"); canvas.scrollIntoView({ block: "center" }); const r = canvas.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()');
+    await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: rect.x + rect.width * .2, y: rect.y + rect.height * .3, button: 'left', buttons: 1, clickCount: 1 }, old.sessionId);
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: rect.x + rect.width * .6, y: rect.y + rect.height * .6, button: 'left', buttons: 1 }, old.sessionId);
+    await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: rect.x + rect.width * .6, y: rect.y + rect.height * .6, button: 'left', buttons: 0, clickCount: 1 }, old.sessionId);
+    await until(async () => !!(await old.snapshot()).sessionData.dcsr.drawingKeys?.[1], 'baseline drawing persisted');
+    await old.evaluate('(() => { const label = [...document.querySelectorAll("div")].find(node => node.textContent === "Richtig"); label.parentElement.parentElement.querySelector("button").click(); })()');
+    await until(async () => (await old.snapshot()).sessionData.dcsr.counts[1].richtig === 1, 'baseline score');
+    await old.click('Backup'); await old.click('Backup erstellen');
+    await until(() => old.evaluate('!!document.querySelector("#npt-backup textarea")'), 'backup generated by old app');
+    const backupText = await old.evaluate('document.querySelector("#npt-backup textarea").value');
+    const expected = JSON.parse(backupText).snapshot;
+    const drawings = await drawingSnapshot(old);
+    assert.ok(drawings.some(drawing => drawing.bytes.length > 0));
+    await old.click('← Zurück zur Testung');
+    const second = await page({ contextId }); await navigate(second);
+    await until(() => second.evaluate('document.body.textContent.includes("Testung bereits geöffnet")'), 'baseline second tab blocked');
+    await old.evaluate('window.realUpgradeSentinel = "old-window"');
+    release = 'real-new';
+    await old.click('Nach Updates suchen');
+    await until(() => old.evaluate('navigator.serviceWorker.getRegistration().then(reg => !!reg.waiting)'), 'real new build waiting');
+    assert.equal(await old.evaluate('document.querySelector("[data-app-version]").dataset.appVersion'), oldVersion);
+    assert.equal(await old.evaluate('window.realUpgradeSentinel'), 'old-window');
+    await send('Target.closeTarget', { targetId: old.targetId });
+    assert.equal(await second.evaluate('navigator.serviceWorker.getRegistration().then(reg => !!reg.waiting)'), true);
+    await send('Target.closeTarget', { targetId: second.targetId });
+    await delay(500);
+    const updated = await page({ contextId }); await setOffline(updated, true); await navigate(updated); await hydrated(updated);
+    await until(() => updated.evaluate(`document.querySelector('[data-app-version]')?.dataset.appVersion === ${JSON.stringify(newVersion)}`), 'new build activated offline');
+    assert.deepEqual((await updated.snapshot()).sessionData, expected.sessionData);
+    assert.deepEqual((await updated.snapshot()).screen, expected.screen);
+    assert.deepEqual(await drawingSnapshot(updated), drawings);
+    await checkExports(updated);
+    await updated.click('Übersicht'); await updated.click('Basisdaten bearbeiten');
+    await until(() => updated.evaluate('!!document.getElementById("education-years-total")'), 'new-build demographics');
+    await updated.evaluate('(() => { const input = document.getElementById("education-years-total"); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value").set.call(input,"99"); input.dispatchEvent(new Event("input",{bubbles:true})); })()');
+    await updated.click('Speichern');
+    await until(async () => (await updated.snapshot()).sessionData.demographics.education_years === 99, 'new-build assessment changed');
+    await updated.click('Backup');
+    await updated.evaluate(`(() => { const transfer = new DataTransfer(); transfer.items.add(new File([${JSON.stringify(backupText)}], 'old-build.npt-backup.json', { type: 'application/json' })); const input = document.querySelector('input[aria-label="Backup-Datei laden"]'); input.files = transfer.files; input.dispatchEvent(new Event('change',{bubbles:true})); })()`);
+    await until(() => updated.evaluate('[...document.querySelectorAll("#npt-backup button")].some(button => button.textContent === "Backup wiederherstellen" && !button.disabled)'), 'old backup reviewed in new app');
+    const previousDocument = await updated.evaluate('performance.timeOrigin');
+    await updated.click('Backup wiederherstellen');
+    await until(() => updated.evaluate(`performance.timeOrigin !== ${JSON.stringify(previousDocument)} && !!document.querySelector('canvas')`), 'old backup restored and app reloaded offline');
+    assert.deepEqual((await updated.snapshot()).sessionData, expected.sessionData);
+    assert.deepEqual(await drawingSnapshot(updated), drawings);
+    await checkExports(updated);
+    console.log('PASS: actual old-to-new build upgrade waits for every window, activates offline, preserves drawing bytes/scores, and restores an old-build backup with matching exports.');
+  } finally {
+    await send('Target.disposeBrowserContext', { browserContextId: contextId });
+    release = 'initial'; online = true;
+  }
+}
+
 try {
+  await checkRealBuildUpgrade();
   release = "broken";
   let editor = await page();
   await navigate(editor);
