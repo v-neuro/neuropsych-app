@@ -5468,10 +5468,10 @@ export default function App() {
             disabled={!sessionData?.demographics_saved}
           />
         )}
-        {screen.name === "menu" && (
+        {screen.name === "menu" && hydrated && (!sessionData?.demographics_saved || editingDemographics) && (
           <DemoCapture
+            key={sessionUUID}
             demographics={sessionData?.demographics || {}}
-            saved={!!sessionData?.demographics_saved && !editingDemographics}
             onSave={(payload) => {
               setSessionData((s) => ({
                 ...s,
@@ -6438,7 +6438,7 @@ function TileMenu({ onOpen, onOpenCERAD, statusMap, disabled }) {
   );
 }
 
-function DemoCapture({ demographics, saved, onSave }) {
+function DemoCapture({ demographics, onSave }) {
   const {
     patient_initials = "",
     patient_age = "",
@@ -6494,24 +6494,6 @@ function DemoCapture({ demographics, saved, onSave }) {
     education_years_manual,
   });
 
-  useEffect(() => {
-    const frameId = requestAnimationFrame(() => setLocal({
-      patient_initials: (patient_initials || "").toUpperCase(),
-      patient_age: patient_age || "",
-      patient_gender,
-      test_language: normalizeTestLanguage(test_language),
-      examiner_initials: (examiner_initials || "").toUpperCase(),
-      education_school_years: education_school_years || "",
-      education_school_label: education_school_label || schoolYearsToLabel(education_school_years),
-      education_training_code,
-      education_training_label: education_training_label || trainingCodeToLabel(education_training_code),
-      education_dissertation_years,
-      education_years,
-      education_years_manual,
-    }));
-    return () => cancelAnimationFrame(frameId);
-  }, [patient_initials, patient_age, patient_gender, test_language, examiner_initials, education_school_years, education_school_label, education_training_code, education_training_label, education_dissertation_years, education_years, education_years_manual]);
-
   const schoolYears = Number(local.education_school_years) || 0;
   const trainingYears = trainingCodeToYears(local.education_training_code, local.education_dissertation_years);
   const calculatedEducationYears = schoolYears + trainingYears;
@@ -6519,8 +6501,6 @@ function DemoCapture({ demographics, saved, onSave }) {
   const validEducationYears = !local.education_years_manual || (
     String(local.education_years).trim() !== "" && Number.isFinite(educationYears) && educationYears >= 0
   );
-
-  if (saved) return null;
 
   return (
       <div className="mb-4">

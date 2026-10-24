@@ -164,6 +164,19 @@ try {
   await toggleManual();
   await until(() => evaluate('!document.getElementById("education-years-total")'), "automatic education mode");
   assert.equal(await evaluate('document.body.textContent.includes("Berechnete Bildungsjahre: 18")'), true);
+  // Hold delayed synchronization callbacks through save/reopen to detect any
+  // stale frame that could overwrite the next editing session's draft.
+  await evaluate(`(() => {
+    const request = window.requestAnimationFrame, cancel = window.cancelAnimationFrame;
+    const held = new Map(); let sequence = 0;
+    window.requestAnimationFrame = callback => { const id = --sequence; held.set(id, callback); return id; };
+    window.cancelAnimationFrame = id => { if (id < 0) held.delete(id); else cancel.call(window, id); };
+    window.flushDemographicFrames = () => {
+      window.requestAnimationFrame = request; window.cancelAnimationFrame = cancel;
+      const callbacks = [...held.values()]; held.clear();
+      callbacks.forEach(callback => callback(performance.now()));
+    };
+  })()`);
   await click("Speichern");
   assert.equal((await snapshot()).sessionData.demographics.education_years, 18);
   assert.equal((await snapshot()).sessionData.demographics.education_years_manual, false);
@@ -180,6 +193,7 @@ try {
   }
   await toggleManual();
   await fillTotal("8");
+  await evaluate('window.flushDemographicFrames(); new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
   assert.equal(await evaluate('document.getElementById("education-years-total").value'), "8");
   await click("Speichern");
   const demo = (await snapshot()).sessionData.demographics;
@@ -188,6 +202,18 @@ try {
   assert.equal(demo.education_training_years, 0);
   await assertExports(8);
   console.log("PASS: manual total works without compatible school/training dropdown selections");
+  console.log("PASS: delayed frames from a previous save cannot overwrite a reopened demographic draft.");
+  await click('Basisdaten bearbeiten');
+  await fillTotal('20');
+  await evaluate('window.confirm = () => true');
+  const previousSession = (await snapshot()).sessionUUID;
+  await click('Neue Testung');
+  await until(async () => (await snapshot()).sessionUUID !== previousSession, 'new assessment');
+  await until(() => evaluate('!!document.querySelector(\'input[placeholder="z. B. AB"]\')'), 'fresh demographic form');
+  assert.equal(await evaluate('document.querySelector(\'input[placeholder="z. B. AB"]\').value'), '');
+  assert.equal(await evaluate('document.querySelector(\'input[type="checkbox"]\').checked'), false);
+  assert.equal(await evaluate('document.getElementById("education-years-total")'), null);
+  console.log('PASS: starting a new assessment discards the previous unsaved demographic draft.');
 } finally {
   await send("Target.disposeBrowserContext", { browserContextId });
   socket.close();
