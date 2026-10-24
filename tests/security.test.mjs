@@ -62,6 +62,6 @@ test('build rejects sensitive files and symlinks in public instead of publishing
 });
 
 test('runtime guard rejects unpatched and unsupported release lines', () => {
-  for (const version of ['22.18.0', '22.23.3', '24.22.0', '26.12.0', '20.99.0', '23.99.0', '25.99.0']) assert.equal(isSupportedNode(version), false, version);
-  for (const version of ['22.23.4', '22.24.0', '24.22.1', '26.12.1']) assert.equal(isSupportedNode(version), true, version);
+  for (const version of ['22.18.0', '22.23.4', '24.22.1', '26.12.0', '20.99.0', '23.99.0', '25.99.0', '27.0.0']) assert.equal(isSupportedNode(version), false, version);
+  for (const version of ['26.12.1', '26.12.2', '26.13.0']) assert.equal(isSupportedNode(version), true, version);
 });
