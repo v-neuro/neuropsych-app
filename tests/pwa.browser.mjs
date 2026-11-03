@@ -477,7 +477,7 @@ async function checkRealBuildUpgrade() {
     assert.ok(drawings.some(drawing => drawing.bytes.length > 0));
     await old.click('← Zurück zur Testung');
     const second = await page({ contextId }); await navigate(second);
-    await until(() => second.evaluate('document.body.textContent.includes("Testung bereits geöffnet")'), 'baseline second tab blocked');
+    await until(() => second.evaluate('document.body?.textContent.includes("Testung bereits geöffnet")'), 'baseline second tab blocked');
     await old.evaluate('window.realUpgradeSentinel = "old-window"');
     release = 'real-new';
     await old.click('Nach Updates suchen');
@@ -527,10 +527,13 @@ try {
   await editor.click("Erneut herunterladen");
   await until(() => editor.evaluate('!!navigator.serviceWorker.controller && document.querySelector("[data-offline-status]")?.textContent.includes("Für Offlinebetrieb bereit")'), "retry initial download");
   assert.match(await editor.evaluate('document.querySelector("[data-app-version]").dataset.appVersion'), /^[a-f0-9]{12}$/);
+  const visibleVersion = await editor.evaluate('document.querySelector("[data-app-version]").textContent');
+  assert.match(visibleVersion, /^App-Version \d{2}\.\d{2}\.\d{4}, \d{2}:\d{2}$/);
   assert.equal(await editor.evaluate('window.persistenceRequests'), 1);
   assert.equal(await editor.evaluate('document.body.textContent.includes("Dauerhafter Gerätespeicher aktiviert")'), true);
   await editor.click('Nach Updates suchen');
   await until(() => editor.evaluate('document.body.textContent.includes("Die App ist auf dem neuesten Stand")'), 'manual update check');
+  assert.equal(await editor.evaluate('document.querySelector("[data-app-version]").textContent'), visibleVersion);
   console.log("PASS: failed initial download is reported and retry installs the complete app");
   const { data, errors } = await send("Page.getAppManifest", {}, editor.sessionId);
   assert.deepEqual(errors, []);
@@ -552,6 +555,7 @@ try {
   await hydrated(editor);
   assert.equal((await editor.snapshot()).sessionData.demographics.education_years, 11.5);
   assert.equal(await editor.evaluate('document.body.textContent.includes("Offline – Testung und Export sind verfügbar")'), true);
+  assert.equal(await editor.evaluate('document.querySelector("[data-app-version]").textContent'), visibleVersion);
   for (const path of assetPaths.filter(path => path.startsWith("/material/") || path.startsWith("/icons/"))) {
     assert.equal(await editor.evaluate(`new Promise((resolve) => {
       const image = new Image(); image.onload = () => resolve(image.naturalWidth > 0); image.onerror = () => resolve(false); image.src = ${JSON.stringify(path)};
@@ -686,6 +690,7 @@ try {
     };
   })`), true);
   assert.deepEqual(browserErrors, []);
+  assert.equal(await editor.evaluate('document.querySelector("[data-app-version]").textContent'), visibleVersion);
   console.log("PASS: updates wait for all windows, activate on next launch offline, and retain session data/drawings");
 } finally {
   await send("Target.disposeBrowserContext", { browserContextId });

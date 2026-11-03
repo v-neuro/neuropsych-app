@@ -27,7 +27,10 @@ export function offlineApp() {
       const inputs = ["index.html", "package-lock.json", "vite.config.js", ...["src", "public", "pwa"].flatMap((dir) => publicFiles(resolve(root, dir), `${dir}/`))].sort();
       for (const name of inputs) hash.update(name).update(readFileSync(resolve(root, name)));
       appVersion = hash.digest("hex").slice(0, 12);
-      return { define: { __NPT_APP_VERSION__: JSON.stringify(appVersion) } };
+      return { define: {
+        __NPT_APP_VERSION__: JSON.stringify(appVersion),
+        __NPT_APP_BUILT_AT__: JSON.stringify(new Date().toISOString()),
+      } };
     },
     configResolved(resolved) { config = resolved; },
     writeBundle(options, bundle) {

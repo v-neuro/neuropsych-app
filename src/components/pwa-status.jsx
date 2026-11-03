@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { checkForUpdates, getPwaStatus, retryPwa, subscribePwa } from "../lib/pwa";
-import { APP_VERSION } from "../lib/app-version";
+import { APP_VERSION, APP_VERSION_LABEL } from "../lib/app-version";
 import { Button } from "./ui";
 
 export function PwaStatus() {
@@ -20,7 +20,7 @@ export function PwaStatus() {
 
   return (
     <div className="w-full space-y-2 rounded-xl border border-indigo-100 bg-white/80 p-3 text-sm" aria-label="App und Offlinebetrieb">
-      <p data-app-version={APP_VERSION}>App-Version: {APP_VERSION}</p>
+      <p data-app-version={APP_VERSION}>App-Version {APP_VERSION_LABEL}</p>
       <p role="status" data-offline-status>
         {checkingOffline ? "Offline-Dateien werden geprüft …" : ready
           ? online ? "Für Offlinebetrieb bereit." : "Offline – Testung und Export sind verfügbar."

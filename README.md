@@ -53,6 +53,8 @@ Die Produktionsversion ist eine installierbare Progressive Web App. Auf dem iPad
 
 `npm run build` erzeugt automatisch eine versionierte `dist/sw.js` aus den tatsächlich gebauten JS-/CSS-Dateien, dem HTML, Manifest, Icons und sämtlichen Dateien in `public/material`. Ein Release wird nur dann für offline freigegeben, wenn alle Ressourcen erfolgreich gespeichert wurden. Der Cache enthält ausschließlich App-Ressourcen; Sessiondaten und Zeichnungen bleiben in der vorhandenen lokalen Speicherung, CSV/PDF werden weiter lokal erzeugt. Offlinebetrieb ändert die bestehenden Aufbewahrungsregeln und Timer nicht; Erinnerungen sind weiterhin an die geöffnete App gebunden.
 
+Die sichtbare Versionsanzeige lautet „App-Version TT.MM.JJJJ, HH:mm“ und zeigt den Build-Zeitpunkt in der Zeitzone Europe/Berlin. Dieser Zeitpunkt bleibt beim Prüfen auf Updates und im Offlinebetrieb gleich, bis eine neue App-Version geöffnet wird.
+
 Neue Versionen werden im Hintergrund heruntergeladen und warten, bis **alle** Fenster/Tabs dieser Anwendung geschlossen sind. Die App lädt sich während einer Testung nicht automatisch neu. Bei einem verfügbaren Update zeigt der untere App-Bereich den Hinweis zum Schließen und erneuten Öffnen nach der Testung. Fehlgeschlagene Updates behalten die bisherige Offlineversion. Beim Aktivieren werden nur ältere `npt-static-*`-Caches bereinigt.
 
 Im unteren App-Bereich steht die **App-Version** als reproduzierbare Kennung des gebauten Quellstands. „Nach Updates suchen“ prüft ausdrücklich auf eine neue Version und zeigt den Stand bzw. Verbindungsfehler an. Die angezeigte Versionskennung gehört zum aktuell geöffneten App-Code; ein heruntergeladenes Update wird weiterhin erst nach dem Schließen aller Fenster aktiv.
