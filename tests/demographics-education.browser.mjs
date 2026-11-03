@@ -74,8 +74,31 @@ const fillTotal = (value) => evaluate(`(() => {
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, ${JSON.stringify(value)});
   input.dispatchEvent(new Event('input', { bubbles: true }));
 })()`);
+const fillBirthDate = (value) => evaluate(`(() => {
+  const input = document.getElementById('patient-birth-date');
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, ${JSON.stringify(value)});
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+})()`);
 const saveDisabled = () => evaluate('[...document.querySelectorAll("button")].find(node => node.textContent.trim() === "Speichern").disabled');
+const storedSessions = () => evaluate(`new Promise((resolve, reject) => {
+  const open = indexedDB.open('npt-db', 2);
+  open.onerror = () => reject(open.error);
+  open.onsuccess = () => {
+    const db = open.result;
+    const request = db.transaction('sessions').objectStore('sessions').getAll();
+    request.onsuccess = () => { resolve(request.result); db.close(); };
+    request.onerror = () => { reject(request.error); db.close(); };
+  };
+})`);
+async function assertBirthDateNotStored() {
+  const storage = await evaluate('JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } })');
+  const database = JSON.stringify(await storedSessions());
+  for (const data of [storage, database]) {
+    assert.doesNotMatch(data, /1954-06-(15|16|17)|2024-06-(16|17)|birthDate|birth_date|patient_dob|Geburtsdatum/);
+  }
+}
 async function assertExports(expected) {
+  const expectedAge = (await snapshot()).sessionData.demographics.patient_age;
   await evaluate(`(() => {
     window.educationCsv = null;
     window.educationPdf = '';
@@ -93,6 +116,9 @@ async function assertExports(expected) {
   const [headers, values] = csv.split("\n").map(line => line.split(";"));
   assert.equal(headers.filter(key => key === "demographics_education_years").length, 1);
   assert.equal(values[headers.indexOf("demographics_education_years")], `"${expected}"`);
+  assert.equal(headers.filter(key => key === "demographics_patient_age").length, 1);
+  assert.equal(values[headers.indexOf("demographics_patient_age")], `"${expectedAge}"`);
+  assert.doesNotMatch(csv, /birth|geburt|1954-06-/i);
   await click("PDF Export");
   await until(() => evaluate('window.educationPdf.includes("demographics_education_years")'), "PDF export");
   assert.equal(await evaluate(`(() => {
@@ -100,10 +126,17 @@ async function assertExports(expected) {
     const row = [...doc.querySelectorAll('tr')].find(node => node.firstElementChild?.textContent === 'demographics_education_years');
     return row.lastElementChild.textContent;
   })()`), String(expected));
+  assert.equal(await evaluate(`(() => {
+    const doc = new DOMParser().parseFromString(window.educationPdf, 'text/html');
+    const row = [...doc.querySelectorAll('tr')].find(node => node.firstElementChild?.textContent === 'demographics_patient_age');
+    return row.lastElementChild.textContent;
+  })()`), String(expectedAge));
+  assert.doesNotMatch(await evaluate('window.educationPdf'), /birth|geburt|1954-06-/i);
 }
 
 try {
   await send("Page.enable", {}, sessionId);
+  await send("Emulation.setTimezoneOverride", { timezoneId: "Europe/Berlin" }, sessionId);
   await send("Page.addScriptToEvaluateOnNewDocument", { source: `
     if (location.origin === ${JSON.stringify(new URL(appUrl).origin)} && !localStorage.getItem('education_fixture_seeded')) {
       localStorage.setItem('education_fixture_seeded', 'true');
@@ -113,7 +146,7 @@ try {
       localStorage.setItem('system_update_reminder_shown_on', [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-'));
       localStorage.setItem('npt_session_backup', JSON.stringify({
         sessionUUID: 'education-regression', lastUpdated: Date.now(), screen: { name: 'menu' }, globalTimers: [],
-        sessionData: { demographics_saved: true, demographics: {
+        sessionData: { testing_started_at: Date.parse('2024-06-15T22:30:00Z'), demographics_saved: true, demographics: {
           patient_initials: 'TEST', patient_age: '70', test_language: 'de',
           education_school_years: 13, education_training_code: 'master', education_years: 18
         } }
@@ -123,6 +156,39 @@ try {
   await send("Page.navigate", { url: appUrl }, sessionId);
   await until(() => evaluate('!!document.querySelector(".tile-btn:not(:disabled)")'), "hydration");
   await click("Basisdaten bearbeiten");
+  assert.equal(await evaluate('document.querySelector(\'label[for="patient-birth-date"]\').textContent'), 'Geburtsdatum');
+  assert.equal(await evaluate('document.getElementById("patient-birth-date").type'), 'date');
+  assert.equal(await evaluate('document.getElementById("patient-birth-date").max'), '2024-06-16');
+  assert.equal(await evaluate('document.getElementById("patient-birth-date").value'), '');
+  await fillBirthDate('2024-06-17');
+  assert.equal(await saveDisabled(), true);
+  assert.equal(await evaluate('document.getElementById("patient-birth-date").getAttribute("aria-invalid")'), 'true');
+  for (const [birthDate, expectedAge] of [['1954-06-17', '69'], ['1954-06-16', '70'], ['1954-06-15', '70'], ['2024-06-16', '0']]) {
+    const previousAge = (await snapshot()).sessionData.demographics.patient_age;
+    await fillBirthDate(birthDate);
+    assert.equal(await saveDisabled(), false);
+    assert.equal(await evaluate(`document.getElementById('patient-age-help').textContent.includes('Alter am Untersuchungstag: ${expectedAge} Jahre.')`), true);
+    await evaluate('window.dispatchEvent(new Event("pagehide"))');
+    await assertBirthDateNotStored();
+    assert.equal((await snapshot()).sessionData.demographics.patient_age, previousAge);
+    await click('Speichern');
+    assert.equal((await snapshot()).sessionData.demographics.patient_age, expectedAge);
+    await until(async () => (await storedSessions()).some(item => item.sessionData?.demographics?.patient_age === expectedAge), 'saved age in IndexedDB');
+    await assertBirthDateNotStored();
+    await assertExports(18);
+    await click('Basisdaten bearbeiten');
+    assert.equal(await evaluate('document.getElementById("patient-birth-date").value'), '');
+  }
+  // A blank field on reopen must preserve the age saved without a birth date.
+  await click('Speichern');
+  assert.equal((await snapshot()).sessionData.demographics.patient_age, '0');
+  await evaluate('window.ageReloadPending = true');
+  await send('Page.reload', {}, sessionId);
+  await until(() => evaluate('!window.ageReloadPending && !!document.querySelector(".tile-btn:not(:disabled)")'), 'age reload');
+  await click('Basisdaten bearbeiten');
+  assert.equal(await evaluate('document.getElementById("patient-birth-date").value'), '');
+  assert.equal((await snapshot()).sessionData.demographics.patient_age, '0');
+  console.log('PASS: birth-date entry calculates age on the local examination date, validates future dates, preserves zero and stores/exports only age.');
   assert.equal(await evaluate('document.body.textContent.includes("Berechnete Bildungsjahre: 18")'), true);
   assert.equal(await evaluate(`(() => {
     const labels = [...document.querySelectorAll('label')].map(node => node.textContent.trim());
@@ -213,7 +279,13 @@ try {
   assert.equal(await evaluate('document.querySelector(\'input[placeholder="z. B. AB"]\').value'), '');
   assert.equal(await evaluate('document.querySelector(\'input[type="checkbox"]\').checked'), false);
   assert.equal(await evaluate('document.getElementById("education-years-total")'), null);
+  const today = await evaluate(`(() => { const date = new Date(); return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-'); })()`);
+  assert.equal(await evaluate('document.getElementById("patient-birth-date").max'), today);
+  await fillBirthDate('2000-01-01');
+  await click('Speichern');
+  assert.equal((await snapshot()).sessionData.demographics.patient_age, String(Number(today.slice(0, 4)) - 2000));
   console.log('PASS: starting a new assessment discards the previous unsaved demographic draft.');
+  console.log('PASS: new assessments calculate age using today before the first test has started.');
 } finally {
   await send("Target.disposeBrowserContext", { browserContextId });
   socket.close();

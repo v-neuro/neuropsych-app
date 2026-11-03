@@ -18,6 +18,7 @@ import { flushMountedDrawings } from "./lib/drawing-flush";
 import { idbReadAssessmentDrawings, idbRestoreAssessment, waitForPendingStorageWrites } from "./lib/persist";
 import { csvCell, escapeHtml } from "./lib/export-safety";
 import { drawingImageUrl } from "./lib/raster-image";
+import { calculatePatientAge } from "./lib/patient-age";
 
 const AssessmentBackup = React.lazy(() => import("./components/assessment-backup").then((module) => ({ default: module.AssessmentBackup })));
 
@@ -1003,7 +1004,7 @@ async function buildExportRow(sessionData, sessionUUID, opts = {}) {
   // Basisdaten
   const demo = s.demographics || {};
   row.demographics_patient_initials = demo.patient_initials || "";
-  row.demographics_patient_age = demo.patient_age || "";
+  row.demographics_patient_age = demo.patient_age ?? "";
   row.demographics_patient_gender = demo.patient_gender || "";
   row.demographics_examiner_initials = demo.examiner_initials || "";
   row.demographics_education_school_years = demo.education_school_years ?? "";
@@ -5472,6 +5473,7 @@ export default function App() {
           <DemoCapture
             key={sessionUUID}
             demographics={sessionData?.demographics || {}}
+            examinationStartedAt={sessionData?.testing_started_at}
             onSave={(payload) => {
               setSessionData((s) => ({
                 ...s,
@@ -6438,7 +6440,7 @@ function TileMenu({ onOpen, onOpenCERAD, statusMap, disabled }) {
   );
 }
 
-function DemoCapture({ demographics, onSave }) {
+function DemoCapture({ demographics, examinationStartedAt, onSave }) {
   const {
     patient_initials = "",
     patient_age = "",
@@ -6481,7 +6483,7 @@ function DemoCapture({ demographics, onSave }) {
 
   const [local, setLocal] = useState({
     patient_initials: (patient_initials || "").toUpperCase(),
-    patient_age: patient_age || "",
+    patient_age: patient_age ?? "",
     patient_gender,
     test_language: normalizeTestLanguage(test_language),
     examiner_initials: (examiner_initials || "").toUpperCase(),
@@ -6493,6 +6495,17 @@ function DemoCapture({ demographics, onSave }) {
     education_years,
     education_years_manual,
   });
+
+  // Keep the birth date outside the demographic payload and all persisted state.
+  const [birthDate, setBirthDate] = useState("");
+  const [birthDateBadInput, setBirthDateBadInput] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  useClockRefresh(() => setNow(Date.now()), examinationStartedAt == null ? 60_000 : null);
+  const examination = new Date(examinationStartedAt ?? now);
+  const examinationDate = [examination.getFullYear(), String(examination.getMonth() + 1).padStart(2, "0"), String(examination.getDate()).padStart(2, "0")].join("-");
+  const calculatedAge = calculatePatientAge(birthDate, examinationDate);
+  const validBirthDate = !birthDateBadInput && (!birthDate || calculatedAge !== null);
+  const patientAge = birthDate ? calculatedAge : local.patient_age;
 
   const schoolYears = Number(local.education_school_years) || 0;
   const trainingYears = trainingCodeToYears(local.education_training_code, local.education_dissertation_years);
@@ -6507,7 +6520,7 @@ function DemoCapture({ demographics, onSave }) {
       <Card className="space-y-2">
         <div className="text-sm font-semibold">Basisdaten {demographics && Object.keys(demographics).length ? "bearbeiten" : ""}</div>
       <div className="grid grid-cols-1 gap-2">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div>
               <label className="block text-sm text-zinc-700 leading-tight min-h-[2.5rem]">Patient:innen-Initialen</label>
               <input
@@ -6518,16 +6531,27 @@ function DemoCapture({ demographics, onSave }) {
               />
             </div>
             <div>
-              <label className="block text-sm text-zinc-700 leading-tight min-h-[2.5rem]">Patient:innen-Alter</label>
+              <label htmlFor="patient-birth-date" className="block text-sm text-zinc-700 leading-tight min-h-[2.5rem]">Geburtsdatum</label>
               <input
-                className="mt-1 w-28 rounded-xl border p-2"
-                value={local.patient_age}
-                type="text"
-                inputMode="numeric"
-                pattern="\\d*"
-                onChange={(e) => setLocal((l) => ({ ...l, patient_age: e.target.value.replace(/\\D/g, "") }))}
-                placeholder="z. B. 72"
+                id="patient-birth-date"
+                className="mt-1 w-full min-w-0 rounded-xl border p-2"
+                value={birthDate}
+                type="date"
+                min="0001-01-01"
+                max={examinationDate}
+                autoComplete="off"
+                onChange={(e) => {
+                  setBirthDate(e.target.value);
+                  setBirthDateBadInput(e.target.validity.badInput);
+                }}
+                aria-describedby="patient-age-help"
+                aria-invalid={!validBirthDate}
               />
+              <p id="patient-age-help" className="mt-1 text-xs text-zinc-600">
+                {validBirthDate && patientAge !== "" && patientAge !== null && <>Alter am Untersuchungstag: {patientAge} Jahre. </>}
+                Das Geburtsdatum wird nicht gespeichert.
+              </p>
+              {!validBirthDate && <p role="alert" className="mt-1 text-xs text-red-700">Bitte ein gültiges Geburtsdatum bis zum Untersuchungstag eingeben.</p>}
             </div>
             <div>
               <label className="block text-sm text-zinc-700 leading-tight min-h-[2.5rem]">Geschlecht</label>
@@ -6673,15 +6697,15 @@ function DemoCapture({ demographics, onSave }) {
         <div className="flex justify-end">
           <Button size="bare"
             type="button"
-            disabled={!validEducationYears}
+            disabled={!validEducationYears || !validBirthDate}
             onClick={() => {
-              if (!validEducationYears) return;
+              if (!validEducationYears || !validBirthDate) return;
               const dissertation = local.education_training_code === "promotion"
                 ? Math.max(0, Math.min(3, Number(local.education_dissertation_years || 0)))
                 : 0;
               onSave({
                 ...local,
-                patient_age: local.patient_age,
+                patient_age: patientAge === "" ? "" : String(patientAge),
                 patient_initials: (local.patient_initials || "").toUpperCase(),
                 test_language: normalizeTestLanguage(local.test_language),
                 examiner_initials: (local.examiner_initials || "").toUpperCase(),
