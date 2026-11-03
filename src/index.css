@@ -47,6 +47,37 @@ textarea:focus {
   outline: none;
 }
 
+/* Wrap demographic fields according to the card's available width, including rotation/zoom. */
+.demographics-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: 1rem;
+}
+
+.demographics-fields > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.demographics-fields input,
+.demographics-fields select {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Safari's native date control must also fit its grid column. */
+.demographics-fields input[type="date"] {
+  appearance: none;
+}
+
+.demographics-fields input[type="date"]::-webkit-date-and-time-value {
+  min-width: 0;
+  text-align: left;
+}
+
 button,
 [role="button"] {
   min-width: 44px;

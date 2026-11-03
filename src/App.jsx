@@ -6520,11 +6520,11 @@ function DemoCapture({ demographics, examinationStartedAt, onSave }) {
       <Card className="space-y-2">
         <div className="text-sm font-semibold">Basisdaten {demographics && Object.keys(demographics).length ? "bearbeiten" : ""}</div>
       <div className="grid grid-cols-1 gap-2">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="demographics-fields">
             <div>
               <label className="block text-sm text-zinc-700 leading-tight min-h-[2.5rem]">Patient:innen-Initialen</label>
               <input
-                className="mt-1 w-28 rounded-xl border p-2"
+                className="mt-1 rounded-xl border p-2"
                 value={local.patient_initials}
                 onChange={(e) => setLocal((l) => ({ ...l, patient_initials: e.target.value.replace(/[^A-Za-z]/g, "").toUpperCase() }))}
                 placeholder="z. B. AB"
@@ -6534,7 +6534,7 @@ function DemoCapture({ demographics, examinationStartedAt, onSave }) {
               <label htmlFor="patient-birth-date" className="block text-sm text-zinc-700 leading-tight min-h-[2.5rem]">Geburtsdatum</label>
               <input
                 id="patient-birth-date"
-                className="mt-1 w-full min-w-0 rounded-xl border p-2"
+                className="mt-1 rounded-xl border p-2"
                 value={birthDate}
                 type="date"
                 min="0001-01-01"
@@ -6556,7 +6556,7 @@ function DemoCapture({ demographics, examinationStartedAt, onSave }) {
             <div>
               <label className="block text-sm text-zinc-700 leading-tight min-h-[2.5rem]">Geschlecht</label>
               <select
-                className="mt-1 w-28 rounded-xl border p-2 bg-white"
+                className="mt-1 rounded-xl border p-2 bg-white"
                 value={local.patient_gender}
                 onChange={(e) => setLocal((l) => ({ ...l, patient_gender: e.target.value }))}
               >
@@ -6569,7 +6569,7 @@ function DemoCapture({ demographics, examinationStartedAt, onSave }) {
             <div>
               <label className="block text-sm text-zinc-700 leading-tight min-h-[2.5rem]">Initialien Neuropsycholog:in</label>
               <input
-                className="mt-1 w-28 rounded-xl border p-2"
+                className="mt-1 rounded-xl border p-2"
                 value={local.examiner_initials}
                 onChange={(e) => setLocal((l) => ({ ...l, examiner_initials: e.target.value.replace(/[^A-Za-z]/g, "").toUpperCase() }))}
                 placeholder="z. B. CD"

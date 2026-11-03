@@ -80,6 +80,46 @@ const fillBirthDate = (value) => evaluate(`(() => {
   input.dispatchEvent(new Event('input', { bubbles: true }));
 })()`);
 const saveDisabled = () => evaluate('[...document.querySelectorAll("button")].find(node => node.textContent.trim() === "Speichern").disabled');
+async function assertDemographicLayout() {
+  const viewports = [[240, 640], [320, 568], [375, 667], [667, 375], [639, 900], [640, 900], [641, 900], [768, 1024], [1024, 768], [820, 1180], [1180, 820], [1280, 900], [1920, 1080]];
+  for (const birthDate of ['1954-06-17', '2024-06-17']) {
+    await fillBirthDate(birthDate);
+    for (const fontSize of [16, 32]) {
+      await evaluate(`document.documentElement.style.fontSize = '${fontSize}px'`);
+      for (const [width, height] of viewports) {
+        await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: true }, sessionId);
+        const problems = await evaluate(`(async () => {
+          await document.fonts.ready;
+          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          const grid = document.getElementById('patient-birth-date').parentElement.parentElement;
+          const bounds = grid.getBoundingClientRect();
+          const fields = [...grid.children];
+          const problems = [];
+          const contains = (outer, inner) => inner.left >= outer.left - 1 && inner.right <= outer.right + 1
+            && inner.top >= outer.top - 1 && inner.bottom <= outer.bottom + 1;
+          fields.forEach((field, index) => {
+            const rect = field.getBoundingClientRect();
+            const name = field.querySelector('label').textContent;
+            if (!contains(bounds, rect)) problems.push(name + ' extends outside the grid');
+            for (const element of field.children) {
+              if (!contains(rect, element.getBoundingClientRect())) problems.push(name + ': ' + element.tagName + ' extends outside its field');
+            }
+            for (const other of fields.slice(index + 1)) {
+              const next = other.getBoundingClientRect();
+              if (Math.min(rect.right, next.right) - Math.max(rect.left, next.left) > 1
+                && Math.min(rect.bottom, next.bottom) - Math.max(rect.top, next.top) > 1) problems.push(name + ' overlaps another field');
+            }
+          });
+          return problems;
+        })()`);
+        assert.deepEqual(problems, [], `${width}×${height}, ${fontSize}px text, ${birthDate}`);
+      }
+    }
+  }
+  await evaluate('document.documentElement.style.fontSize = ""');
+  await send('Emulation.clearDeviceMetricsOverride', {}, sessionId);
+  console.log('PASS: demographic controls stay within separate fields from 240 to 1920px, through phone/tablet rotation and 200% text, with age/help and validation messages.');
+}
 const storedSessions = () => evaluate(`new Promise((resolve, reject) => {
   const open = indexedDB.open('npt-db', 2);
   open.onerror = () => reject(open.error);
@@ -163,6 +203,7 @@ try {
   await fillBirthDate('2024-06-17');
   assert.equal(await saveDisabled(), true);
   assert.equal(await evaluate('document.getElementById("patient-birth-date").getAttribute("aria-invalid")'), 'true');
+  await assertDemographicLayout();
   for (const [birthDate, expectedAge] of [['1954-06-17', '69'], ['1954-06-16', '70'], ['1954-06-15', '70'], ['2024-06-16', '0']]) {
     const previousAge = (await snapshot()).sessionData.demographics.patient_age;
     await fillBirthDate(birthDate);
