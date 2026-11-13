@@ -6137,15 +6137,25 @@ function TopBar({
 }) {
   return (
     <div id="topbar-root" className="sticky top-0 z-30 border-b border-indigo-100 bg-white/80 shadow-[0_4px_18px_rgba(30,64,175,0.06)] backdrop-blur-xl">
-      <div className="max-w-5xl mx-auto px-4 py-2 flex items-center gap-3 text-slate-900">
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={onBackToMenu}
-          onTouchEnd={(e) => { e.preventDefault(); onBackToMenu && onBackToMenu(); }}
-        >
-          Übersicht
-        </Button>
+      <div className="max-w-5xl mx-auto px-4 py-2 flex flex-wrap items-center gap-3 text-slate-900">
+        <div className="flex shrink-0 items-center gap-3">
+          <img
+            src="/icons/logo-purple.png"
+            alt="Digitale NPT"
+            width="308"
+            height="220"
+            className="h-11 w-auto shrink-0"
+          />
+          <Button
+            variant="primary"
+            size="sm"
+            className="h-11 whitespace-nowrap"
+            onClick={onBackToMenu}
+            onTouchEnd={(e) => { e.preventDefault(); onBackToMenu && onBackToMenu(); }}
+          >
+            Übersicht
+          </Button>
+        </div>
         <div className="ml-auto flex items-center gap-2">
           <Button
             variant="primary"

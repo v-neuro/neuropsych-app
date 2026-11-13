@@ -541,7 +541,7 @@ try {
   assert.equal(manifest.display, "standalone");
   assert.equal(manifest.start_url, "/");
   assert.equal(manifest.icons.length, 3);
-  assert.equal(await editor.evaluate('document.querySelector("link[rel=apple-touch-icon]").getAttribute("href")'), "/icons/apple-touch-icon.png");
+  assert.equal(await editor.evaluate('document.querySelector("link[rel=apple-touch-icon]").getAttribute("href")'), "/icons/apple-touch-icon-purple.png");
   const staticCache = await editor.evaluate('caches.keys()');
   assert.equal(staticCache.length, 1);
   const assetPaths = await editor.evaluate(`caches.open(${JSON.stringify(staticCache[0])}).then(cache => cache.keys()).then(keys => keys.map(key => new URL(key.url).pathname))`);
