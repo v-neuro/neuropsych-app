@@ -239,7 +239,10 @@ try {
   const value = (key) => values[headers.indexOf(key)];
   const firstQolieColumn = headers.indexOf("qolie31_entry_mode");
   assert.equal(headers[firstQolieColumn - 1], "rey_copy_abort_note");
-  assert.ok(headers.slice(firstQolieColumn).every(header => header.startsWith("qolie31_")));
+  const metadataStart = headers.indexOf("export_schema_version");
+  assert.ok(metadataStart > firstQolieColumn);
+  assert.ok(headers.slice(firstQolieColumn, metadataStart).every(header => header.startsWith("qolie31_")));
+  assert.equal(value("export_schema_version"), '"2"');
   assert.equal(value("qolie31_scoring_version"), `"${QOLIE31_SCORING_VERSION}"`);
   assert.equal(value("qolie31_item_1_raw"), '"1"');
   assert.equal(value("qolie31_item_1_score"), '"10"');

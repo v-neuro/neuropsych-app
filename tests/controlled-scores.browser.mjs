@@ -107,10 +107,13 @@ try {
   await click('CSV Export');
   await until(() => evaluate('!!window.controlledCsv'), 'controlled scores exported');
   const [headers, values] = (await evaluate('window.controlledCsv')).split('\n').map(line => line.split(';'));
-  for (const [key, value] of Object.entries({ stroop_interferenz_errors:1, stroop_interferenz_corrected:1, cerad_bnt_correct:1, dcsr_dg1_hits:4 })) {
+  for (const [key, value] of Object.entries({ stroop_interferenz_errors:1, stroop_interferenz_corrected:1, dcsr_dg1_hits:4 })) {
     assert.equal(values[headers.indexOf(key)], `"${value}"`, key);
   }
-  console.log('PASS: actual CSV export matches Stroop, naming and DCS scores after navigation and reload.');
+  // One named item is a partial assessment, not a complete 15-item BNT total.
+  assert.equal(values[headers.indexOf('cerad_bnt_correct')], '');
+  assert.equal(values[headers.indexOf('cerad_bnt_correct_missing_reason')], '"unknown"');
+  console.log('PASS: CSV retains recorded Stroop/DCS scores and marks the unfinished naming total as unavailable.');
   assert.deepEqual(errors, [], 'no React render-update errors or browser exceptions');
 } finally {
   await send('Target.disposeBrowserContext', { browserContextId }); socket.close();

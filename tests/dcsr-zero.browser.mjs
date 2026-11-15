@@ -114,7 +114,7 @@ try {
       for (const field of ["dcsr_dg1_hits", "dcsr_sum_dg1_5"]) {
         const index = headers.indexOf(field);
         assert.notEqual(index, -1);
-        assert.equal(values[index], scenario.expected, `${scenario.name}: ${field}`);
+        assert.equal(values[index], field === "dcsr_sum_dg1_5" ? "" : scenario.expected, `${scenario.name}: ${field}`);
       }
       console.log(`PASS: ${scenario.name}`);
     } finally {

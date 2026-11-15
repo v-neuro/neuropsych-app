@@ -19,6 +19,7 @@ import { idbReadAssessmentDrawings, idbRestoreAssessment, waitForPendingStorageW
 import { csvCell, escapeHtml } from "./lib/export-safety";
 import { drawingImageUrl } from "./lib/raster-image";
 import { calculatePatientAge } from "./lib/patient-age";
+import { COLLECTION_VERSION, normalizeAssessmentResults, appendExportContract } from "./lib/export-contract";
 
 const AssessmentBackup = React.lazy(() => import("./components/assessment-backup").then((module) => ({ default: module.AssessmentBackup })));
 
@@ -996,7 +997,7 @@ async function buildExportRow(sessionData, sessionUUID, opts = {}) {
     if (code === "bachelor") return "Bachelor";
     if (code === "master") return "Master (Bachelor+Master)";
     if (code === "promotion") return "Promotion";
-    return "Keine";
+    return code === "none" ? "Keine" : "";
   };
 
   const msToSec = (ms) => (typeof ms === "number" ? Math.round(ms / 1000) : null);
@@ -1386,7 +1387,22 @@ async function buildExportRow(sessionData, sessionUUID, opts = {}) {
   // Append new subtests to preserve the existing CSV column order.
   Object.assign(row, getReyExportFields(s.rey_copy, s.rey_copy_aborted));
   Object.assign(row, getQolie31ExportFields(s.qolie31, s.qolie31_aborted));
-  return row;
+  normalizeAssessmentResults(row, s, {
+    aceSections: ACE_SECTIONS, mocaSections: MOCA_SECTIONS, aceItemScore: getAceItemScore,
+    ceradRecognitionItems: CERAD_WL_RECOG_ITEMS,
+    mmstTotal: computeMmstTotal,
+    mmstComplete: (items) => Object.entries(MMST_STRUCTURE).every(([key, labels]) =>
+      Array.isArray(labels) ? labels.every((label) => Object.hasOwn(items[key] || {}, label)) : typeof items[key] === "number"
+    ),
+    aceRecognitionComplete: (data) => {
+      const recall = getAceRecallAddressMarks(data);
+      const responses = data.raw?.recognition?.responses || {};
+      return getAceVersionMaterials(data.version).recognitionChoices.every((group) =>
+        group.recallItems.every((material) => !!recall[material]) || (typeof responses[group.key] === "string" && responses[group.key] !== "")
+      );
+    },
+  });
+  return appendExportContract(row, s);
 }
 
 // Shared UI primitives moved to components/ui
@@ -2604,7 +2620,7 @@ function AceNameAddressTrials({ item, value, raw, testLanguage, aceVersion, onSc
   );
 }
 
-function AceTaskCard({ ace, item, value, raw = {}, testLanguage, aceVersion, onScoreChange, onRawChange }) {
+function AceTaskCard({ ace, item, value, raw = {}, testLanguage, aceVersion, scoreRecorded, onScoreChange, onRawChange }) {
   const isFluency = !!item.fluencyType;
   const isNameAddressLearning = item.key === "anterograde_memory";
   const hasFigureCriteria = !!ACE_FIGURE_SCORING[item.key];
@@ -2664,7 +2680,7 @@ function AceTaskCard({ ace, item, value, raw = {}, testLanguage, aceVersion, onS
           {item.hint && <p className="mt-1 text-xs text-zinc-500">{item.hint}</p>}
         </div>
         <div className="shrink-0 text-sm text-zinc-600">
-          Punkte: <span className="font-semibold tabular-nums text-zinc-900">{value ?? 0} / {item.max}</span>
+          Punkte: <span className="font-semibold tabular-nums text-zinc-900">{scoreRecorded ? (value ?? 0) : "—"} / {item.max}</span>
         </div>
       </div>
       {!isNameAddressLearning && <AceMaterial item={item} testLanguage={testLanguage} />}
@@ -2810,6 +2826,11 @@ function AceTaskCard({ ace, item, value, raw = {}, testLanguage, aceVersion, onS
         </div>
       )}
       {!hasScorableMaterials && !isFluency && !hasFigureCriteria && !isClockScoring && !isRecognition && !guidelineScoreOptions && <AceScoreInput item={item} value={value} onChange={onScoreChange} />}
+      {!scoreRecorded && item.key !== "recognition" && (
+        <Button type="button" variant="secondary" size="sm" aria-label={`${item.label}: 0 Punkte erfassen`} onClick={() => onScoreChange(0)}>
+          0 Punkte erfassen
+        </Button>
+      )}
     </Card>
   );
 }
@@ -2934,6 +2955,7 @@ function AceWire({ sessionData, testLanguage, onPersist, onAbort, onDone }) {
                     ace={ace}
                     item={item}
                     value={getAceItemScore(ace, item)}
+                    scoreRecorded={scores[item.key] != null || (item.key === "recognition" && isAceRecognitionAutomatic(ace))}
                     raw={raw[item.key] || {}}
                     testLanguage={normalizedLanguage}
                     aceVersion={aceVersion}
@@ -3468,7 +3490,7 @@ function MocaLearningTrials({ raw = {}, testLanguage, variant, onRawChange }) {
     const nextRuns = runs.map((run, index) => {
       if (index !== activeRun) return run;
       const marks = { ...run.marks, [word]: !run.marks[word] };
-      return { ...run, marks: Object.fromEntries(Object.entries(marks).filter(([, checked]) => checked)) };
+      return { ...run, assessed: true, marks: Object.fromEntries(Object.entries(marks).filter(([, checked]) => checked)) };
     });
     onRawChange({ ...raw, runs: nextRuns });
   };
@@ -3681,7 +3703,7 @@ function MocaAbstraction({ item, value, raw, onScoreChange, onRawChange }) {
   );
 }
 
-function MocaTaskCard({ item, value, raw = {}, testLanguage, onScoreChange, onRawChange }) {
+function MocaTaskCard({ item, value, raw = {}, testLanguage, scoreRecorded, onScoreChange, onRawChange }) {
   const entries = getMocaMaterialEntries(item, testLanguage);
   const isErrors = item.scoringMode === "errors";
   const isSerial = item.scoringMode === "serial-seven";
@@ -3728,7 +3750,7 @@ function MocaTaskCard({ item, value, raw = {}, testLanguage, onScoreChange, onRa
           {item.prompt && <p className="mt-1 text-sm text-zinc-600">{usePrintedLanguageVersion && item.key === "letter_fluency" ? "Aufgabe gemäß der offiziellen gedruckten Sprachversion durchführen." : item.prompt}</p>}
           {item.hint && <p className="mt-1 text-xs text-zinc-500">{item.hint}</p>}
         </div>
-        <div className="shrink-0 text-sm text-zinc-600">Punkte: <span className="font-semibold tabular-nums text-zinc-900">{value ?? 0} / {item.max}</span></div>
+        <div className="shrink-0 text-sm text-zinc-600">Punkte: <span className="font-semibold tabular-nums text-zinc-900">{scoreRecorded ? (value ?? 0) : "—"} / {item.max}</span></div>
       </div>
 
       {isDigitSpan && (
@@ -3835,6 +3857,11 @@ function MocaTaskCard({ item, value, raw = {}, testLanguage, onScoreChange, onRa
           testLanguage={testLanguage}
           onRawChange={onRawChange}
         />
+      )}
+      {!scoreRecorded && item.key !== "recognition" && (
+        <Button type="button" variant="secondary" size="sm" aria-label={`${item.label}: 0 Punkte erfassen`} onClick={() => onScoreChange(0)}>
+          0 Punkte erfassen
+        </Button>
       )}
     </Card>
   );
@@ -3967,6 +3994,7 @@ function MocaWire({ sessionData, testLanguage, onPersist, onReset, onAbort, onDo
                       key={item.key}
                       item={item}
                       value={getMocaItemScore(moca, item)}
+                      scoreRecorded={scores[item.key] != null}
                       raw={raw[item.key] || {}}
                       testLanguage={normalizedLanguage}
                       onScoreChange={(value) => persistScore(item.key, item.max, value)}
@@ -4790,7 +4818,7 @@ export default function App() {
     setGlobalTimers([]);
     setActivePipeline(null);
     setPipelineInterruption(null);
-    setSessionData({});
+    setSessionData({ collection_version: COLLECTION_VERSION });
     setScreen({ name: "menu" });
   };
 
@@ -4889,6 +4917,8 @@ export default function App() {
           if (latest.activePipeline?.steps?.length) setActivePipeline(latest.activePipeline);
           if (latest.pipelineInterruption?.key) setPipelineInterruption(latest.pipelineInterruption);
           setSessionData(latest.sessionData || {});
+        } else {
+          setSessionData({ collection_version: COLLECTION_VERSION });
         }
       } catch (e) {
         console.error("Persistenz laden fehlgeschlagen", e);
@@ -5175,15 +5205,18 @@ export default function App() {
       .npt-pdf-report img { max-width: 100%; height: auto; border: 1px solid #ddd; }
     `;
     const formatValue = escapeHtml;
+    const reasonLabels = { "not-performed": "Nicht durchgeführt", unknown: "Nicht dokumentiert / unbekannt", "not-applicable": "Nicht anwendbar", unsupported: "Nicht unterstützt", error: "Ergebnis nicht verfügbar (Fehler)" };
+    const formatResult = (key, value) => value === null || value === undefined || value === ""
+      ? formatValue(reasonLabels[row[`${key}_missing_reason`]] || "") : formatValue(value);
     const demoRows = Object.entries(row)
-      .filter(([k]) => k.startsWith("demographics_"));
+      .filter(([k]) => k.startsWith("demographics_") && !k.endsWith("_missing_reason"));
     const dataRows = Object.entries(row)
-      .filter(([k]) => !k.startsWith("demographics_"));
+      .filter(([k]) => !k.startsWith("demographics_") && !k.endsWith("_missing_reason"));
     const demoRowsHtml = demoRows
-      .map(([k, v]) => `<tr><td>${formatValue(k)}</td><td>${formatValue(v)}</td></tr>`)
+      .map(([k, v]) => `<tr><td>${formatValue(k)}</td><td>${formatResult(k, v)}</td></tr>`)
       .join("");
     const rowsHtml = dataRows
-      .map(([k, v]) => `<tr><td>${formatValue(k)}</td><td>${formatValue(v)}</td></tr>`)
+      .map(([k, v]) => `<tr><td>${formatValue(k)}</td><td>${formatResult(k, v)}</td></tr>`)
       .join("");
     const dcsrHtml = dcsrByDg
       .map(({ dg, images }) => {
@@ -6786,6 +6819,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
           sel: { ...(r?.sel || {}) },
           pers: { ...(r?.pers || {}) },
           intrusions: r?.intrusions || "",
+          assessed: r?.assessed === true,
         };
       });
       return base;
@@ -6801,7 +6835,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
   const commitCurrent = (index) => {
     setResults((rs) => {
       const copy = rs.slice();
-      copy[index] = { sel: { ...sel }, pers: { ...pers }, intrusions };
+      copy[index] = { sel: { ...sel }, pers: { ...pers }, intrusions, assessed: true };
       return copy;
     });
   };
@@ -6892,7 +6926,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
     return () => cancelAnimationFrame(frameId);
   }, [step, dg, loadFrom]);
 
-  const emitState = useCallback(() => {
+  const emitState = useCallback((recognitionAssessed = saved.rekog?.assessed === true) => {
     const nextResults = results.slice();
     const activeIdx =
       step === "score" ? Math.max(0, dg - 1)
@@ -6900,10 +6934,10 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
       : step === "dg7" ? 6
       : null;
     if (activeIdx !== null) {
-      nextResults[activeIdx] = { sel: { ...sel }, pers: { ...pers }, intrusions };
+      nextResults[activeIdx] = { ...nextResults[activeIdx], sel: { ...sel }, pers: { ...pers }, intrusions };
     }
-    onStateChange && onStateChange({ step, list, dg, results: nextResults, rekog: { sel: rekogSel, items: rekogItems } });
-  }, [onStateChange, step, list, dg, results, sel, pers, intrusions, rekogSel, rekogItems]);
+    onStateChange && onStateChange({ step, list, dg, results: nextResults, rekog: { sel: rekogSel, items: rekogItems, assessed: recognitionAssessed } });
+  }, [onStateChange, step, list, dg, results, sel, pers, intrusions, rekogSel, rekogItems, saved.rekog?.assessed]);
 
   useEffect(() => {
     emitState();
@@ -7129,7 +7163,7 @@ function VLMTWire({ addGlobalReminder, route, savedState, testLanguage, onDone, 
           <div className="mt-4">
             <Button size="bare"
               onClick={() => {
-                emitState();
+                emitState(true);
                 if (onDone) onDone();
               }}
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
@@ -7353,6 +7387,7 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
       for (let i = dg; i < 5; i += 1) {
         copy[i] = {
           richtig: DCSR_MAX_CORRECT_PER_TRIAL,
+          assessed: true,
           falsch: 0,
           gedreht: 0,
           perseveration: 0,
@@ -7389,7 +7424,7 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
           counts,
           drawingKeys: keys,
           drawingGalleryKeys: drawingGalleryKeysRef.current,
-          rekog: { responses: rekogResp },
+          rekog: { responses: rekogResp, assessed: saved.rekog?.assessed === true },
         });
       }
     })();
@@ -7429,7 +7464,7 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
     })();
   }, [sessionUUID]);
 
-  const emitState = useCallback(() => {
+  const emitState = useCallback((recognitionAssessed = saved.rekog?.assessed === true) => {
     onStateChange && onStateChange({
       step,
       ver,
@@ -7437,9 +7472,9 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
       counts,
       drawingKeys: drawingKeysRef.current,
       drawingGalleryKeys: drawingGalleryKeysRef.current,
-      rekog: { responses: rekogResp },
+      rekog: { responses: rekogResp, assessed: recognitionAssessed },
     });
-  }, [onStateChange, step, ver, dg, counts, rekogResp]);
+  }, [onStateChange, step, ver, dg, counts, rekogResp, saved.rekog?.assessed]);
 
   useEffect(() => {
     emitState();
@@ -7679,7 +7714,10 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
               {dg > 1 ? `Zurück zu DG${dg - 1}` : "Zurück zur Versionswahl"}
             </Button>
             {dg < 5 && !ceilingHit && (
-              <Button variant="primary" onClick={() => setDG(dg + 1)}>
+              <Button variant="primary" onClick={() => {
+                setCounts((xs) => xs.map((trial, index) => index === dg - 1 ? { ...trial, assessed: true } : trial));
+                setDG(dg + 1);
+              }}>
                 Weiter zu DG{dg + 1}
               </Button>
             )}
@@ -7687,6 +7725,7 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
               <Button
                 variant="primary"
                 onClick={() => {
+                  setCounts((xs) => xs.map((trial, index) => index === dg - 1 ? { ...trial, assessed: true } : trial));
                   emitState();
                   addGlobalReminder("DCS", 30, { name: "dcsr", go: "rekog" });
                   setStep("waiting");
@@ -7791,7 +7830,7 @@ function DCSRWire({ addGlobalReminder, route, savedState, sessionUUID, onStateCh
             <Button
               variant="primary"
               onClick={() => {
-                emitState();
+                emitState(true);
                 if (onDone) onDone();
               }}
             >
@@ -8140,7 +8179,7 @@ function MMSTWire({ sessionData, onPersist, onAbort, onDone, onBackToMenu }) {
       <div className="mt-4">
         <Button size="bare"
           type="button"
-          onClick={() => onDone && onDone()}
+          onClick={() => { onPersist?.({ assessment_complete: true }); onDone?.(); }}
           className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
         >
           Fertig
@@ -8916,7 +8955,7 @@ function CERADWordlistWire({ sessionData, route, testLanguage, onPersist, onAbor
   const updateDGMarks = (key, word) => {
     const dg = getDG(key);
     const nextMarks = { ...dg.marks, [word]: !dg.marks[word] };
-    const next = { ...dg, marks: nextMarks };
+    const next = { ...dg, marks: nextMarks, assessed: true };
     onPersist && onPersist({ [key]: next });
   };
 
@@ -8924,7 +8963,7 @@ function CERADWordlistWire({ sessionData, route, testLanguage, onPersist, onAbor
   const updateDGIntrusions = (key, delta) => {
     const dg = getDG(key);
     const nextIntr = Math.max(0, (dg.intrusions || 0) + delta);
-    const next = { ...dg, intrusions: nextIntr };
+    const next = { ...dg, intrusions: nextIntr, assessed: true };
     onPersist && onPersist({ [key]: next });
   };
 
@@ -9056,7 +9095,7 @@ function CERADWordlistWire({ sessionData, route, testLanguage, onPersist, onAbor
           {renderDGCard("dg1", "DG1 – Sofortabruf 1")}
           <div className="mt-3 flex gap-2">
             <Button size="bare"
-              onClick={() => setStep("dg2")}
+              onClick={() => { onPersist?.({ dg1: { ...getDG("dg1"), assessed: true } }); setStep("dg2"); }}
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
             >
               Weiter: DG2
@@ -9070,7 +9109,7 @@ function CERADWordlistWire({ sessionData, route, testLanguage, onPersist, onAbor
           {renderDGCard("dg2", "DG2 – Sofortabruf 2")}
           <div className="mt-3 flex gap-2">
             <Button size="bare"
-              onClick={() => setStep("dg3")}
+              onClick={() => { onPersist?.({ dg2: { ...getDG("dg2"), assessed: true } }); setStep("dg3"); }}
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
             >
               Weiter: DG3
@@ -9086,7 +9125,7 @@ function CERADWordlistWire({ sessionData, route, testLanguage, onPersist, onAbor
             <Button size="bare"
               type="button"
               onClick={() => {
-                onPersist && onPersist({ recall_pending: true });
+                onPersist && onPersist({ dg3: { ...getDG("dg3"), assessed: true }, recall_pending: true });
                 if (onAfterDG3) onAfterDG3();
                 else if (onDone) onDone();
               }}
@@ -9104,7 +9143,7 @@ function CERADWordlistWire({ sessionData, route, testLanguage, onPersist, onAbor
           {renderDGCard("dg4", "DG4 – verzögerter Abruf")}
           <div className="mt-3 flex gap-2">
             <Button size="bare"
-              onClick={() => setStep("recog")}
+              onClick={() => { onPersist?.({ dg4: { ...getDG("dg4"), assessed: true } }); setStep("recog"); }}
               className="px-3 py-2 rounded-xl bg-zinc-900 text-white"
             >
               Weiter: Wiedererkennen

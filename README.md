@@ -13,6 +13,8 @@ Webbasierte, interne Test-Suite für neuropsychologische Verfahren (VLMT, DCS-R,
 - Lokales Passwortfenster mit SHA-256 und optionaler „Angemeldet bleiben“-Flag; im Browser umgehbar, daher kein Schutz für Testdaten oder öffentliches Hosting
 - Robots/Meta-Tags, um Indexierung und AI-Crawling zu unterbinden
 
+CSV-Exporte verwenden Schema v2 (`export_schema_version=2`): Bestehende Spalten bleiben in derselben Reihenfolge erhalten; zusätzliche `*_missing_reason`-Spalten und `*_assessment_status`-Spalten kennzeichnen fehlende Werte und Teststatus. Unbenutzte Tests neuer Testungen erhalten automatisch `not-performed`, ohne zusätzliche Eingaben während der Untersuchung. Bei Altbeständen oder unklaren Teilergebnissen bleibt die Ursache `unknown`. Echte Nullpunkte bleiben numerisch 0; fehlende Zahlen bleiben leere CSV-Zellen (beim Import Datenbank-NULL). Unvollständige Tests liefern keine durch leere Eingaben erzeugten Nullscores oder vorzeitigen Gesamtscores. Der PDF-Export zeigt die fehlenden Werte als lesbare Bezeichnungen. Details zum Importvertrag und ein kopierfertiger Implementierungsauftrag für die Archiv-App stehen in [docs/ARCHIVING-APP-PROMPT.md](docs/ARCHIVING-APP-PROMPT.md).
+
 ## Wichtige Dateien
 - `src/App.jsx` – Hauptkomponente mit allen Screens und Logik
 - `src/components/*` – UI-Bausteine (Timer, DrawPad, ErrorBoundary, Abbruch-Button etc.)
