@@ -487,6 +487,12 @@ function SystemUpdateReminder({ open, onClose }) {
   );
 }
 
+const EPILEPSY_LOCALIZATION_TITLE = "Epileptologie – Lokalisationsdiagnostik, prächirurgische und Verlaufsdiagnostik + Neurochirurgie";
+const EPI_TMT_TARGETS = {
+  zahlen_verbinden: { key: "tmt_a", part: "A" },
+  zahlen_buchstaben: { key: "tmt_b", part: "B" },
+};
+
 const PIPELINE_STEP_LABELS = {
   vlmt: "VLMT",
   dcsr: "DCS-R",
@@ -548,7 +554,7 @@ function TestbereicheModal({ open, onClose, onOpenTest, onStartPipeline }) {
   };
   const bereiche = [
     {
-      titel: "Epileptologie – Lokalisationsdiagnostik, prächirurgische und Verlaufsdiagnostik + Neurochirurgie",
+      titel: EPILEPSY_LOCALIZATION_TITLE,
       items: [
         { name: "Strukturierte Anamnese einschl. psychiatrischer Screeningfragen", testRoute: null },
         { name: "VLMT", testRoute: "vlmt" },
@@ -804,29 +810,25 @@ function EpiTrackWire({ sessionData, onImportInv, onPersistTime, onAbort, onSend
                 onPersist={(ms) => onPersistTime && onPersistTime(s.id, ms)}
                 autoAbortMs={s.limit}
                 onAutoAbort={(info) => {
-                  onPersistTime && onPersistTime(s.id, s.limit);
                   onAbort && onAbort({ reason: "Automatischer Abbruch", limit_ms: s.limit, at: info?.at || Date.now(), subtest: s.id });
                 }}
               />
             )}
-            {s.type === "stopwatch" && ["zahlen_verbinden", "zahlen_buchstaben"].includes(s.id) && (
+            {onSendTmt && EPI_TMT_TARGETS[s.id] && (
               <div className="flex flex-wrap gap-2">
                 <Button size="bare"
                   type="button"
                   disabled={typeof epiTimes[s.id] !== "number"}
                   onClick={() => {
-                    const target = s.id === "zahlen_verbinden" ? "tmt_a" : "tmt_b";
-                    onSendTmt && onSendTmt(target, epiTimes[s.id]);
-                    setSent((m) => ({ ...m, [target]: true }));
+                    onSendTmt(EPI_TMT_TARGETS[s.id].key, epiTimes[s.id]);
+                    setSent((m) => ({ ...m, [s.id]: true }));
                   }}
                   className={cls(
                     "px-3 py-2 rounded-xl border text-sm",
                     typeof epiTimes[s.id] !== "number" && "opacity-40 cursor-not-allowed"
                   )}
                 >
-                  {sent[s.id === "zahlen_verbinden" ? "tmt_a" : "tmt_b"]
-                    ? `An TMT-${s.id === "zahlen_verbinden" ? "A" : "B"} gesendet`
-                    : `An TMT-${s.id === "zahlen_verbinden" ? "A" : "B"} senden`}
+                  An TMT-{EPI_TMT_TARGETS[s.id].part} {sent[s.id] ? "gesendet" : "senden"}
                 </Button>
               </div>
             )}
@@ -4786,6 +4788,9 @@ export default function App() {
   const [globalTimers, setGlobalTimers] = useState([]); // only reminder timers live here
   const [activePipeline, setActivePipeline] = useState(null);
   const [pipelineInterruption, setPipelineInterruption] = useState(null);
+  const autoTransferEpiTmt = activePipeline?.title === EPILEPSY_LOCALIZATION_TITLE
+    && activePipeline.steps?.[activePipeline.index]?.key === "epi"
+    && !pipelineInterruption;
   const addGlobalReminder = (label, minutes, nav) => {
     const now = Date.now();
     const t = {
@@ -5797,29 +5802,33 @@ export default function App() {
             onImportInv={(val) =>
               setSessionData((s) => ({ ...s, epi: { ...(s.epi || {}), inv_spanne: val } }))
             }
-            onPersistTime={(id, ms) =>
+            onPersistTime={(id, ms) => {
+              const target = autoTransferEpiTmt && EPI_TMT_TARGETS[id];
               setSessionData((s) => ({
                 ...s,
+                ...(target && { [target.key]: ms }),
                 epi: { ...(s.epi || {}), times: { ...((s.epi || {}).times || {}), [id]: ms } },
-              }))
-            }
-            onSendTmt={(key, ms) =>
+              }));
+            }}
+            onSendTmt={autoTransferEpiTmt ? undefined : (key, ms) =>
               setSessionData((s) => ({
                 ...s,
                 [key]: ms,
               }))
             }
-            onAbort={(payload) =>
+            onAbort={(payload) => {
+              const target = autoTransferEpiTmt && EPI_TMT_TARGETS[payload.subtest];
               setSessionData((s) => ({
                 ...s,
+                ...(target && { [`${target.key}_aborted`]: { reason: payload.reason, limit_ms: payload.limit_ms, at: payload.at, part: target.part } }),
                 epi_aborted: payload.subtest
                   ? {
                       ...((s.epi_aborted && !s.epi_aborted.subtest) ? s.epi_aborted : {}),
                       [payload.subtest]: payload,
                     }
                   : payload,
-              }))
-            }
+              }));
+            }}
             onDone={() => finishPipelineStep("epi")}
           />
         )}
@@ -6565,12 +6574,13 @@ function DemoCapture({ demographics, examinationStartedAt, onSave }) {
       <div className="grid grid-cols-1 gap-2">
           <div className="demographics-fields">
             <div>
-              <label className="block text-sm text-zinc-700 leading-tight min-h-[2.5rem]">Patient:innen-Initialen</label>
+              <label htmlFor="patient-initials" className="block text-sm text-zinc-700 leading-tight min-h-[2.5rem]">Patient:innen-Initialen</label>
               <input
-                className="mt-1 rounded-xl border p-2"
+                id="patient-initials"
+                className="mt-1 rounded-xl border p-2 placeholder:text-zinc-500"
                 value={local.patient_initials}
                 onChange={(e) => setLocal((l) => ({ ...l, patient_initials: e.target.value.replace(/[^A-Za-z]/g, "").toUpperCase() }))}
-                placeholder="z. B. AB"
+                placeholder="VN – Vorname, Nachname"
               />
             </div>
             <div>

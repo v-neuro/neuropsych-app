@@ -316,8 +316,9 @@ try {
   const previousSession = (await snapshot()).sessionUUID;
   await click('Neue Testung');
   await until(async () => (await snapshot()).sessionUUID !== previousSession, 'new assessment');
-  await until(() => evaluate('!!document.querySelector(\'input[placeholder="z. B. AB"]\')'), 'fresh demographic form');
-  assert.equal(await evaluate('document.querySelector(\'input[placeholder="z. B. AB"]\').value'), '');
+  await until(() => evaluate('!!document.getElementById("patient-initials")'), 'fresh demographic form');
+  assert.equal(await evaluate('document.getElementById("patient-initials").value'), '');
+  assert.equal(await evaluate('document.getElementById("patient-initials").placeholder'), 'VN – Vorname, Nachname');
   assert.equal(await evaluate('document.querySelector(\'input[type="checkbox"]\').checked'), false);
   assert.equal(await evaluate('document.getElementById("education-years-total")'), null);
   const today = await evaluate(`(() => { const date = new Date(); return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-'); })()`);

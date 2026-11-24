@@ -38,7 +38,7 @@ async function until(check, label) {
   throw new Error(`Timeout: ${label}`);
 }
 const contexts = [];
-async function page(name, sessionData = {}, timers = []) {
+async function page(name, sessionData = {}, timers = [], activePipeline = null) {
   const { browserContextId } = await send("Target.createBrowserContext");
   contexts.push(browserContextId);
   const { targetId } = await send("Target.createTarget", { browserContextId, url: "about:blank" });
@@ -59,6 +59,7 @@ async function page(name, sessionData = {}, timers = []) {
       localStorage.setItem('system_update_reminder_shown_on', [now.getFullYear(), String(now.getMonth()+1).padStart(2,'0'), String(now.getDate()).padStart(2,'0')].join('-'));
       localStorage.setItem('npt_session_backup', JSON.stringify({
         sessionUUID: 'performance-test', lastUpdated: Date.now(), screen: { name: ${JSON.stringify(name)} },
+        activePipeline: ${JSON.stringify(activePipeline)},
         globalTimers: ${JSON.stringify(timers)}.map(timer => ({ startTs: Date.now(), ...timer })),
         sessionData: { demographics_saved: true, demographics: { patient_initials: 'TEST', patient_age: '70', test_language: 'de' }, ...${JSON.stringify(sessionData)} }
       }));
@@ -238,6 +239,11 @@ try {
     const state = (await clocks.snapshot()).sessionData;
     assert.equal(state.epi.times[subtest], limit, 'Over-limit stop is capped');
     assert.equal(state.epi_aborted[subtest].limit_ms, limit, 'Over-limit stop records automatic abort');
+    const part = index === 1 ? 'A' : 'B';
+    const target = index === 1 ? 'tmt_a' : 'tmt_b';
+    assert.equal(state[target], undefined, 'Standalone EpiTrack requires a manual transfer');
+    await clocks.click(`An TMT-${part} senden`);
+    assert.equal((await clocks.snapshot()).sessionData[target], limit);
     const backups = await clocks.evaluate('audit.backups');
     await clocks.evaluate('window.dispatchEvent(new Event("focus")); window.dispatchEvent(new Event("pageshow"))');
     assert.equal(await clocks.evaluate('audit.backups'), backups, 'Automatic abort fires only once');
@@ -245,6 +251,48 @@ try {
   assert.deepEqual(await clocks.evaluate('Object.values(audit.intervals)'), []);
   await quiet(clocks, 'delayed clocks');
   console.log('PASS: delayed countdown/stopwatch updates, click-time pause/stop, resume, reset, hidden-page catch-up and both time limits without scheduled ticks.');
+
+  const battery = await page('epi', { tmt_b: 8100 }, [], {
+    title: 'Epileptologie – Lokalisationsdiagnostik, prächirurgische und Verlaufsdiagnostik + Neurochirurgie',
+    index: 0, steps: [{ key: 'epi', route: { name: 'epi' }, label: 'Epi-Track' }], pendingReminders: [],
+  });
+  assert.equal(await battery.evaluate('document.body.textContent.includes("An TMT-")'), false);
+  const batteryTimer = index => battery.evaluate(`document.querySelectorAll('main .text-4xl')[${index}].parentElement.querySelector('button').click()`);
+  await batteryTimer(1);
+  await battery.evaluate('window.clockOffset = 12000');
+  await batteryTimer(1);
+  const afterA = (await battery.snapshot()).sessionData;
+  assert.ok(afterA.tmt_a >= 12000 && afterA.tmt_a < 180000);
+  assert.equal(afterA.tmt_a, afterA.epi.times.zahlen_verbinden);
+  assert.equal(afterA.tmt_b, 8100, 'Recording A preserves an independent B value');
+  await batteryTimer(2);
+  await battery.evaluate('window.clockOffset = 34000');
+  await batteryTimer(2);
+  const afterB = (await battery.snapshot()).sessionData;
+  assert.ok(afterB.tmt_b >= 22000 && afterB.tmt_b < 300000);
+  assert.equal(afterB.tmt_b, afterB.epi.times.zahlen_buchstaben);
+  assert.equal(afterB.tmt_a, afterA.tmt_a);
+  const epiDisplays = await battery.evaluate("Array.from(document.querySelectorAll('main .text-4xl'), node => node.textContent).slice(1, 3)");
+  await battery.click('Epi-Track abschließen');
+  await battery.click('TMT A und Berfasst');
+  assert.deepEqual(await battery.evaluate("Array.from(document.querySelectorAll('main .text-4xl'), node => node.textContent)"), epiDisplays);
+  console.log('PASS: localization battery copies both EpiTrack times into standalone TMT A/B.');
+
+  const screening = await page('menu', { tmt_a: 19000 });
+  await screening.click('Testungsaufbau für Fragestellungen');
+  await screening.evaluate(`(() => {
+    const section = [...document.querySelectorAll('section')].find(node => node.querySelector('button')?.textContent.includes('Medikamentennebenwirkungen'));
+    section.querySelector('button').click();
+    [...section.querySelectorAll('button')].find(node => node.textContent.trim() === 'Testbatterie starten').click();
+  })()`);
+  const screeningTimer = () => screening.evaluate("document.querySelectorAll('main .text-4xl')[1].parentElement.querySelector('button').click()");
+  await screeningTimer();
+  await screening.evaluate('window.clockOffset = 11000');
+  await screeningTimer();
+  assert.equal((await screening.snapshot()).sessionData.tmt_a, 19000);
+  await screening.click('An TMT-A senden');
+  const screeningData = (await screening.snapshot()).sessionData;
+  assert.equal(screeningData.tmt_a, screeningData.epi.times.zahlen_verbinden);
 
   const tmt = await page('tmt_ab');
   await tmt.evaluate(`window.pauseClockCallbacks = true;
